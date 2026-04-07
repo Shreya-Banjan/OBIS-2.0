@@ -2,7 +2,7 @@ export type PlacedWidget = {
   instanceId: string;
   templateId: string;
   label: string;
-  /** Empty slot from layout selection; tap to open widget picker and fill. */
+  /** Empty slot; opens widget library to fill. */
   placeholder?: boolean;
 };
 
@@ -25,6 +25,8 @@ export type SavedDashboard = {
   scope?: string;
   month?: string;
   shareEmails?: string[];
+  /** Optional note from publish modal */
+  publishComment?: string;
   /** Optional cover image (data URL) from new-report upload */
   coverImageDataUrl?: string | null;
 };

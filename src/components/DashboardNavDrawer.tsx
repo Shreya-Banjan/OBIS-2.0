@@ -82,7 +82,7 @@ export function DashboardNavDrawer({ open, onClose, onNewReport, onSignOut }: Da
       />
 
       <aside
-        className={`absolute left-0 top-0 flex h-dvh w-[min(100vw,328px)] flex-col rounded-r-2xl bg-white p-6 shadow-[1px_2px_8px_0px_rgba(30,30,31,0.1)] transition-transform duration-300 ease-out ${
+        className={`absolute left-0 top-0 flex h-dvh w-[min(100vw,328px)] flex-col rounded-r-2xl bg-white p-6 shadow-[var(--shadow-panel)] transition-transform duration-300 ease-out ${
           open ? 'translate-x-0' : '-translate-x-full'
         }`}
         role="dialog"
@@ -148,7 +148,7 @@ export function DashboardNavDrawer({ open, onClose, onNewReport, onSignOut }: Da
                 <button
                   type="button"
                   onClick={handleNewReport}
-                  className="flex shrink-0 items-center gap-1.5 rounded-xl border border-[#333] bg-white px-2.5 py-1 font-['Poppins',sans-serif] text-xs tracking-[-0.24px] text-[#333] transition-[border-color,box-shadow] duration-150 hover:border-black hover:shadow-[0_0_0_3px_rgba(0,0,0,0.06)]"
+                  className="flex shrink-0 items-center gap-1.5 rounded-xl border border-[#333] bg-white px-2.5 py-1 font-['Poppins',sans-serif] text-xs tracking-[-0.24px] text-[#333] transition-[border-color,box-shadow] duration-150 hover:border-black hover:shadow-[var(--shadow-focus)]"
                 >
                   <span>New Report</span>
                   <IconAdd className="size-[18px] text-[#e20074]" />

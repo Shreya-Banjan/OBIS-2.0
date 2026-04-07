@@ -11,8 +11,6 @@ type TopBarProps = {
   onPublish: () => void;
   onCancel: () => void;
   onMenuOpen: () => void;
-  /** Open the widget library panel (editor only). */
-  onAddWidget?: () => void;
   /** When true, Publish is inactive until at least one dashboard section exists. */
   publishDisabled?: boolean;
 };
@@ -23,7 +21,6 @@ export function TopBar({
   onPublish,
   onCancel,
   onMenuOpen,
-  onAddWidget,
   publishDisabled = false,
 }: TopBarProps) {
   const [editing, setEditing] = useState(false);
@@ -92,17 +89,12 @@ export function TopBar({
             textClass="text-[#1e1e1f]"
           />
           <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:shrink-0 sm:justify-end">
-            {onAddWidget ? (
-              <SecondaryButton type="button" onClick={onAddWidget} className="col-span-2 w-full sm:col-span-1 sm:w-auto">
-                Add widget
-              </SecondaryButton>
-            ) : null}
-            <PrimaryButton type="button" disabled={publishDisabled} onClick={onPublish} className="w-full sm:w-auto">
-              Publish
-            </PrimaryButton>
             <SecondaryButton type="button" onClick={onCancel} className="w-full sm:w-auto">
               Cancel
             </SecondaryButton>
+            <PrimaryButton type="button" disabled={publishDisabled} onClick={onPublish} className="w-full sm:w-auto">
+              Publish
+            </PrimaryButton>
           </div>
         </div>
       </div>

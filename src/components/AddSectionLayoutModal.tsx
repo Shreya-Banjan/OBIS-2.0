@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { SectionLayoutPreset } from '../types';
 import { IconClose } from './Icons';
 import { PrimaryButton } from './PrimaryButton';
@@ -43,9 +44,11 @@ export function AddSectionLayoutModal({ open, onClose, onConfirmLayout }: AddSec
 
   if (!open) return null;
 
-  return (
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <div
-      className="fixed inset-0 z-[72] flex items-center justify-center p-4"
+      className="fixed inset-0 z-[95] flex items-center justify-center p-4"
       role="presentation"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
@@ -56,7 +59,7 @@ export function AddSectionLayoutModal({ open, onClose, onConfirmLayout }: AddSec
         role="dialog"
         aria-modal="true"
         aria-labelledby="add-section-layout-title"
-        className="relative z-10 w-full max-w-[280px] rounded-xl bg-white p-5 shadow-[0_4px_4px_rgba(0,0,0,0.1)]"
+        className="relative z-10 w-full max-w-[280px] rounded-xl bg-white p-5 shadow-[var(--shadow-panel)]"
         onMouseDown={(e) => e.stopPropagation()}
       >
         <div className="mb-2 flex items-start justify-between gap-2">
@@ -134,6 +137,7 @@ export function AddSectionLayoutModal({ open, onClose, onConfirmLayout }: AddSec
           </PrimaryButton>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

@@ -25,7 +25,7 @@ export function HeaderSelect({ label, icon: Icon, value, onChange, options, text
         id={id}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className={`h-12 w-full min-w-0 cursor-pointer appearance-none rounded-xl border border-[#e4e4e4] bg-[#FFF] py-0 pl-12 pr-10 font-['Poppins',sans-serif] text-sm font-semibold outline-none ring-[#b6bec8] transition-[background-color,border-color,box-shadow] duration-150 hover:border-[#8a8a8a] hover:bg-[#FFF] hover:shadow-[0_0_0_3px_rgba(0,0,0,0.06)] focus-visible:ring-2 sm:min-w-[11rem] sm:w-auto ${textClass}`}
+        className={`h-12 w-full min-w-0 cursor-pointer appearance-none rounded-xl border border-[#e4e4e4] bg-[#FFF] py-0 pl-12 pr-10 font-['Poppins',sans-serif] text-sm font-semibold outline-none ring-[#b6bec8] transition-[background-color,border-color,box-shadow] duration-150 hover:border-[#8a8a8a] hover:bg-[#FFF] hover:shadow-[var(--shadow-focus)] focus-visible:ring-2 sm:min-w-[11rem] sm:w-auto ${textClass}`}
       >
         {options.map((opt) => (
           <option key={opt} value={opt}>

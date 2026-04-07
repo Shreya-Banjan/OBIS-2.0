@@ -51,8 +51,45 @@ export function IconLayoutList({ className }: IconProps) {
 
 export function IconChevronDown({ className }: IconProps) {
   return (
-    <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden>
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function IconChevronUp({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M6 15l6-6 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function IconSearch({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M10.5 18a7.5 7.5 0 100-15 7.5 7.5 0 000 15zM16.5 16.5L21 21"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/** Trash / delete — 24×24 viewBox; size via `className` (fixed width/height break Tailwind `size-*`). */
+export function IconTrash({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M4 7h16M10 11v6M14 11v6M6 7v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
@@ -102,6 +139,20 @@ export function IconAdd({ className }: IconProps) {
   );
 }
 
+export function IconCheck({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 18 18" fill="none" aria-hidden="true">
+      <path
+        d="M3.75 9.25 7.5 13 14.25 4.75"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export function IconClose({ className }: IconProps) {
   return (
     <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -126,7 +177,7 @@ export function IconEdit({ className }: IconProps) {
 export function IconPlusSoft({ className }: IconProps) {
   return (
     <svg className={className} width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
-      <path d="M7 2v10M2 7h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.35" />
+      <path d="M7 2v10M2 7h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
     </svg>
   );
 }

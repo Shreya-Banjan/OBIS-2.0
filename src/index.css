@@ -1,6 +1,8 @@
 @import 'tailwindcss';
 
 @theme {
+  /* Editor canvas: slots, placeholders, add-section CTAs share one radius. */
+  --radius-canvas: 16px;
   --font-poppins: 'Poppins', system-ui, sans-serif;
   --font-inter: 'Inter', system-ui, sans-serif;
   --color-canvas: #ebebeb;
@@ -8,8 +10,15 @@
   --color-muted: #707070;
   --color-border-widget: #d7d7d7;
   --color-publish: #b6bec8;
+  /* Elevation — shared ink (#1e1e1f) tint for consistent depth */
+  --shadow-subtle: 0 1px 3px 0 rgb(30 30 31 / 0.08);
   --shadow-card: 0 1px 5px 0 rgb(30 30 31 / 0.1);
-  --shadow-panel: 0 2px 20px 0 rgb(0 0 0 / 0.15);
+  --shadow-elevated: 0 4px 14px 0 rgb(30 30 31 / 0.12);
+  --shadow-panel: 0 2px 20px 0 rgb(30 30 31 / 0.14);
+  --shadow-focus: 0 0 0 3px rgb(0 0 0 / 0.06);
+  --shadow-focus-brand: 0 0 0 3px rgb(226 0 116 / 0.2);
+  /* Widget library overlay width; caps on narrow viewports. */
+  --widget-panel-width: min(380px, calc(100vw - 1.5rem));
 }
 
 body {

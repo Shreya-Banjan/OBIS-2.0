@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import type { SavedDashboard } from '../types';
 import { DashboardThumbnail } from './DashboardThumbnail';
 import { IconLayoutGrid, IconLayoutList, IconMenu } from './Icons';
@@ -12,14 +11,16 @@ function formatUpdated(ts: number) {
   }
 }
 
+export type DashboardListLayoutMode = 'tile' | 'list';
+
 type DashboardListPageProps = {
   dashboards: SavedDashboard[];
   onOpenDashboard: (id: string) => void;
   onNewReport: () => void;
   onMenuOpen: () => void;
+  layoutMode: DashboardListLayoutMode;
+  onLayoutModeChange: (mode: DashboardListLayoutMode) => void;
 };
-
-type LayoutMode = 'tile' | 'list';
 
 function StatusBadge({ status }: { status: SavedDashboard['status'] }) {
   return (
@@ -35,9 +36,14 @@ function StatusBadge({ status }: { status: SavedDashboard['status'] }) {
   );
 }
 
-export function DashboardListPage({ dashboards, onOpenDashboard, onNewReport, onMenuOpen }: DashboardListPageProps) {
-  const [layout, setLayout] = useState<LayoutMode>('tile');
-
+export function DashboardListPage({
+  dashboards,
+  onOpenDashboard,
+  onNewReport,
+  onMenuOpen,
+  layoutMode,
+  onLayoutModeChange,
+}: DashboardListPageProps) {
   const empty = dashboards.length === 0;
 
   return (
@@ -72,29 +78,29 @@ export function DashboardListPage({ dashboards, onOpenDashboard, onNewReport, on
             >
               <button
                 type="button"
-                onClick={() => setLayout('tile')}
+                onClick={() => onLayoutModeChange('tile')}
                 title="Tile view"
                 aria-label="Tile view"
                 className={`flex size-11 items-center justify-center rounded-lg transition-colors sm:size-10 ${
-                  layout === 'tile'
+                  layoutMode === 'tile'
                     ? 'bg-[#ebebeb] text-[#1e1e1f]'
                     : 'text-[#707070] hover:bg-[#f5f5f5] hover:text-[#1e1e1f]'
                 }`}
-                aria-pressed={layout === 'tile'}
+                aria-pressed={layoutMode === 'tile'}
               >
                 <IconLayoutGrid className="size-5" />
               </button>
               <button
                 type="button"
-                onClick={() => setLayout('list')}
+                onClick={() => onLayoutModeChange('list')}
                 title="List view"
                 aria-label="List view"
                 className={`flex size-11 items-center justify-center rounded-lg transition-colors sm:size-10 ${
-                  layout === 'list'
+                  layoutMode === 'list'
                     ? 'bg-[#ebebeb] text-[#1e1e1f]'
                     : 'text-[#707070] hover:bg-[#f5f5f5] hover:text-[#1e1e1f]'
                 }`}
-                aria-pressed={layout === 'list'}
+                aria-pressed={layoutMode === 'list'}
               >
                 <IconLayoutList className="size-5" />
               </button>
@@ -111,7 +117,7 @@ export function DashboardListPage({ dashboards, onOpenDashboard, onNewReport, on
               No dashboards yet. Create one with New Report.
             </p>
           </div>
-        ) : layout === 'tile' ? (
+        ) : layoutMode === 'tile' ? (
           <ul
             className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
             role="list"
@@ -121,11 +127,11 @@ export function DashboardListPage({ dashboards, onOpenDashboard, onNewReport, on
                 <button
                   type="button"
                   onClick={() => onOpenDashboard(d.id)}
-                  className="flex w-full flex-col overflow-hidden rounded-2xl bg-white text-left shadow-[var(--shadow-card)] transition-shadow duration-150 hover:shadow-[0_4px_14px_rgba(30,30,31,0.12)]"
+                  className="flex w-full flex-col gap-3 overflow-hidden rounded-2xl bg-white p-[20px] text-left shadow-[var(--shadow-card)] transition-shadow duration-150 hover:shadow-[var(--shadow-elevated)]"
                 >
-                  <div className="p-3 pb-0">
+                  <div className="w-full shrink-0">
                     {d.coverImageDataUrl ? (
-                      <div className="aspect-[5/3] w-full overflow-hidden rounded-xl border border-[#e4e4e4] bg-[#ebebeb]">
+                      <div className="aspect-[5/3] w-full overflow-hidden rounded-xl bg-transparent">
                         <img
                           src={d.coverImageDataUrl}
                           alt=""
@@ -136,7 +142,7 @@ export function DashboardListPage({ dashboards, onOpenDashboard, onNewReport, on
                       <DashboardThumbnail sections={d.sections} compact />
                     )}
                   </div>
-                  <div className="flex flex-col gap-2 p-4 pt-3">
+                  <div className="flex flex-col gap-2">
                     <div className="flex items-start justify-between gap-2">
                       <span className="min-w-0 flex-1 font-['Poppins',sans-serif] text-base font-semibold leading-snug text-[#1e1e1f]">
                         {d.title}

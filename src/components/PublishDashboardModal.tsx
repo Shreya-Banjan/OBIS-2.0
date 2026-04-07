@@ -1,6 +1,4 @@
 import { useCallback, useEffect, useId, useState, type FormEvent } from 'react';
-import type { DashboardSection } from '../types';
-import { DashboardThumbnail } from './DashboardThumbnail';
 import { MONTH_OPTIONS, SCOPE_OPTIONS } from '../data/headerSelectOptions';
 import { HeaderSelect } from './HeaderSelect';
 import { IconCalendar, IconClose, IconLocation } from './Icons';
@@ -12,6 +10,8 @@ export type PublishFormValues = {
   scope: string;
   month: string;
   shareEmails: string[];
+  /** Optional message for recipients / internal note */
+  comment?: string;
   coverImageDataUrl?: string | null;
 };
 
@@ -19,7 +19,6 @@ type PublishDashboardModalProps = {
   onClose: () => void;
   onConfirm: (values: PublishFormValues) => void;
   initialTitle: string;
-  sections: DashboardSection[];
   /** New report: title only; primary action is Create report. */
   variant?: 'publish' | 'newReport';
 };
@@ -33,21 +32,20 @@ export function PublishDashboardModal({
   onClose,
   onConfirm,
   initialTitle,
-  sections,
   variant = 'publish',
 }: PublishDashboardModalProps) {
   const isNewReport = variant === 'newReport';
   const headingId = useId();
   const titleFieldId = useId();
   const emailId = useId();
+  const commentFieldId = useId();
 
   const [draftTitle, setDraftTitle] = useState(initialTitle);
   const [scope, setScope] = useState<string>('National');
   const [month, setMonth] = useState<string>(MONTH_OPTIONS[0]);
   const [shareEmails, setShareEmails] = useState<string[]>([]);
   const [emailInput, setEmailInput] = useState('');
-
-  const thumbnailTitle = (draftTitle.trim() || initialTitle) || undefined;
+  const [comment, setComment] = useState('');
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -91,14 +89,16 @@ export function PublishDashboardModal({
         });
         return;
       }
+      const trimmedComment = comment.trim();
       onConfirm({
         title,
         scope,
         month,
         shareEmails,
+        comment: trimmedComment || undefined,
       });
     },
-    [draftTitle, initialTitle, isNewReport, scope, month, shareEmails, onConfirm]
+    [draftTitle, initialTitle, isNewReport, scope, month, shareEmails, comment, onConfirm]
   );
 
   return (
@@ -134,15 +134,7 @@ export function PublishDashboardModal({
         </div>
 
         <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
-          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6">
-            {!isNewReport ? (
-              <>
-                <p className="mb-3 font-['Inter',sans-serif] text-xs text-[#707070]">Preview</p>
-                <DashboardThumbnail sections={sections} title={thumbnailTitle} />
-              </>
-            ) : null}
-
-            <div className={isNewReport ? 'flex flex-col gap-4' : 'mt-5 flex flex-col gap-4'}>
+          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-5 py-4 sm:px-6">
               <div>
                 <label
                   htmlFor={titleFieldId}
@@ -228,9 +220,26 @@ export function PublishDashboardModal({
                       </ul>
                     ) : null}
                   </div>
+
+                  <div>
+                    <label
+                      htmlFor={commentFieldId}
+                      className="mb-1.5 block font-['Inter',sans-serif] text-xs font-medium text-[#1e1e1f]"
+                    >
+                      Comment <span className="font-normal text-[#707070]">(optional)</span>
+                    </label>
+                    <textarea
+                      id={commentFieldId}
+                      value={comment}
+                      onChange={(e) => setComment(e.target.value)}
+                      rows={4}
+                      className="min-h-[5.5rem] w-full resize-y rounded-xl border border-[#e4e4e4] bg-[#FFF] px-4 py-3 font-['Inter',sans-serif] text-sm text-[#1e1e1f] outline-none ring-[#b6bec8] transition-[border-color,box-shadow] duration-150 placeholder:text-[#707070]/60 focus-visible:border-[#c4c4c4] focus-visible:ring-2"
+                      placeholder="Add a note for recipients or your team…"
+                      autoComplete="off"
+                    />
+                  </div>
                 </>
               ) : null}
-            </div>
           </div>
 
           <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-[#ebebeb] bg-white px-5 py-4 sm:flex-row sm:justify-end sm:gap-3 sm:px-6">
