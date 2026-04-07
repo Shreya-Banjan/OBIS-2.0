@@ -1,0 +1,28 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-poppins: 'Poppins', system-ui, sans-serif;
+  --font-inter: 'Inter', system-ui, sans-serif;
+  --color-canvas: #ebebeb;
+  --color-ink: #1e1e1f;
+  --color-muted: #707070;
+  --color-border-widget: #d7d7d7;
+  --color-publish: #b6bec8;
+  --shadow-card: 0 1px 5px 0 rgb(30 30 31 / 0.1);
+  --shadow-panel: 0 2px 20px 0 rgb(0 0 0 / 0.15);
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--color-canvas);
+}
+
+#root {
+  min-height: 100dvh;
+}
+
+/* Native <select> option list: keep menu surface white where browsers allow */
+select option {
+  background-color: #fff;
+}
