@@ -16,6 +16,11 @@ export type UiComponentCategory = {
 
 export const UI_COMPONENT_CATEGORIES: UiComponentCategory[] = [
   {
+    id: 'colors',
+    title: 'Colors',
+    items: [{ id: 'colors', label: 'Colors' }],
+  },
+  {
     id: 'inputs',
     title: 'Inputs',
     items: [

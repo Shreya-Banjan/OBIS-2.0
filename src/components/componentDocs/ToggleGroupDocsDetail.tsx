@@ -1,17 +1,49 @@
 import { useState } from 'react';
 import { IconLayoutGrid, IconLayoutList } from '../Icons';
-import { ToggleGroup } from '../ToggleGroup';
+import { ToggleGroup, type ToggleGroupSize } from '../ToggleGroup';
 
 const FIGMA_TOGGLE_GROUP_URL =
   'https://www.figma.com/design/aeQeZHeULUG3dyZQaU1S9y/Neuron-2.0?node-id=6098-35524';
 
 type LayoutMode = 'grid' | 'list';
 
+const SIZE_ROWS: { size: ToggleGroupSize; label: string }[] = [
+  { size: 'large', label: 'Large' },
+  { size: 'medium', label: 'Medium' },
+  { size: 'small', label: 'Small' },
+];
+
+const LAYOUT_SEGMENTS = [
+  {
+    value: 'grid' as const,
+    label: 'Grid layout',
+    icon: <IconLayoutGrid className="shrink-0" aria-hidden />,
+  },
+  {
+    value: 'list' as const,
+    label: 'List layout',
+    icon: <IconLayoutList className="shrink-0" aria-hidden />,
+  },
+] as const;
+
 /**
  * Live preview for the design-system Toggle Group page — Neuron 2.0 layout toggle (Grid / List).
  */
 export function ToggleGroupDocsDetail() {
-  const [layout, setLayout] = useState<LayoutMode>('grid');
+  const [layoutLarge, setLayoutLarge] = useState<LayoutMode>('grid');
+  const [layoutMedium, setLayoutMedium] = useState<LayoutMode>('grid');
+  const [layoutSmall, setLayoutSmall] = useState<LayoutMode>('grid');
+
+  const layoutBySize: Record<ToggleGroupSize, LayoutMode> = {
+    large: layoutLarge,
+    medium: layoutMedium,
+    small: layoutSmall,
+  };
+  const setLayoutBySize: Record<ToggleGroupSize, (v: LayoutMode) => void> = {
+    large: setLayoutLarge,
+    medium: setLayoutMedium,
+    small: setLayoutSmall,
+  };
 
   return (
     <div className="mt-8 flex flex-col gap-8">
@@ -35,27 +67,28 @@ export function ToggleGroupDocsDetail() {
           Layout (Grid / List)
         </h3>
         <p className="mb-4 max-w-xl font-['Inter',sans-serif] text-sm text-[#707070]">
-          Two-segment icon toggle. Selected segment uses a black pill; the other stays white. Current
-          selection: <span className="font-medium text-[#1e1e1f]">{layout}</span>.
+          Two-segment icon toggle. Selected segment uses a black pill; the other stays white.{' '}
+          <span className="font-medium text-[#1e1e1f]">Medium</span> keeps a 28×56 inner track (Figma)
+          with 4px padding on the outer box; large and small scale proportionally.
         </p>
-        <div className="flex flex-wrap items-center gap-4">
-          <ToggleGroup<LayoutMode>
-            aria-label="Dashboard layout"
-            value={layout}
-            onValueChange={setLayout}
-            segments={[
-              {
-                value: 'grid',
-                label: 'Grid layout',
-                icon: <IconLayoutGrid className="shrink-0" aria-hidden />,
-              },
-              {
-                value: 'list',
-                label: 'List layout',
-                icon: <IconLayoutList className="shrink-0" aria-hidden />,
-              },
-            ]}
-          />
+        <div className="flex flex-col gap-5">
+          {SIZE_ROWS.map(({ size, label }) => (
+            <div key={size}>
+              <p className="mb-2 font-['Inter',sans-serif] text-xs font-medium text-[#707070]">{label}</p>
+              <div className="flex flex-wrap items-center gap-4">
+                <ToggleGroup<LayoutMode>
+                  aria-label={`Dashboard layout (${label})`}
+                  size={size}
+                  value={layoutBySize[size]}
+                  onValueChange={setLayoutBySize[size]}
+                  segments={LAYOUT_SEGMENTS}
+                />
+                <span className="font-['Inter',sans-serif] text-xs text-[#707070]">
+                  {layoutBySize[size]}
+                </span>
+              </div>
+            </div>
+          ))}
         </div>
       </section>
     </div>

@@ -3,8 +3,8 @@ import type { SavedDashboard } from '../types';
 import { DashboardStatusBadge } from './DashboardStatusBadge';
 import { DashboardThumbnail } from './DashboardThumbnail';
 import { ProfileAvatar } from './ProfileAvatar';
+import { AppBurgerButton } from './AppBurgerButton';
 import { IconLayoutGrid, IconLayoutList, IconMoreVertical } from './Icons';
-import { APP_MENU_RAIL_CLASS, PageMenuRail } from './PageMenuRail';
 import { PrimaryButton } from './PrimaryButton';
 
 function formatUpdated(ts: number) {
@@ -135,6 +135,7 @@ type DashboardListPageProps = {
   onShareDashboard: (id: string) => void;
   onDeleteDashboard: (id: string) => void;
   onNewReport: () => void;
+  /** Opens the app navigation drawer (burger). */
   onMenuOpen: () => void;
   /** Opens the standalone Components library (separate from the nav drawer). */
   onOpenComponents: () => void;
@@ -158,12 +159,11 @@ export function DashboardListPage({
 
   return (
     <>
-      <PageMenuRail onMenuOpen={onMenuOpen} />
-      <div
-        className={`min-h-dvh overflow-x-hidden bg-[#ebebeb] px-3 pb-8 pt-4 font-[family-name:var(--font-inter)] sm:px-4 sm:pt-6 ${APP_MENU_RAIL_CLASS}`}
-      >
+      <div className="min-h-dvh overflow-x-hidden bg-[#ebebeb] px-3 pb-8 pt-4 font-[family-name:var(--font-inter)] sm:px-4 sm:pt-6">
         <div className="mx-auto w-full max-w-[1460px]">
-        <div className="mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-start sm:justify-between">
+        <div className="mb-6 flex gap-3 sm:mb-8 sm:gap-4">
+          <AppBurgerButton onClick={onMenuOpen} className="h-16 self-start sm:self-center" />
+          <div className="flex min-w-0 flex-1 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 flex-1 pt-2 sm:pt-0">
             <h1 className="font-['Poppins',sans-serif] text-2xl font-semibold text-[#1e1e1f] sm:text-[28px] sm:leading-tight">
               Neuron 2.0
@@ -217,6 +217,7 @@ export function DashboardListPage({
             <PrimaryButton type="button" onClick={onNewReport} className="w-full shrink-0 sm:w-auto">
               New Report
             </PrimaryButton>
+          </div>
           </div>
         </div>
 

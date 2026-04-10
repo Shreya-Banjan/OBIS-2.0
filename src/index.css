@@ -31,11 +31,6 @@ body {
   min-height: 100dvh;
 }
 
-/* Fixed left menu rail — keep in sync with `PageMenuRail` width */
-:root {
-  --app-menu-rail: 3.5rem;
-}
-
 /* Smooth section reorder (Move up / down) via View Transitions API */
 @media (prefers-reduced-motion: no-preference) {
   ::view-transition-group(*),

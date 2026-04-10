@@ -19,14 +19,14 @@ export function IconMoreVertical({ className }: IconProps) {
   );
 }
 
-/** Grid / tile layout (dashboard cards). */
+/** Grid / tile layout — Fluent Grid 28 Regular (Neuron 2.0, Figma node 6326-37497). */
 export function IconLayoutGrid({ className }: IconProps) {
   return (
-    <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <rect x="4" y="4" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
-      <rect x="13" y="4" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
-      <rect x="4" y="13" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
-      <rect x="13" y="13" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
+    <svg className={className} viewBox="0 0 28 28" fill="none" aria-hidden>
+      <path
+        d="M10.75 15C11.9926 15 13 16.0074 13 17.25V22.75C13 23.9926 11.9926 25 10.75 25H5.25C4.00736 25 3 23.9926 3 22.75V17.25C3 16.0074 4.00736 15 5.25 15H10.75ZM22.75 15C23.9926 15 25 16.0074 25 17.25V22.75C25 23.9926 23.9926 25 22.75 25H17.25C16.0074 25 15 23.9926 15 22.75V17.25C15 16.0074 16.0074 15 17.25 15H22.75ZM10.75 16.5H5.25C4.83579 16.5 4.5 16.8358 4.5 17.25V22.75C4.5 23.1642 4.83579 23.5 5.25 23.5H10.75C11.1642 23.5 11.5 23.1642 11.5 22.75V17.25C11.5 16.8358 11.1642 16.5 10.75 16.5ZM22.75 16.5H17.25C16.8358 16.5 16.5 16.8358 16.5 17.25V22.75C16.5 23.1642 16.8358 23.5 17.25 23.5H22.75C23.1642 23.5 23.5 23.1642 23.5 22.75V17.25C23.5 16.8358 23.1642 16.5 22.75 16.5ZM10.75 3C11.9926 3 13 4.00736 13 5.25V10.75C13 11.9926 11.9926 13 10.75 13H5.25C4.00736 13 3 11.9926 3 10.75V5.25C3 4.00736 4.00736 3 5.25 3H10.75ZM22.75 3C23.9926 3 25 4.00736 25 5.25V10.75C25 11.9926 23.9926 13 22.75 13H17.25C16.0074 13 15 11.9926 15 10.75V5.25C15 4.00736 16.0074 3 17.25 3H22.75ZM10.75 4.5H5.25C4.83579 4.5 4.5 4.83579 4.5 5.25V10.75C4.5 11.1642 4.83579 11.5 5.25 11.5H10.75C11.1642 11.5 11.5 11.1642 11.5 10.75V5.25C11.5 4.83579 11.1642 4.5 10.75 4.5ZM22.75 4.5H17.25C16.8358 4.5 16.5 4.83579 16.5 5.25V10.75C16.5 11.1642 16.8358 11.5 17.25 11.5H22.75C23.1642 11.5 23.5 11.1642 23.5 10.75V5.25C23.5 4.83579 23.1642 4.5 22.75 4.5Z"
+        fill="currentColor"
+      />
     </svg>
   );
 }
@@ -46,16 +46,14 @@ export function IconImageUpload({ className }: IconProps) {
   );
 }
 
-/** List layout (stacked rows). */
+/** List layout — Fluent List 28 Regular (Neuron 2.0, Figma node 6326-37523). */
 export function IconLayoutList({ className }: IconProps) {
   return (
-    <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <rect x="4" y="5" width="4" height="4" rx="1" stroke="currentColor" strokeWidth="1.5" />
-      <path d="M11 7h9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-      <rect x="4" y="10" width="4" height="4" rx="1" stroke="currentColor" strokeWidth="1.5" />
-      <path d="M11 12h9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-      <rect x="4" y="15" width="4" height="4" rx="1" stroke="currentColor" strokeWidth="1.5" />
-      <path d="M11 17h9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    <svg className={className} viewBox="0 0 28 28" fill="none" aria-hidden>
+      <path
+        d="M3 6.75C3 6.33579 3.33579 6 3.75 6H22.25C22.6642 6 23 6.33579 23 6.75C23 7.16421 22.6642 7.5 22.25 7.5H3.75C3.33579 7.5 3 7.16421 3 6.75ZM3 20.75C3 20.3358 3.33579 20 3.75 20H20.25C20.6642 20 21 20.3358 21 20.75C21 21.1642 20.6642 21.5 20.25 21.5H3.75C3.33579 21.5 3 21.1642 3 20.75ZM3.75 13C3.33579 13 3 13.3358 3 13.75C3 14.1642 3.33579 14.5 3.75 14.5H24.25C24.6642 14.5 25 14.1642 25 13.75C25 13.3358 24.6642 13 24.25 13H3.75Z"
+        fill="currentColor"
+      />
     </svg>
   );
 }
@@ -357,6 +355,16 @@ export function IconUiCategoryNavigation({ className }: IconProps) {
       <circle cx="6" cy="19" r="2" stroke="currentColor" strokeWidth="1.5" />
       <circle cx="18" cy="19" r="2" stroke="currentColor" strokeWidth="1.5" />
       <path d="M12 7v3l-4 7M12 10l4 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/** Components library sidebar — Colors category. */
+export function IconUiCategoryColors({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="9" cy="12" r="5" fill="currentColor" fillOpacity="0.35" stroke="currentColor" strokeWidth="1.25" />
+      <circle cx="15" cy="12" r="5" fill="currentColor" fillOpacity="0.2" stroke="currentColor" strokeWidth="1.25" />
     </svg>
   );
 }

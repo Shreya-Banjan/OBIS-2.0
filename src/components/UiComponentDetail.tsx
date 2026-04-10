@@ -1,5 +1,7 @@
 import type { UiComponentItem } from '../data/uiComponents';
+import { AvatarDocsDetail } from './componentDocs/AvatarDocsDetail';
 import { ButtonDocsDetail } from './componentDocs/ButtonDocsDetail';
+import { ColorsDocsDetail } from './componentDocs/ColorsDocsDetail';
 import { ToggleGroupDocsDetail } from './componentDocs/ToggleGroupDocsDetail';
 
 type UiComponentDetailProps = {
@@ -42,8 +44,12 @@ export function UiComponentDetail({ item, categoryTitle }: UiComponentDetailProp
 
       {item.id === 'button' ? (
         <ButtonDocsDetail />
+      ) : item.id === 'colors' ? (
+        <ColorsDocsDetail />
       ) : item.id === 'toggle-group' ? (
         <ToggleGroupDocsDetail />
+      ) : item.id === 'avatar' ? (
+        <AvatarDocsDetail />
       ) : (
         <div className="mt-8 rounded-2xl border border-dashed border-[#d7d7d7] bg-white p-8">
           <p className="text-center font-['Inter',sans-serif] text-sm text-[#707070]">

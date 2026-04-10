@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useId, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { MONTH_OPTIONS, SCOPE_OPTIONS } from '../data/headerSelectOptions';
+import { CoverThumbnailPicker, type CoverThumbnailPickerHandle } from './CoverThumbnailPicker';
 import { HeaderSelect } from './HeaderSelect';
 import { IconCalendar, IconClose, IconLocation } from './Icons';
 import { PrimaryButton } from './PrimaryButton';
@@ -39,6 +40,7 @@ export function PublishDashboardModal({
   const titleFieldId = useId();
   const emailId = useId();
   const commentFieldId = useId();
+  const coverPickerRef = useRef<CoverThumbnailPickerHandle>(null);
 
   const [draftTitle, setDraftTitle] = useState(initialTitle);
   const [scope, setScope] = useState<string>('National');
@@ -76,16 +78,17 @@ export function PublishDashboardModal({
   }, []);
 
   const handleSubmit = useCallback(
-    (e: FormEvent) => {
+    async (e: FormEvent) => {
       e.preventDefault();
       const title = draftTitle.trim() || initialTitle;
       if (isNewReport) {
+        const coverImageDataUrl = await coverPickerRef.current?.getCroppedDataUrl();
         onConfirm({
           title,
           scope: 'National',
           month: MONTH_OPTIONS[0],
           shareEmails: [],
-          coverImageDataUrl: undefined,
+          coverImageDataUrl: coverImageDataUrl ?? undefined,
         });
         return;
       }
@@ -121,7 +124,7 @@ export function PublishDashboardModal({
       >
         <div className="flex items-start justify-between gap-3 border-b border-[#ebebeb] px-5 py-4 sm:px-6">
           <h2 id={headingId} className="font-['Poppins',sans-serif] text-lg font-semibold text-[#1e1e1f] sm:text-xl">
-            {isNewReport ? 'New report' : 'Publish dashboard'}
+            {isNewReport ? 'New Report' : 'Publish dashboard'}
           </h2>
           <button
             type="button"
@@ -147,12 +150,14 @@ export function PublishDashboardModal({
                   type="text"
                   value={draftTitle}
                   onChange={(e) => setDraftTitle(e.target.value)}
-                  className="h-12 w-full rounded-xl border border-[#e4e4e4] bg-[#FFF] px-4 font-['Poppins',sans-serif] text-sm font-semibold text-[#1e1e1f] outline-none ring-[#b6bec8] transition-[border-color,box-shadow] duration-150 placeholder:text-[#707070]/60 focus-visible:border-[#c4c4c4] focus-visible:ring-2"
+                  className="h-12 w-full rounded-xl border border-[#e4e4e4] bg-[#FFF] px-4 font-['Poppins',sans-serif] text-sm font-normal text-[#1e1e1f] outline-none ring-[#b6bec8] transition-[border-color,box-shadow] duration-150 placeholder:text-[#707070]/60 focus-visible:border-[#c4c4c4] focus-visible:ring-2"
                   placeholder={isNewReport ? 'Report title' : 'Dashboard title'}
                   autoComplete="off"
                   autoFocus={isNewReport}
                 />
               </div>
+
+              {isNewReport ? <CoverThumbnailPicker ref={coverPickerRef} /> : null}
 
               {!isNewReport ? (
                 <>

@@ -3,6 +3,7 @@ import {
   IconChevronLeft,
   IconLayoutGrid,
   IconSearch,
+  IconUiCategoryColors,
   IconUiCategoryDisplay,
   IconUiCategoryFeedback,
   IconUiCategoryInputs,
@@ -49,6 +50,8 @@ function NavTagBadge({ kind, selected }: { kind: UiComponentTag; selected: boole
 function CategorySectionIcon({ categoryId }: { categoryId: string }) {
   const cls = 'size-4 shrink-0 text-[#707070]';
   switch (categoryId) {
+    case 'colors':
+      return <IconUiCategoryColors className={cls} aria-hidden />;
     case 'inputs':
       return <IconUiCategoryInputs className={cls} aria-hidden />;
     case 'display':

@@ -11,8 +11,8 @@ import {
   type DragStartEvent,
 } from '@dnd-kit/core';
 import { arrayMove } from '@dnd-kit/sortable';
+import { AppBurgerButton } from './components/AppBurgerButton';
 import { TopBar } from './components/TopBar';
-import { APP_MENU_RAIL_CLASS, PageMenuRail } from './components/PageMenuRail';
 import { AddSectionLayoutModal } from './components/AddSectionLayoutModal';
 import { DashboardCanvas } from './components/DashboardCanvas';
 import { ComponentsPage } from './pages/ComponentsPage';
@@ -501,6 +501,7 @@ export default function App() {
         scope: values.scope,
         month: values.month,
         shareEmails: values.shareEmails.length > 0 ? values.shareEmails : undefined,
+        coverImageDataUrl: values.coverImageDataUrl ?? undefined,
       };
       setDashboards((prev) => [newDash, ...prev]);
       setActiveDashboardId(id);
@@ -888,29 +889,34 @@ export default function App() {
           onClose={() => setAddSectionLayoutOpen(false)}
           onConfirmLayout={addSectionWithLayout}
         />
-        <div
-          className={`relative flex min-h-dvh flex-col overflow-hidden bg-[#ebebeb] font-[family-name:var(--font-inter)] ${APP_MENU_RAIL_CLASS}`}
-        >
-          <PageMenuRail onMenuOpen={() => setNavDrawerOpen(true)} />
-          <div className="shrink-0 pr-3 pt-4 sm:pr-4 sm:pt-6">
-            <TopBar
-              title={reportTitle}
-              onTitleChange={setReportTitle}
-              onPublish={handleOpenPublishModal}
-              onSaveAndClose={handleSaveAndClose}
-              publishDisabled={sections.length === 0}
-              autoSaveStatus={autoSaveStatus}
-              reportStatus={activeReportStatus}
-              onShare={
-                activeDashboardId
-                  ? () => setShareDashboardId(activeDashboardId)
-                  : undefined
-              }
-            />
+        <div className="relative flex min-h-dvh flex-col overflow-hidden bg-[#ebebeb] font-[family-name:var(--font-inter)]">
+          <div className="shrink-0 px-3 pt-4 sm:px-4 sm:pt-6">
+            <div className="flex items-stretch gap-3">
+              <AppBurgerButton
+                onClick={() => setNavDrawerOpen(true)}
+                className="self-stretch"
+              />
+              <div className="min-w-0 flex-1">
+                <TopBar
+                  title={reportTitle}
+                  onTitleChange={setReportTitle}
+                  onPublish={handleOpenPublishModal}
+                  onSaveAndClose={handleSaveAndClose}
+                  publishDisabled={sections.length === 0}
+                  autoSaveStatus={autoSaveStatus}
+                  reportStatus={activeReportStatus}
+                  onShare={
+                    activeDashboardId
+                      ? () => setShareDashboardId(activeDashboardId)
+                      : undefined
+                  }
+                />
+              </div>
+            </div>
           </div>
 
           <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
-            <div className="px-3 pb-6 sm:px-4">
+            <div className="px-3 pt-6 pb-6 sm:px-4">
               <div className="mx-auto flex w-full max-w-[1460px] flex-col">
                 <div className="min-w-0 flex-1 bg-[#ebebeb] px-0 pt-0">
                   <div className="mx-auto flex w-full flex-col gap-0">

@@ -1,13 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import type { SectionLayoutPreset } from '../types';
 import { IconClose } from './Icons';
-import { PrimaryButton } from './PrimaryButton';
 
 type AddSectionLayoutModalProps = {
   open: boolean;
   onClose: () => void;
-  /** Called when the user confirms the highlighted layout. */
+  /** Called when the user picks a layout; parent should add the section and close the modal. */
   onConfirmLayout: (layout: SectionLayoutPreset) => void;
 };
 
@@ -22,8 +21,6 @@ const LAYOUT_OPTIONS: { id: SectionLayoutPreset; label: string }[] = [
 
 /** Matches Figma [Actions / Select Layout](https://www.figma.com/design/aeQeZHeULUG3dyZQaU1S9y/Neuron-2.0?node-id=5670-95642). */
 export function AddSectionLayoutModal({ open, onClose, onConfirmLayout }: AddSectionLayoutModalProps) {
-  const [selected, setSelected] = useState<SectionLayoutPreset>('full');
-
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -81,60 +78,41 @@ export function AddSectionLayoutModal({ open, onClose, onConfirmLayout }: AddSec
 
         <div
           className="flex flex-col gap-2"
-          role="radiogroup"
+          role="group"
           aria-labelledby="add-section-layout-title"
         >
-          {LAYOUT_OPTIONS.map(({ id, label }) => {
-            const isSelected = selected === id;
-            return (
-              <button
-                key={id}
-                type="button"
-                role="radio"
-                aria-checked={isSelected}
-                onClick={() => setSelected(id)}
-                className={`w-full rounded-[10px] p-1 text-left outline-none transition-[box-shadow,opacity] hover:opacity-95 focus-visible:ring-2 focus-visible:ring-[#b6bec8] ${
-                  isSelected ? 'ring-2 ring-[#e20074] ring-offset-2 ring-offset-white' : 'ring-0 ring-offset-0'
-                }`}
-                aria-label={label}
-              >
-                {id === 'full' ? (
-                  <div className={`w-full ${BAR}`} />
-                ) : null}
-                {id === 'sidebar-left' ? (
-                  <div className="flex w-full gap-1.5">
-                    <div className={`w-[70px] shrink-0 ${BAR}`} />
-                    <div className={`min-w-0 flex-1 ${BAR}`} />
-                  </div>
-                ) : null}
-                {id === 'sidebar-right' ? (
-                  <div className="flex w-full gap-1.5">
-                    <div className={`min-w-0 flex-1 ${BAR}`} />
-                    <div className={`w-[70px] shrink-0 ${BAR}`} />
-                  </div>
-                ) : null}
-                {id === 'three-column' ? (
-                  <div className="flex w-full gap-1.5">
-                    <div className={`w-[70px] shrink-0 ${BAR}`} />
-                    <div className={`w-[70px] shrink-0 ${BAR}`} />
-                    <div className={`min-w-0 flex-1 ${BAR}`} />
-                  </div>
-                ) : null}
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="mt-4">
-          <PrimaryButton
-            type="button"
-            className="w-full"
-            onClick={() => {
-              onConfirmLayout(selected);
-            }}
-          >
-            Add section
-          </PrimaryButton>
+          {LAYOUT_OPTIONS.map(({ id, label }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => onConfirmLayout(id)}
+              className="w-full rounded-[10px] p-1 text-left outline-none transition-[box-shadow,opacity] hover:opacity-95 focus-visible:ring-2 focus-visible:ring-[#b6bec8]"
+              aria-label={label}
+            >
+              {id === 'full' ? (
+                <div className={`w-full ${BAR}`} />
+              ) : null}
+              {id === 'sidebar-left' ? (
+                <div className="flex w-full gap-1.5">
+                  <div className={`w-[70px] shrink-0 ${BAR}`} />
+                  <div className={`min-w-0 flex-1 ${BAR}`} />
+                </div>
+              ) : null}
+              {id === 'sidebar-right' ? (
+                <div className="flex w-full gap-1.5">
+                  <div className={`min-w-0 flex-1 ${BAR}`} />
+                  <div className={`w-[70px] shrink-0 ${BAR}`} />
+                </div>
+              ) : null}
+              {id === 'three-column' ? (
+                <div className="flex w-full gap-1.5">
+                  <div className={`w-[70px] shrink-0 ${BAR}`} />
+                  <div className={`w-[70px] shrink-0 ${BAR}`} />
+                  <div className={`min-w-0 flex-1 ${BAR}`} />
+                </div>
+              ) : null}
+            </button>
+          ))}
         </div>
       </div>
     </div>,
