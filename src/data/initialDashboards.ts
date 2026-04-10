@@ -8,6 +8,7 @@ export const INITIAL_DASHBOARDS: SavedDashboard[] = [
     sections: [],
     updatedAt: Date.now() - 86400000 * 2,
     status: 'published',
+    sharedBy: { displayName: 'Jordan Lee' },
   },
   {
     id: 'seed-nh',
@@ -15,6 +16,7 @@ export const INITIAL_DASHBOARDS: SavedDashboard[] = [
     sections: [],
     updatedAt: Date.now() - 86400000 * 5,
     status: 'published',
+    sharedBy: { displayName: 'Alex Morgan' },
   },
   {
     id: 'seed-facts',

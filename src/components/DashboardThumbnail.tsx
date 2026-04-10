@@ -43,27 +43,33 @@ function ThumbnailSectionSlots({
 
   switch (preset) {
     case 'full':
-      return <div className="flex flex-col gap-0.5">{widgets.map(cell)}</div>;
+      return (
+        <div
+          className={`flex min-h-0 flex-col gap-0.5 overflow-hidden ${compact ? 'max-h-full' : ''}`}
+        >
+          {widgets.map(cell)}
+        </div>
+      );
     case 'sidebar-left':
       return (
-        <div className="flex flex-row gap-0.5">
-          <div className="min-w-0 flex-1 basis-0">{a ? cell(a) : null}</div>
-          <div className="min-w-0 flex-1 basis-0">{b ? cell(b) : null}</div>
+        <div className={`flex min-h-0 flex-row gap-0.5 overflow-hidden ${compact ? 'max-h-full' : ''}`}>
+          <div className="min-h-0 min-w-0 flex-1 basis-0 overflow-hidden">{a ? cell(a) : null}</div>
+          <div className="min-h-0 min-w-0 flex-1 basis-0 overflow-hidden">{b ? cell(b) : null}</div>
         </div>
       );
     case 'sidebar-right':
       return (
-        <div className="flex flex-row gap-0.5">
-          <div className="min-w-0 flex-1 basis-0">{a ? cell(a) : null}</div>
-          <div className="min-w-0 flex-1 basis-0">{b ? cell(b) : null}</div>
+        <div className={`flex min-h-0 flex-row gap-0.5 overflow-hidden ${compact ? 'max-h-full' : ''}`}>
+          <div className="min-h-0 min-w-0 flex-1 basis-0 overflow-hidden">{a ? cell(a) : null}</div>
+          <div className="min-h-0 min-w-0 flex-1 basis-0 overflow-hidden">{b ? cell(b) : null}</div>
         </div>
       );
     case 'three-column':
       return (
-        <div className="flex flex-row gap-0.5">
-          <div className="min-w-0 flex-1 basis-0">{a ? cell(a) : null}</div>
-          <div className="min-w-0 flex-1 basis-0">{b ? cell(b) : null}</div>
-          <div className="min-w-0 flex-1 basis-0">{c ? cell(c) : null}</div>
+        <div className={`flex min-h-0 flex-row gap-0.5 overflow-hidden ${compact ? 'max-h-full' : ''}`}>
+          <div className="min-h-0 min-w-0 flex-1 basis-0 overflow-hidden">{a ? cell(a) : null}</div>
+          <div className="min-h-0 min-w-0 flex-1 basis-0 overflow-hidden">{b ? cell(b) : null}</div>
+          <div className="min-h-0 min-w-0 flex-1 basis-0 overflow-hidden">{c ? cell(c) : null}</div>
         </div>
       );
   }
@@ -71,8 +77,9 @@ function ThumbnailSectionSlots({
 
 /** Compact non-interactive preview of the dashboard layout (thumbnail-style). */
 export function DashboardThumbnail({ sections, title, compact }: DashboardThumbnailProps) {
+  /** Compact tiles sit inside a fixed `aspect-[5/3]` wrapper on the list page so every card matches. */
   const frame = compact
-    ? 'flex min-h-0 flex-col aspect-[5/3] w-full overflow-hidden rounded-xl'
+    ? 'flex h-full min-h-0 w-full flex-col overflow-hidden rounded-xl'
     : 'flex min-h-0 flex-col aspect-[16/10] w-full overflow-hidden rounded-xl bg-transparent p-3 sm:p-4';
   const titleCls = compact
     ? "mb-1 truncate font-['Poppins',sans-serif] text-[10px] font-semibold text-[#1e1e1f]"
@@ -100,21 +107,23 @@ export function DashboardThumbnail({ sections, title, compact }: DashboardThumbn
           <span className={`font-['Inter',sans-serif] ${emptyText} text-[#707070]`}>No preview yet</span>
         </div>
       ) : (
-        <div className={`flex ${contentH} flex-col gap-1.5 overflow-hidden sm:gap-2`}>
+        <div className={`flex min-h-0 ${contentH} flex-col gap-1.5 overflow-hidden sm:gap-2`}>
           {sections.map((section) => (
             <div
               key={section.id}
-              className={`min-h-0 flex-1 rounded-lg bg-white shadow-[var(--shadow-subtle)] ${compact ? 'p-1.5' : 'p-2'}`}
+              className={`flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg bg-white shadow-[var(--shadow-subtle)] ${compact ? 'p-1.5' : 'p-2'}`}
             >
               <div
                 className={
                   compact
-                    ? 'mb-1 h-1 w-6 rounded-full bg-[#e4e4e4]'
-                    : 'mb-1.5 h-1.5 w-10 rounded-full bg-[#e4e4e4]'
+                    ? 'mb-1 h-1 w-6 shrink-0 rounded-full bg-[#e4e4e4]'
+                    : 'mb-1.5 h-1.5 w-10 shrink-0 rounded-full bg-[#e4e4e4]'
                 }
                 aria-hidden
               />
-              <ThumbnailSectionSlots layout={section.layout} widgets={section.widgets} compact={Boolean(compact)} />
+              <div className="min-h-0 flex-1 overflow-hidden">
+                <ThumbnailSectionSlots layout={section.layout} widgets={section.widgets} compact={Boolean(compact)} />
+              </div>
             </div>
           ))}
         </div>

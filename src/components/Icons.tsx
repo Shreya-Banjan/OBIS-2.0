@@ -8,6 +8,17 @@ export function IconMenu({ className }: IconProps) {
   );
 }
 
+/** More actions (kebab) — three vertical dots. */
+export function IconMoreVertical({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="12" cy="6" r="1.75" fill="currentColor" />
+      <circle cx="12" cy="12" r="1.75" fill="currentColor" />
+      <circle cx="12" cy="18" r="1.75" fill="currentColor" />
+    </svg>
+  );
+}
+
 /** Grid / tile layout (dashboard cards). */
 export function IconLayoutGrid({ className }: IconProps) {
   return (
@@ -61,6 +72,75 @@ export function IconChevronUp({ className }: IconProps) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path d="M6 15l6-6 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function IconChevronLeft({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/** Fluent-style arrow (line + head) — section row Move up; distinct from menu chevrons. */
+export function IconArrowUp({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M12 20V9m0 0l-4.5 4.5M12 9l4.5 4.5"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/** Fluent-style arrow (line + head) — section row Move down. */
+export function IconArrowDown({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M12 4v11m0 0l-4.5-4.5M12 15l4.5-4.5"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/** Copy / duplicate — two stacked rectangles. */
+export function IconCopy({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" strokeWidth="2" />
+      <path
+        d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/** Share / send — outline “upload from tray” style. */
+export function IconShare({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M4 12v6a2 2 0 002 2h12a2 2 0 002-2v-6M16 6l-4-4-4 4M12 2v13"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
@@ -213,6 +293,70 @@ export function IconLogout({ className }: IconProps) {
         strokeLinecap="round"
         strokeLinejoin="round"
       />
+    </svg>
+  );
+}
+
+/** Components library sidebar — Inputs category. */
+export function IconUiCategoryInputs({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M4 8h16M4 12h10M4 16h14"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+      />
+      <circle cx="18" cy="8" r="2" stroke="currentColor" strokeWidth="1.5" />
+    </svg>
+  );
+}
+
+/** Components library sidebar — Display category. */
+export function IconUiCategoryDisplay({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect x="4" y="4" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
+      <rect x="13" y="4" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
+      <rect x="4" y="13" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
+      <rect x="13" y="13" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
+    </svg>
+  );
+}
+
+/** Components library sidebar — Feedback category. */
+export function IconUiCategoryFeedback({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M12 3c-4.97 0-9 3.58-9 8 0 1.58.47 3.06 1.3 4.35L3 21l5.92-1.17A8.94 8.94 0 0012 19c4.97 0 9-3.58 9-8s-4.03-8-9-8z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+      <path d="M9.5 10.5h.01M12 10.5h.01M14.5 10.5h.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/** Components library sidebar — Overlay category. */
+export function IconUiCategoryOverlay({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect x="5" y="6" width="14" height="12" rx="2" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M8 4h12a2 2 0 012 2v10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/** Components library sidebar — Navigation category. */
+export function IconUiCategoryNavigation({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="12" cy="5" r="2" stroke="currentColor" strokeWidth="1.5" />
+      <circle cx="6" cy="19" r="2" stroke="currentColor" strokeWidth="1.5" />
+      <circle cx="18" cy="19" r="2" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M12 7v3l-4 7M12 10l4 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
     </svg>
   );
 }

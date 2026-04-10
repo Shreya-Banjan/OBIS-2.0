@@ -1,19 +1,20 @@
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, useSortable, rectSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { DashboardSection, PlacedWidget, SectionLayoutPreset } from '../types';
 import { useWidgetLibraryOpen } from '../context/WidgetLibraryContext';
-import { IconChevronDown, IconChevronUp, IconClose, IconDrag, IconEdit, IconPlusSoft, IconTrash } from './Icons';
+import { IconArrowDown, IconArrowUp, IconClose, IconDrag, IconEdit, IconPlusSoft, IconTrash } from './Icons';
 import { EditorAddWidgetCta } from './EditorAddWidgetCta';
 
-/** Slot wrapper — subtle elevation; widget library target (placeholder or change-widget) gets magenta inset stroke. */
-function slotSurfaceClass(w: PlacedWidget, activeLibraryTargetInstanceId: string | null) {
-  const shell = 'min-h-0 min-w-0 rounded-[var(--radius-canvas)] bg-white box-border';
-  if (activeLibraryTargetInstanceId === w.instanceId) {
-    return `${shell} shadow-[var(--shadow-subtle),inset_0_0_0_2px_#E20074]`;
-  }
-  return `${shell} shadow-[var(--shadow-subtle)]`;
+/** Shared view-transition name so the add-section CTA animates when rows are deleted or reordered. */
+const addSectionCtaViewTransition: CSSProperties = {
+  viewTransitionName: 'neuron-add-section-cta',
+};
+
+/** Slot wrapper — subtle elevation; magenta highlight is on the inner tile (EditorAddWidgetCta / SortablePlacedWidget). */
+function slotSurfaceClass() {
+  return 'min-h-0 min-w-0 rounded-[var(--radius-canvas)] bg-white box-border shadow-[var(--shadow-subtle)]';
 }
 
 function SortablePlaceholderSlot({
@@ -59,10 +60,12 @@ function SortablePlacedWidget({
   sectionId,
   widget,
   onRemove,
+  isLibraryTarget,
 }: {
   sectionId: string;
   widget: PlacedWidget;
   onRemove: (instanceId: string) => void;
+  isLibraryTarget: boolean;
 }) {
   const openWidgetLibrary = useWidgetLibraryOpen();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -84,19 +87,22 @@ function SortablePlacedWidget({
     <div
       ref={setNodeRef}
       style={style}
-      className="group flex min-h-0 flex-col gap-2 rounded-[var(--radius-canvas)] border border-[#d7d7d7] bg-white px-2 py-3 shadow-[var(--shadow-subtle)] sm:flex-row sm:items-center sm:justify-between sm:gap-0"
+      className={[
+        'group flex min-h-0 flex-col gap-2 rounded-[var(--radius-canvas)] bg-white px-2 py-3 shadow-[var(--shadow-subtle)] sm:flex-row sm:items-center sm:justify-between sm:gap-0',
+        isLibraryTarget ? 'border-2 border-solid border-[#E20074]' : 'border border-[#d7d7d7]',
+      ].join(' ')}
     >
-      <div className="flex items-center gap-1">
+      <div className="flex min-w-0 items-center gap-1.5">
         <button
           type="button"
-          className="cursor-grab touch-none text-[#1e1e1f]/35 active:cursor-grabbing"
+          className="inline-flex cursor-grab touch-none items-center justify-center text-[#1e1e1f]/35 active:cursor-grabbing"
           {...listeners}
           {...attributes}
           aria-label={`Reorder ${widget.label}`}
         >
-          <IconDrag className="size-[18px]" />
+          <IconDrag className="block size-[18px] shrink-0" aria-hidden />
         </button>
-        <span className="min-w-0 font-['Poppins',sans-serif] text-sm text-black/80">{widget.label}</span>
+        <span className="min-w-0 font-['Poppins',sans-serif] text-sm leading-snug text-black/80">{widget.label}</span>
       </div>
       <div className="flex flex-wrap items-center gap-0.5 self-start sm:self-auto">
         <button
@@ -109,7 +115,7 @@ function SortablePlacedWidget({
           aria-label={`Change ${widget.label}`}
           title={`Change ${widget.label}`}
         >
-          <IconEdit className="size-[18px]" aria-hidden />
+          <IconEdit className="block size-[18px] shrink-0" aria-hidden />
         </button>
         <button
           type="button"
@@ -118,7 +124,7 @@ function SortablePlacedWidget({
           aria-label={`Clear ${widget.label}`}
           title={`Clear ${widget.label}`}
         >
-          <IconClose className="size-[18px]" aria-hidden />
+          <IconClose className="block size-[18px] shrink-0" aria-hidden />
         </button>
       </div>
     </div>
@@ -138,7 +144,12 @@ function renderSlot(
       isLibraryTarget={activePlaceholderInstanceId === w.instanceId}
     />
   ) : (
-    <SortablePlacedWidget sectionId={section.id} widget={w} onRemove={(id) => onRemoveWidget(section.id, id)} />
+    <SortablePlacedWidget
+      sectionId={section.id}
+      widget={w}
+      onRemove={(id) => onRemoveWidget(section.id, id)}
+      isLibraryTarget={activePlaceholderInstanceId === w.instanceId}
+    />
   );
 }
 
@@ -175,7 +186,7 @@ function SectionLayoutFrame({
       return shell(
         <div className="flex w-full flex-col gap-[20px]">
           {ws.map((w) => (
-            <div key={w.instanceId} className={slotSurfaceClass(w, activePlaceholderInstanceId)}>
+            <div key={w.instanceId} className={slotSurfaceClass()}>
               {renderSlot(section, w, onRemoveWidget, activePlaceholderInstanceId)}
             </div>
           ))}
@@ -186,12 +197,12 @@ function SectionLayoutFrame({
       return shell(
         <div className="flex w-full flex-row items-stretch gap-[20px]">
           {a ? (
-            <div key={a.instanceId} className={`min-h-0 min-w-0 flex-1 basis-0 ${slotSurfaceClass(a, activePlaceholderInstanceId)}`}>
+            <div key={a.instanceId} className={`min-h-0 min-w-0 flex-1 basis-0 ${slotSurfaceClass()}`}>
               {renderSlot(section, a, onRemoveWidget, activePlaceholderInstanceId)}
             </div>
           ) : null}
           {b ? (
-            <div key={b.instanceId} className={`min-h-0 min-w-0 flex-1 basis-0 ${slotSurfaceClass(b, activePlaceholderInstanceId)}`}>
+            <div key={b.instanceId} className={`min-h-0 min-w-0 flex-1 basis-0 ${slotSurfaceClass()}`}>
               {renderSlot(section, b, onRemoveWidget, activePlaceholderInstanceId)}
             </div>
           ) : null}
@@ -202,12 +213,12 @@ function SectionLayoutFrame({
       return shell(
         <div className="flex w-full flex-row items-stretch gap-[20px]">
           {a ? (
-            <div key={a.instanceId} className={`min-h-0 min-w-0 flex-1 basis-0 ${slotSurfaceClass(a, activePlaceholderInstanceId)}`}>
+            <div key={a.instanceId} className={`min-h-0 min-w-0 flex-1 basis-0 ${slotSurfaceClass()}`}>
               {renderSlot(section, a, onRemoveWidget, activePlaceholderInstanceId)}
             </div>
           ) : null}
           {b ? (
-            <div key={b.instanceId} className={`min-h-0 min-w-0 flex-1 basis-0 ${slotSurfaceClass(b, activePlaceholderInstanceId)}`}>
+            <div key={b.instanceId} className={`min-h-0 min-w-0 flex-1 basis-0 ${slotSurfaceClass()}`}>
               {renderSlot(section, b, onRemoveWidget, activePlaceholderInstanceId)}
             </div>
           ) : null}
@@ -218,17 +229,17 @@ function SectionLayoutFrame({
       return shell(
         <div className="flex w-full flex-row items-stretch gap-[20px]">
           {a ? (
-            <div key={a.instanceId} className={`min-h-0 min-w-0 flex-1 basis-0 ${slotSurfaceClass(a, activePlaceholderInstanceId)}`}>
+            <div key={a.instanceId} className={`min-h-0 min-w-0 flex-1 basis-0 ${slotSurfaceClass()}`}>
               {renderSlot(section, a, onRemoveWidget, activePlaceholderInstanceId)}
             </div>
           ) : null}
           {b ? (
-            <div key={b.instanceId} className={`min-h-0 min-w-0 flex-1 basis-0 ${slotSurfaceClass(b, activePlaceholderInstanceId)}`}>
+            <div key={b.instanceId} className={`min-h-0 min-w-0 flex-1 basis-0 ${slotSurfaceClass()}`}>
               {renderSlot(section, b, onRemoveWidget, activePlaceholderInstanceId)}
             </div>
           ) : null}
           {c ? (
-            <div key={c.instanceId} className={`min-h-0 min-w-0 flex-1 basis-0 ${slotSurfaceClass(c, activePlaceholderInstanceId)}`}>
+            <div key={c.instanceId} className={`min-h-0 min-w-0 flex-1 basis-0 ${slotSurfaceClass()}`}>
               {renderSlot(section, c, onRemoveWidget, activePlaceholderInstanceId)}
             </div>
           ) : null}
@@ -251,8 +262,8 @@ function SectionRowActions({
   onMoveDown: () => void;
   onRemove: () => void;
 }) {
-  const btn =
-    'flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-white transition-colors hover:bg-white/15 disabled:pointer-events-none disabled:opacity-35';
+  const moveBtn =
+    "inline-flex h-8 min-h-8 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-md px-2 text-white transition-colors hover:bg-white/15 disabled:pointer-events-none disabled:opacity-35 font-['Inter',sans-serif] text-xs font-normal leading-none tracking-tight";
 
   return (
     <div
@@ -260,36 +271,40 @@ function SectionRowActions({
       role="toolbar"
       aria-label="Section row actions"
     >
-      <div className="flex items-center">
+      <div className="flex items-center gap-0.5">
         <button
           type="button"
-          className={btn}
+          className={moveBtn}
           disabled={!canMoveUp}
           onClick={onMoveUp}
           aria-label="Move section up"
           title="Move up"
         >
-          <IconChevronUp className="size-[18px] shrink-0" />
+          <IconArrowUp className="block size-[18px] shrink-0" aria-hidden />
+          <span className="leading-none">Up</span>
         </button>
         <button
           type="button"
-          className={btn}
+          className={moveBtn}
           disabled={!canMoveDown}
           onClick={onMoveDown}
           aria-label="Move section down"
           title="Move down"
         >
-          <IconChevronDown className="size-[18px] shrink-0" />
+          <IconArrowDown className="block size-[18px] shrink-0" aria-hidden />
+          <span className="leading-none">Down</span>
         </button>
       </div>
-      <span className="mx-0.5 h-5 w-px shrink-0 bg-white/25" aria-hidden />
+      <span className="mx-0.5 h-5 w-px shrink-0 self-center bg-white/25" aria-hidden />
       <button
         type="button"
-        className="flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-md px-2 text-white transition-colors hover:bg-white/15 font-['Inter',sans-serif] text-xs font-medium tracking-tight"
+        className="inline-flex h-8 min-h-8 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-md px-2 text-white transition-colors hover:bg-white/15 font-['Inter',sans-serif] text-xs font-normal leading-none tracking-tight"
         onClick={onRemove}
+        aria-label="Delete row"
+        title="Delete row"
       >
-        <IconTrash className="size-[18px] shrink-0" />
-        <span>Delete</span>
+        <IconTrash className="block size-[18px] shrink-0" aria-hidden />
+        <span className="leading-none">Delete Row</span>
       </button>
     </div>
   );
@@ -324,11 +339,28 @@ function SectionCard({
   const layout = section.layout;
   const canMoveUp = sectionIndex > 0;
   const canMoveDown = sectionIndex < totalSections - 1;
+  const sectionHasWidgetPickerTarget =
+    activePlaceholderInstanceId != null &&
+    section.widgets.some((w) => w.instanceId === activePlaceholderInstanceId);
+
+  const sectionTransitionStyle = {
+    viewTransitionName: `neuron-section-${section.id}`,
+  } as CSSProperties;
 
   return (
-    <article className="group relative z-0 -mb-11 min-w-0 w-full max-w-full overflow-visible hover:z-[5] focus-within:z-[5]">
+    <article
+      className="group relative z-0 -mb-11 min-w-0 w-full max-w-full overflow-visible hover:z-[5] focus-within:z-[5]"
+      style={sectionTransitionStyle}
+    >
       <div className="relative min-w-0 pb-11">
-        <div className="min-w-0">
+        <div
+          className={[
+            'min-w-0 rounded-[var(--radius-canvas)] border-[1.25px] border-solid p-2 box-border transition-[background-color,border-color] duration-500 ease-in-out motion-reduce:transition-none',
+            sectionHasWidgetPickerTarget
+              ? 'border-[#999999] bg-[rgb(153_153_153/0.1)] group-hover:bg-[rgb(153_153_153/0.2)]'
+              : 'border-transparent bg-transparent group-hover:border-[#999999] group-hover:bg-[rgb(153_153_153/0.26)]',
+          ].join(' ')}
+        >
           <SortableContext id={section.id} items={section.widgets.map((w) => w.instanceId)} strategy={rectSortingStrategy}>
             {empty ? (
               <div ref={setNodeRef} className={`min-w-0 ${overRing}`}>
@@ -348,7 +380,7 @@ function SectionCard({
             ) : (
               <div ref={setNodeRef} className={`flex min-w-0 w-full flex-col gap-2 ${overRing}`}>
                 {section.widgets.map((w) => (
-                  <div key={w.instanceId} className={slotSurfaceClass(w, activePlaceholderInstanceId)}>
+                  <div key={w.instanceId} className={slotSurfaceClass()}>
                     {renderSlot(section, w, onRemoveWidget, activePlaceholderInstanceId)}
                   </div>
                 ))}
@@ -374,7 +406,7 @@ type DashboardCanvasProps = {
   onRemoveWidget: (sectionId: string, instanceId: string) => void;
   onRemoveSection: (sectionId: string) => void;
   onMoveSection: (sectionId: string, direction: 'up' | 'down') => void;
-  /** Widget instance the library is replacing (placeholder “Select widget” or placed row via Change). */
+  /** Widget instance the library is replacing (placeholder “Select Widget” or placed row via Change). */
   activePlaceholderInstanceId?: string | null;
 };
 
@@ -387,16 +419,24 @@ export function DashboardCanvas({
   activePlaceholderInstanceId = null,
 }: DashboardCanvasProps) {
   return (
-    <div className="flex min-w-0 w-full max-w-full flex-1 flex-col gap-6">
+    <div className="flex min-w-0 w-full max-w-full flex-1 flex-col gap-[5px]">
       {sections.length === 0 ? (
         <button
           type="button"
           onClick={onRequestAddSection}
-          style={{ height: 100, minHeight: 100, maxHeight: 100, flexShrink: 0 }}
+          style={{
+            height: 100,
+            minHeight: 100,
+            maxHeight: 100,
+            flexShrink: 0,
+            ...addSectionCtaViewTransition,
+          }}
           className="group box-border flex w-full shrink-0 cursor-pointer items-center justify-center gap-2.5 rounded-[var(--radius-canvas)] bg-white p-3.5 shadow-[var(--shadow-card)] hover:bg-[#fafafa]"
         >
-          <IconPlusSoft className="size-4 text-black/35 transition-colors group-hover:text-[#E20074]" />
-          <span className="font-['Inter',sans-serif] text-[13px] tracking-tight text-black/30">Add section</span>
+          <IconPlusSoft className="block size-4 shrink-0 text-black/35 transition-colors group-hover:text-[#E20074]" aria-hidden />
+          <span className="max-w-full text-balance text-center font-['Inter',sans-serif] text-[13px] font-normal leading-snug tracking-tight text-black/30 transition-colors duration-200 group-hover:text-[#000]">
+            Add Section
+          </span>
         </button>
       ) : (
         <>
@@ -415,11 +455,13 @@ export function DashboardCanvas({
           <button
             type="button"
             onClick={onRequestAddSection}
-            style={{ height: 60, minHeight: 60, flexShrink: 0 }}
-            className="group box-border flex w-full shrink-0 cursor-pointer items-center justify-center gap-2.5 rounded-[var(--radius-canvas)] bg-white px-3.5 shadow-[var(--shadow-card)] hover:bg-[#fafafa]"
+            style={{ minHeight: 60, flexShrink: 0, ...addSectionCtaViewTransition }}
+            className="group mt-6 box-border flex w-full shrink-0 cursor-pointer items-center justify-center gap-2.5 rounded-[var(--radius-canvas)] bg-white px-3.5 py-3 shadow-[var(--shadow-card)] hover:bg-[#fafafa]"
           >
-            <IconPlusSoft className="size-4 text-black/35 transition-colors group-hover:text-[#E20074]" />
-            <span className="font-['Inter',sans-serif] text-[13px] tracking-tight text-black/30">Add section</span>
+            <IconPlusSoft className="block size-4 shrink-0 text-black/35 transition-colors group-hover:text-[#E20074]" aria-hidden />
+            <span className="max-w-full text-balance text-center font-['Inter',sans-serif] text-[13px] font-normal leading-snug tracking-tight text-black/30 transition-colors duration-200 group-hover:text-[#000]">
+              Add Section
+            </span>
           </button>
         </>
       )}

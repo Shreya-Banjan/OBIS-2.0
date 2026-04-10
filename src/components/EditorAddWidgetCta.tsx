@@ -6,9 +6,9 @@ import { IconPlusSoft } from './Icons';
 /** Fixed height for canvas placeholder tiles (also set inline so flex/dnd cannot collapse it). */
 const CANVAS_PLACEHOLDER_HEIGHT_PX = 280;
 
-/** Inner tile: no border (no shadow). */
-const CANVAS_CLASS =
-  "group min-w-0 w-full box-border flex shrink-0 flex-col items-center justify-center gap-3 rounded-[var(--radius-canvas)] border-0 bg-white px-4 py-6 text-center outline-none transition-[background-color,color] font-['Inter',sans-serif] text-[13px] font-normal text-black/80 hover:bg-[#fafafa] focus-visible:shadow-[var(--shadow-focus)] active:bg-[#f0f0f0]";
+/** Inner tile: default no border; magenta ring when widget library targets this slot. */
+const CANVAS_CLASS_BASE =
+  "group min-w-0 w-full box-border flex shrink-0 flex-col items-center justify-center gap-3 rounded-[var(--radius-canvas)] bg-white px-4 py-6 text-center outline-none transition-[background-color,color,border-color] font-['Inter',sans-serif] text-[13px] font-normal text-black/80 hover:bg-[#fafafa] focus-visible:shadow-[var(--shadow-focus)] active:bg-[#f0f0f0]";
 
 export type EditorAddWidgetCtaProps = {
   layout: 'topBar' | 'canvas';
@@ -41,13 +41,19 @@ export const EditorAddWidgetCta = forwardRef<HTMLButtonElement, EditorAddWidgetC
             height: CANVAS_PLACEHOLDER_HEIGHT_PX,
             minHeight: CANVAS_PLACEHOLDER_HEIGHT_PX,
           }}
-          className={[CANVAS_CLASS, className].filter(Boolean).join(' ')}
+          className={[
+            CANVAS_CLASS_BASE,
+            isLibraryTarget ? 'border-2 border-solid border-[#E20074]' : 'border-0',
+            className,
+          ]
+            .filter(Boolean)
+            .join(' ')}
           data-neuron-slot="select-widget"
-          aria-label="Select widget"
+          aria-label="Select Widget"
           aria-expanded={isLibraryTarget ? true : undefined}
         >
-          <IconPlusSoft className="size-[18px] shrink-0 text-black/40 transition-colors group-hover:text-[#E20074]" aria-hidden />
-          <span className="max-w-[9rem] text-center text-pretty leading-snug">Select widget</span>
+          <IconPlusSoft className="block size-[18px] shrink-0 text-black/40 transition-colors group-hover:text-[#E20074]" aria-hidden />
+          <span className="max-w-[9rem] text-center text-pretty leading-snug">Select Widget</span>
         </button>
       );
     }

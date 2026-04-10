@@ -31,6 +31,65 @@ body {
   min-height: 100dvh;
 }
 
+/* Fixed left menu rail — keep in sync with `PageMenuRail` width */
+:root {
+  --app-menu-rail: 3.5rem;
+}
+
+/* Smooth section reorder (Move up / down) via View Transitions API */
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation-duration: 0.38s;
+    animation-timing-function: cubic-bezier(0.25, 0.82, 0.25, 1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation-duration: 1ms !important;
+  }
+}
+
+/* Top bar: auto-save spinner + check pop */
+@keyframes autosave-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.autosave-spinner {
+  border: 2px solid rgb(30 30 31 / 0.14);
+  border-top-color: rgb(30 30 31 / 0.48);
+  border-radius: 9999px;
+  animation: autosave-spin 0.7s linear infinite;
+}
+@keyframes autosave-check-in {
+  from {
+    opacity: 0;
+    transform: scale(0.45);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.autosave-check-in {
+  animation: autosave-check-in 0.38s cubic-bezier(0.34, 1.25, 0.64, 1) forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .autosave-spinner {
+    animation: none;
+    border-color: rgb(30 30 31 / 0.28);
+    border-top-color: rgb(30 30 31 / 0.28);
+  }
+  .autosave-check-in {
+    animation: none;
+  }
+}
+
 /* Native <select> option list: keep menu surface white where browsers allow */
 select option {
   background-color: #fff;

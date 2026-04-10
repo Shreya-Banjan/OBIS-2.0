@@ -13,6 +13,8 @@ type WidgetPickerPanelProps = {
   onClose: () => void;
   /** Tap the row (or +) to add this widget to the canvas. */
   onPickWidget?: (widget: WidgetTemplate) => void;
+  /** Remove all canvas instances of this template (selected rows). */
+  onRemoveFromCanvas?: (widget: WidgetTemplate) => void;
   /** Template IDs already placed on the canvas (non-placeholder). */
   selectedTemplateIds?: ReadonlySet<string>;
   className?: string;
@@ -22,11 +24,13 @@ function PaletteRow({
   categoryId,
   widget,
   onPick,
+  onRemoveFromCanvas,
   isSelected,
 }: {
   categoryId: string;
   widget: WidgetTemplate;
   onPick?: () => void;
+  onRemoveFromCanvas?: () => void;
   isSelected: boolean;
 }) {
   const id = `palette:${categoryId}:${widget.id}`;
@@ -49,12 +53,12 @@ function PaletteRow({
       style={style}
       onClick={() => onPick?.()}
       className={[
-        'group flex h-[52px] w-full min-w-0 shrink-0 items-center justify-between gap-2 rounded-xl border-[1.5px] border-solid px-2 py-0 text-left transition-colors',
+        'group flex min-h-[52px] w-full min-w-0 shrink-0 items-center gap-2 rounded-xl border-[1.5px] border-solid px-2 py-0 text-left transition-colors',
         isSelected ? 'border-transparent bg-[#D7D7D7]' : 'border-[#d7d7d7] bg-white',
         onPick
           ? isSelected
             ? 'cursor-pointer hover:bg-[#cacaca]'
-            : 'cursor-pointer hover:border-[#000] hover:bg-[#fafafa]'
+            : 'cursor-pointer hover:border-[#E20074] hover:bg-[#fafafa]'
           : '',
       ]
         .filter(Boolean)
@@ -77,18 +81,30 @@ function PaletteRow({
         <div className="flex min-w-0 min-h-0 flex-1 items-center justify-between gap-2">
           <span
             className={[
-              "min-w-0 flex-1 truncate font-['Poppins',sans-serif] text-sm leading-[14px]",
+              "min-w-0 flex-1 break-words font-['Poppins',sans-serif] text-sm uppercase leading-snug tracking-wide text-pretty line-clamp-2",
               isSelected ? 'text-[#1e1e1f]' : 'text-black/70',
             ].join(' ')}
           >
             {widget.label}
           </span>
           {isSelected ? (
-            <span className="relative flex size-8 shrink-0 items-center justify-center text-[#1e1e1f]" aria-hidden>
-              <IconCheck className="size-[18px] transition-opacity duration-150 group-hover:opacity-0" />
-              <span className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-150 group-hover:opacity-100">
-                <IconTrash className="size-[18px]" />
+            <span className="flex shrink-0 items-center gap-0.5">
+              <span className="flex size-8 items-center justify-center text-[#1e1e1f]" aria-hidden>
+                <IconCheck className="size-[18px]" />
               </span>
+              {onRemoveFromCanvas ? (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRemoveFromCanvas();
+                  }}
+                  className="flex size-8 shrink-0 items-center justify-center rounded-lg text-[#1e1e1f] outline-none transition-colors hover:bg-black/10 focus-visible:ring-2 focus-visible:ring-[#b6bec8]"
+                  aria-label={`Remove ${widget.label} from canvas`}
+                >
+                  <IconTrash className="size-[18px]" />
+                </button>
+              ) : null}
             </span>
           ) : (
             <IconAdd className="size-[18px] shrink-0 text-[#1e1e1f] transition-colors group-hover:text-[#E20074]" aria-hidden />
@@ -117,12 +133,14 @@ function WidgetPickerBody({
   categories,
   onClose,
   onPickWidget,
+  onRemoveFromCanvas,
   selectedTemplateIds,
 }: {
   open: boolean;
   categories: WidgetCategory[];
   onClose: () => void;
   onPickWidget?: (widget: WidgetTemplate) => void;
+  onRemoveFromCanvas?: (widget: WidgetTemplate) => void;
   selectedTemplateIds: ReadonlySet<string>;
 }) {
   const [query, setQuery] = useState('');
@@ -189,6 +207,11 @@ function WidgetPickerBody({
                     widget={w}
                     isSelected={selectedTemplateIds.has(w.id)}
                     onPick={onPickWidget ? () => onPickWidget(w) : undefined}
+                    onRemoveFromCanvas={
+                      onRemoveFromCanvas && selectedTemplateIds.has(w.id)
+                        ? () => onRemoveFromCanvas(w)
+                        : undefined
+                    }
                   />
                 ))}
               </div>
@@ -205,6 +228,7 @@ export function WidgetPickerPanel({
   open,
   onClose,
   onPickWidget,
+  onRemoveFromCanvas,
   selectedTemplateIds = EMPTY_TEMPLATE_IDS,
   className = '',
 }: WidgetPickerPanelProps) {
@@ -258,6 +282,7 @@ export function WidgetPickerPanel({
             categories={categories}
             onClose={onClose}
             onPickWidget={onPickWidget}
+            onRemoveFromCanvas={onRemoveFromCanvas}
             selectedTemplateIds={selectedTemplateIds}
           />
         </div>

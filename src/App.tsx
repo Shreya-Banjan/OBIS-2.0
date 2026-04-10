@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import {
   DndContext,
   DragOverlay,
@@ -11,13 +12,17 @@ import {
 } from '@dnd-kit/core';
 import { arrayMove } from '@dnd-kit/sortable';
 import { TopBar } from './components/TopBar';
+import { APP_MENU_RAIL_CLASS, PageMenuRail } from './components/PageMenuRail';
 import { AddSectionLayoutModal } from './components/AddSectionLayoutModal';
 import { DashboardCanvas } from './components/DashboardCanvas';
+import { ComponentsPage } from './pages/ComponentsPage';
 import { DashboardListPage, type DashboardListLayoutMode } from './components/DashboardListPage';
 import { DashboardNavDrawer } from './components/DashboardNavDrawer';
 import { PublishDashboardModal, type PublishFormValues } from './components/PublishDashboardModal';
+import { ShareDashboardModal } from './components/ShareDashboardModal';
 import { WidgetPickerPanel } from './components/WidgetPickerPanel';
 import { INITIAL_DASHBOARDS } from './data/initialDashboards';
+import { loadDashboardsFromStorage, saveDashboardsToStorage } from './persistence/dashboardStorage';
 import { WIDGET_CATEGORIES } from './data/widgets';
 import type { WidgetTemplate } from './data/widgets';
 import { WidgetLibraryOpenProvider } from './context/WidgetLibraryContext';
@@ -26,11 +31,13 @@ import type { DashboardSection, PlacedWidget, SavedDashboard, SectionLayoutPrese
 
 const PLACEHOLDER_TEMPLATE_ID = '__placeholder__';
 
+type AutoSaveIndicator = 'idle' | 'saving' | 'saved';
+
 function placeholderWidgetsForLayout(layout: SectionLayoutPreset): PlacedWidget[] {
   const slot = (): PlacedWidget => ({
     instanceId: crypto.randomUUID(),
     templateId: PLACEHOLDER_TEMPLATE_ID,
-    label: 'Select widget',
+    label: 'Select Widget',
     placeholder: true,
   });
   const n = layoutColumnCount(layout);
@@ -129,7 +136,7 @@ function removePlacedWidget(
             ? {
                 instanceId: x.instanceId,
                 templateId: PLACEHOLDER_TEMPLATE_ID,
-                label: 'Select widget',
+                label: 'Select Widget',
                 placeholder: true,
               }
             : x
@@ -137,6 +144,34 @@ function removePlacedWidget(
       };
     }
     return { ...s, widgets: s.widgets.filter((x) => x.instanceId !== instanceId) };
+  });
+}
+
+/** Remove every placed instance of this template (layout sections revert slots to placeholders). */
+function removeAllWidgetsWithTemplate(sections: DashboardSection[], templateId: string): DashboardSection[] {
+  return sections.map((s) => {
+    if (!s.widgets.some((w) => !w.placeholder && w.templateId === templateId)) {
+      return s;
+    }
+    if (s.layout) {
+      return {
+        ...s,
+        widgets: s.widgets.map((w) =>
+          !w.placeholder && w.templateId === templateId
+            ? {
+                instanceId: w.instanceId,
+                templateId: PLACEHOLDER_TEMPLATE_ID,
+                label: 'Select Widget',
+                placeholder: true,
+              }
+            : w
+        ),
+      };
+    }
+    return {
+      ...s,
+      widgets: s.widgets.filter((w) => w.placeholder || w.templateId !== templateId),
+    };
   });
 }
 
@@ -200,17 +235,100 @@ function moveToSectionAtIndex(
   });
 }
 
+function findWidgetGridPosition(
+  sections: DashboardSection[],
+  instanceId: string
+): { si: number; wi: number } | null {
+  for (let si = 0; si < sections.length; si++) {
+    const wi = sections[si].widgets.findIndex((w) => w.instanceId === instanceId);
+    if (wi >= 0) return { si, wi };
+  }
+  return null;
+}
+
+/** First placeholder strictly after (afterSi, afterWi) in section / widget order. */
+function findNextPlaceholderAfter(
+  sections: DashboardSection[],
+  afterSi: number,
+  afterWi: number
+): { sectionId: string; instanceId: string } | null {
+  for (let si = 0; si < sections.length; si++) {
+    const s = sections[si];
+    for (let wi = 0; wi < s.widgets.length; wi++) {
+      const w = s.widgets[wi];
+      if (!w.placeholder) continue;
+      if (si > afterSi || (si === afterSi && wi > afterWi)) {
+        return { sectionId: s.id, instanceId: w.instanceId };
+      }
+    }
+  }
+  return null;
+}
+
+/** Clears focus from Up/Down/Delete so `group-focus-within` does not leave the row toolbar visible after reorder. */
+function blurSectionRowToolbarFocus() {
+  const ae = document.activeElement;
+  if (ae instanceof HTMLElement && ae.closest('[aria-label="Section row actions"]')) {
+    ae.blur();
+  }
+}
+
+function applyWidgetPickToSections(
+  sections: DashboardSection[],
+  template: WidgetTemplate,
+  replaceId: string | null,
+  targetSid: string | null
+): DashboardSection[] {
+  if (sections.length === 0) return sections;
+  if (replaceId) {
+    const placeholderHit = sections.some((s) =>
+      s.widgets.some((w) => w.instanceId === replaceId && w.placeholder)
+    );
+    if (placeholderHit) return replacePlaceholderWithTemplate(sections, replaceId, template);
+    const placedHit = sections.some((s) =>
+      s.widgets.some((w) => w.instanceId === replaceId && !w.placeholder)
+    );
+    if (placedHit) return replacePlacedWidgetWithTemplate(sections, replaceId, template);
+  }
+  let sid = targetSid;
+  if (!sid || !sections.some((s) => s.id === sid)) {
+    sid = sections[sections.length - 1].id;
+  }
+  return insertWidget(sections, sid, template);
+}
+
 export default function App() {
-  const [view, setView] = useState<'list' | 'editor'>('list');
+  const [view, setView] = useState<'list' | 'editor' | 'components'>(() =>
+    typeof window !== 'undefined' && window.location.hash.startsWith('#/components') ? 'components' : 'list'
+  );
   const [dashboardListLayout, setDashboardListLayout] = useState<DashboardListLayoutMode>('tile');
-  const [dashboards, setDashboards] = useState<SavedDashboard[]>(() =>
-    INITIAL_DASHBOARDS.map((d) => ({
+  const [dashboards, setDashboards] = useState<SavedDashboard[]>(() => {
+    const stored = loadDashboardsFromStorage();
+    const source = stored ?? INITIAL_DASHBOARDS;
+    return source.map((d) => ({
       ...d,
       sections: d.sections.map((s) => ({ ...s, widgets: [...s.widgets] })),
-    }))
-  );
+    }));
+  });
+
+  const dashboardsRef = useRef(dashboards);
+  dashboardsRef.current = dashboards;
+
+  useEffect(() => {
+    const flush = () => saveDashboardsToStorage(dashboardsRef.current);
+    window.addEventListener('beforeunload', flush);
+    return () => window.removeEventListener('beforeunload', flush);
+  }, []);
+
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      saveDashboardsToStorage(dashboards);
+    }, 400);
+    return () => window.clearTimeout(t);
+  }, [dashboards]);
   const [activeDashboardId, setActiveDashboardId] = useState<string | null>(null);
   const [newReportModalOpen, setNewReportModalOpen] = useState(false);
+  const [shareDashboardId, setShareDashboardId] = useState<string | null>(null);
 
   const [reportTitle, setReportTitle] = useState('Enter Title');
   const [publishModalOpen, setPublishModalOpen] = useState(false);
@@ -222,16 +340,20 @@ export default function App() {
   const [addSectionLayoutOpen, setAddSectionLayoutOpen] = useState(false);
   const [addSectionLayoutKey, setAddSectionLayoutKey] = useState(0);
   const [sections, setSections] = useState<DashboardSection[]>([]);
+  const sectionsRef = useRef(sections);
+  sectionsRef.current = sections;
   const [activePalette, setActivePalette] = useState<WidgetTemplate | null>(null);
-  /** Editor snapshot when opening / creating a report — Cancel restores it and returns to the list (sync effect keeps `dashboards` aligned while editing). */
-  const editorBaselineRef = useRef<{ sections: DashboardSection[]; title: string }>({
-    sections: [],
-    title: 'Enter Title',
-  });
-
   const sortedDashboards = useMemo(
     () => [...dashboards].sort((a, b) => b.updatedAt - a.updatedAt),
     [dashboards]
+  );
+
+  const activeReportStatus = useMemo(
+    () =>
+      activeDashboardId == null
+        ? null
+        : (dashboards.find((d) => d.id === activeDashboardId)?.status ?? null),
+    [dashboards, activeDashboardId]
   );
 
   /** Keep the active report’s `sections` (including `layout` on each section) in `dashboards` so reopening the editor is not stuck with an empty snapshot. */
@@ -246,13 +368,38 @@ export default function App() {
     );
   }, [view, activeDashboardId, sections]);
 
+  const [autoSaveStatus, setAutoSaveStatus] = useState<AutoSaveIndicator>('idle');
+  const autoSaveDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Saving animation while edits are in flight; tick + “Auto saved” after debounce. */
+  useEffect(() => {
+    if (view !== 'editor' || activeDashboardId == null) {
+      setAutoSaveStatus('idle');
+      if (autoSaveDebounceRef.current) {
+        clearTimeout(autoSaveDebounceRef.current);
+        autoSaveDebounceRef.current = null;
+      }
+      return;
+    }
+    setAutoSaveStatus('saving');
+    if (autoSaveDebounceRef.current) clearTimeout(autoSaveDebounceRef.current);
+    autoSaveDebounceRef.current = setTimeout(() => {
+      autoSaveDebounceRef.current = null;
+      setAutoSaveStatus('saved');
+    }, 500);
+    return () => {
+      if (autoSaveDebounceRef.current) {
+        clearTimeout(autoSaveDebounceRef.current);
+        autoSaveDebounceRef.current = null;
+      }
+    };
+  }, [view, activeDashboardId, sections, reportTitle]);
+
   const handleOpenDashboard = useCallback((id: string) => {
     const d = dashboards.find((x) => x.id === id);
     if (!d) return;
     setActiveDashboardId(id);
     setReportTitle(d.title);
     const next = cloneSections(d.sections);
-    editorBaselineRef.current = { sections: cloneSections(next), title: d.title };
     setSections(next);
     setView('editor');
     setPublishModalOpen(false);
@@ -261,10 +408,65 @@ export default function App() {
     setAddSectionLayoutOpen(false);
   }, [dashboards]);
 
+  const handleShareDashboard = useCallback((id: string) => {
+    setShareDashboardId(id);
+  }, []);
+
+  const handleShareEmailsUpdate = useCallback((id: string, emails: string[]) => {
+    setDashboards((prev) =>
+      prev.map((d) =>
+        d.id === id
+          ? { ...d, shareEmails: emails.length > 0 ? emails : undefined, updatedAt: Date.now() }
+          : d
+      )
+    );
+  }, []);
+
+  const handleDeleteDashboard = useCallback(
+    (id: string) => {
+      const d = dashboards.find((x) => x.id === id);
+      if (!d) return;
+      if (
+        !window.confirm(
+          `Delete “${d.title}”? This removes it from saved dashboards in this browser.`
+        )
+      ) {
+        return;
+      }
+      setDashboards((prev) => prev.filter((x) => x.id !== id));
+      setShareDashboardId((sid) => (sid === id ? null : sid));
+      if (activeDashboardId === id) {
+        setActiveDashboardId(null);
+        setView('list');
+        setPublishModalOpen(false);
+        setPanelOpen(false);
+        setWidgetPickReplaceInstanceId(null);
+        setAddSectionLayoutOpen(false);
+      }
+    },
+    [dashboards, activeDashboardId]
+  );
+
   const devEditorBootstrapDone = useRef(false);
+  const openDashboardLinkHandled = useRef(false);
+  useEffect(() => {
+    if (openDashboardLinkHandled.current) return;
+    const id = new URLSearchParams(window.location.search).get('openDashboard');
+    if (!id) return;
+    const d = sortedDashboards.find((x) => x.id === id);
+    openDashboardLinkHandled.current = true;
+    if (!d) {
+      window.history.replaceState({}, '', window.location.pathname);
+      return;
+    }
+    handleOpenDashboard(id);
+    window.history.replaceState({}, '', window.location.pathname);
+  }, [sortedDashboards, handleOpenDashboard]);
+
   useEffect(() => {
     if (!import.meta.env.DEV) return;
     if (devEditorBootstrapDone.current) return;
+    if (openDashboardLinkHandled.current) return;
     if (new URLSearchParams(window.location.search).get('editor') !== '1') return;
     const first = sortedDashboards[0];
     if (!first) return;
@@ -303,7 +505,6 @@ export default function App() {
       setDashboards((prev) => [newDash, ...prev]);
       setActiveDashboardId(id);
       setReportTitle(title);
-      editorBaselineRef.current = { sections: [], title };
       setSections([]);
       setNewReportModalOpen(false);
       setView('editor');
@@ -449,21 +650,20 @@ export default function App() {
     [sections, activeDashboardId]
   );
 
-  const handleCancel = useCallback(() => {
-    const b = editorBaselineRef.current;
-    setReportTitle(b.title);
-    setSections(cloneSections(b.sections));
+  /** Flush title + sections to the active dashboard, then return to the list. */
+  const handleSaveAndClose = useCallback(() => {
     setAddSectionLayoutOpen(false);
     setWidgetPickReplaceInstanceId(null);
     setPanelOpen(false);
+    setPublishModalOpen(false);
     if (activeDashboardId != null) {
       setDashboards((prev) =>
         prev.map((d) =>
           d.id === activeDashboardId
             ? {
                 ...d,
-                sections: cloneSections(b.sections),
-                title: b.title.trim() || d.title,
+                title: reportTitle.trim() || d.title,
+                sections: cloneSections(sections),
                 updatedAt: Date.now(),
               }
             : d
@@ -473,10 +673,21 @@ export default function App() {
     setActiveDashboardId(null);
     setDashboardListLayout('tile');
     setView('list');
-  }, [activeDashboardId]);
+  }, [activeDashboardId, reportTitle, sections]);
 
   const handleSignOut = useCallback(() => {
     alert('Signed out (demo).');
+  }, []);
+
+  const handleOpenComponents = useCallback(() => {
+    if (!window.location.hash.startsWith('#/components')) {
+      window.history.replaceState(
+        null,
+        '',
+        `${window.location.pathname}${window.location.search}#/components/button`
+      );
+    }
+    setView('components');
   }, []);
 
   const openWidgetPicker = useCallback(
@@ -493,26 +704,35 @@ export default function App() {
   const handlePickWidgetFromPanel = useCallback(
     (template: WidgetTemplate) => {
       const replaceId = widgetPickReplaceInstanceId;
-      setSections((prev) => {
-        if (prev.length === 0) return prev;
-        if (replaceId) {
-          const placeholderHit = prev.some((s) =>
-            s.widgets.some((w) => w.instanceId === replaceId && w.placeholder)
-          );
-          if (placeholderHit) return replacePlaceholderWithTemplate(prev, replaceId, template);
-          const placedHit = prev.some((s) =>
-            s.widgets.some((w) => w.instanceId === replaceId && !w.placeholder)
-          );
-          if (placedHit) return replacePlacedWidgetWithTemplate(prev, replaceId, template);
+      const targetSid = widgetPickTargetSectionId;
+      const prev = sectionsRef.current;
+      const next = applyWidgetPickToSections(prev, template, replaceId, targetSid);
+      setSections(next);
+
+      const wasPlaceholderFill =
+        replaceId != null &&
+        prev.some((s) => s.widgets.some((w) => w.instanceId === replaceId && w.placeholder));
+
+      if (wasPlaceholderFill) {
+        const pos = findWidgetGridPosition(prev, replaceId);
+        if (pos) {
+          const nextSlot = findNextPlaceholderAfter(next, pos.si, pos.wi);
+          if (nextSlot) {
+            setWidgetPickTargetSectionId(nextSlot.sectionId);
+            setWidgetPickReplaceInstanceId(nextSlot.instanceId);
+          } else {
+            setWidgetPickTargetSectionId(null);
+            setWidgetPickReplaceInstanceId(null);
+            setPanelOpen(false);
+          }
+        } else {
+          setWidgetPickReplaceInstanceId(null);
+          setWidgetPickTargetSectionId(null);
+          setPanelOpen(false);
         }
-        let sid = widgetPickTargetSectionId;
-        if (!sid || !prev.some((s) => s.id === sid)) {
-          sid = prev[prev.length - 1].id;
-        }
-        return insertWidget(prev, sid, template);
-      });
-      setWidgetPickReplaceInstanceId(null);
-      if (replaceId) setPanelOpen(false);
+      } else {
+        setWidgetPickReplaceInstanceId(null);
+      }
     },
     [widgetPickTargetSectionId, widgetPickReplaceInstanceId]
   );
@@ -538,18 +758,58 @@ export default function App() {
     });
   }, []);
 
+  const handleRemoveTemplateFromPicker = useCallback((template: WidgetTemplate) => {
+    setSections((prev) => removeAllWidgetsWithTemplate(prev, template.id));
+  }, []);
+
   const handleRemoveSection = useCallback((sectionId: string) => {
-    setSections((prev) => prev.filter((s) => s.id !== sectionId));
+    const applyRemove = () => {
+      setSections((prev) => prev.filter((s) => s.id !== sectionId));
+    };
+
+    const doc = document as Document & {
+      startViewTransition?: (callback: () => void) => { finished: Promise<void> };
+    };
+    if (typeof doc.startViewTransition === 'function') {
+      const vt = doc.startViewTransition(() => {
+        flushSync(applyRemove);
+      });
+      queueMicrotask(blurSectionRowToolbarFocus);
+      void vt.finished.finally(() => {
+        blurSectionRowToolbarFocus();
+      });
+    } else {
+      applyRemove();
+      queueMicrotask(blurSectionRowToolbarFocus);
+    }
   }, []);
 
   const handleMoveSection = useCallback((sectionId: string, direction: 'up' | 'down') => {
-    setSections((prev) => {
-      const i = prev.findIndex((s) => s.id === sectionId);
-      if (i < 0) return prev;
-      const j = direction === 'up' ? i - 1 : i + 1;
-      if (j < 0 || j >= prev.length) return prev;
-      return arrayMove(prev, i, j);
-    });
+    const applyReorder = () => {
+      setSections((prev) => {
+        const i = prev.findIndex((s) => s.id === sectionId);
+        if (i < 0) return prev;
+        const j = direction === 'up' ? i - 1 : i + 1;
+        if (j < 0 || j >= prev.length) return prev;
+        return arrayMove(prev, i, j);
+      });
+    };
+
+    const doc = document as Document & {
+      startViewTransition?: (callback: () => void) => { finished: Promise<void> };
+    };
+    if (typeof doc.startViewTransition === 'function') {
+      const vt = doc.startViewTransition(() => {
+        flushSync(applyReorder);
+      });
+      queueMicrotask(blurSectionRowToolbarFocus);
+      void vt.finished.finally(() => {
+        blurSectionRowToolbarFocus();
+      });
+    } else {
+      applyReorder();
+      queueMicrotask(blurSectionRowToolbarFocus);
+    }
   }, []);
 
   const categories = useMemo(() => WIDGET_CATEGORIES, []);
@@ -564,17 +824,37 @@ export default function App() {
     return next;
   }, [sections]);
 
+  const shareDashboard = useMemo(
+    () =>
+      shareDashboardId == null ? null : (dashboards.find((d) => d.id === shareDashboardId) ?? null),
+    [dashboards, shareDashboardId]
+  );
+
+  if (view === 'components') {
+    return <ComponentsPage onBackToDashboard={() => setView('list')} />;
+  }
+
   if (view === 'list') {
     return (
       <>
         <DashboardListPage
           dashboards={sortedDashboards}
           onOpenDashboard={handleOpenDashboard}
+          onShareDashboard={handleShareDashboard}
+          onDeleteDashboard={handleDeleteDashboard}
           onNewReport={openNewReportModal}
           onMenuOpen={() => setNavDrawerOpen(true)}
+          onOpenComponents={handleOpenComponents}
           layoutMode={dashboardListLayout}
           onLayoutModeChange={setDashboardListLayout}
         />
+        {shareDashboard ? (
+          <ShareDashboardModal
+            dashboard={shareDashboard}
+            onClose={() => setShareDashboardId(null)}
+            onShareEmailsChange={(emails) => handleShareEmailsUpdate(shareDashboard.id, emails)}
+          />
+        ) : null}
         {newReportModalOpen ? (
           <PublishDashboardModal
             variant="newReport"
@@ -608,15 +888,24 @@ export default function App() {
           onClose={() => setAddSectionLayoutOpen(false)}
           onConfirmLayout={addSectionWithLayout}
         />
-        <div className="flex min-h-dvh flex-col overflow-hidden bg-[#ebebeb] font-[family-name:var(--font-inter)]">
-          <div className="shrink-0 px-3 pb-4 pt-4 sm:px-4 sm:pb-6 sm:pt-6">
+        <div
+          className={`relative flex min-h-dvh flex-col overflow-hidden bg-[#ebebeb] font-[family-name:var(--font-inter)] ${APP_MENU_RAIL_CLASS}`}
+        >
+          <PageMenuRail onMenuOpen={() => setNavDrawerOpen(true)} />
+          <div className="shrink-0 pr-3 pt-4 sm:pr-4 sm:pt-6">
             <TopBar
               title={reportTitle}
               onTitleChange={setReportTitle}
               onPublish={handleOpenPublishModal}
-              onCancel={handleCancel}
-              onMenuOpen={() => setNavDrawerOpen(true)}
+              onSaveAndClose={handleSaveAndClose}
               publishDisabled={sections.length === 0}
+              autoSaveStatus={autoSaveStatus}
+              reportStatus={activeReportStatus}
+              onShare={
+                activeDashboardId
+                  ? () => setShareDashboardId(activeDashboardId)
+                  : undefined
+              }
             />
           </div>
 
@@ -659,6 +948,7 @@ export default function App() {
               setWidgetPickReplaceInstanceId(null);
             }}
             onPickWidget={handlePickWidgetFromPanel}
+            onRemoveFromCanvas={handleRemoveTemplateFromPicker}
           />
         </div>
 
@@ -677,6 +967,14 @@ export default function App() {
           onNewReport={openNewReportModal}
           onSignOut={handleSignOut}
         />
+
+        {shareDashboard ? (
+          <ShareDashboardModal
+            dashboard={shareDashboard}
+            onClose={() => setShareDashboardId(null)}
+            onShareEmailsChange={(emails) => handleShareEmailsUpdate(shareDashboard.id, emails)}
+          />
+        ) : null}
 
         <DragOverlay dropAnimation={null}>
           {activePalette ? (

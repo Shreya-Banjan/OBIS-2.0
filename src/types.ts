@@ -15,12 +15,21 @@ export type DashboardSection = {
   layout?: SectionLayoutPreset;
 };
 
+/** Present when this report was shared with you by someone else (demo / future API). */
+export type SharedByInfo = {
+  displayName: string;
+  /** Optional profile image; if missing, initials are shown. */
+  avatarUrl?: string | null;
+};
+
 export type SavedDashboard = {
   id: string;
   title: string;
   sections: DashboardSection[];
   updatedAt: number;
   status: 'draft' | 'published';
+  /** When set, the home list shows “Shared by …” with a profile avatar. */
+  sharedBy?: SharedByInfo;
   /** From new-report / publish flow */
   scope?: string;
   month?: string;

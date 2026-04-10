@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 118 28" fill="none" aria-hidden="true">
+  <!-- Replace this file with an export from Figma: Rhombuz Website → node 3519-4921 -->
+  <path fill="#1e1e1f" d="M14 2 26 14 14 26 2 14 14 2Zm0 3.4L5.8 14 14 22.2 22.2 14 14 5.8Z" />
+  <text
+    x="32"
+    y="18.5"
+    fill="#1e1e1f"
+    font-family="Poppins, Inter, system-ui, sans-serif"
+    font-size="15"
+    font-weight="600"
+    letter-spacing="-0.02em"
+  >
+    Rhombuz
+  </text>
+</svg>

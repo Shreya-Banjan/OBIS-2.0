@@ -1,10 +1,21 @@
 import { forwardRef, type ComponentPropsWithoutRef } from 'react';
 
-export type PrimaryButtonProps = ComponentPropsWithoutRef<'button'>;
+const primarySizeClasses = {
+  large:
+    'h-12 rounded-xl px-4 text-sm tracking-[-0.28px]',
+  medium:
+    'h-10 rounded-lg px-3.5 text-sm tracking-[-0.28px]',
+  small:
+    'h-8 rounded-lg px-3 text-xs tracking-[-0.24px]',
+} as const;
+
+export type PrimaryButtonProps = ComponentPropsWithoutRef<'button'> & {
+  size?: keyof typeof primarySizeClasses;
+};
 
 export const PrimaryButton = forwardRef<HTMLButtonElement, PrimaryButtonProps>(
   function PrimaryButton(
-    { className, children, disabled, type = 'button', ...rest },
+    { className, children, disabled, type = 'button', size = 'large', ...rest },
     ref,
   ) {
     return (
@@ -13,8 +24,9 @@ export const PrimaryButton = forwardRef<HTMLButtonElement, PrimaryButtonProps>(
         type={type}
         disabled={disabled}
         className={[
-          'inline-flex h-12 shrink-0 items-center justify-center whitespace-nowrap rounded-xl px-4',
-          "font-['Inter',sans-serif] text-sm font-medium tracking-[-0.28px] text-white",
+          'inline-flex shrink-0 items-center justify-center whitespace-nowrap',
+          primarySizeClasses[size],
+          "font-['Inter',sans-serif] font-medium text-white",
           'bg-[#e20074] outline-none transition-[box-shadow,filter] duration-150',
           'hover:shadow-[var(--shadow-focus-brand)] hover:brightness-[0.95]',
           'focus-visible:shadow-[var(--shadow-focus-brand)] focus-visible:brightness-[0.95]',
