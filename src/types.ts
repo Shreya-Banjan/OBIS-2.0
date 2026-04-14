@@ -30,6 +30,8 @@ export type SavedDashboard = {
   status: 'draft' | 'published';
   /** When set, the home list shows “Shared by …” with a profile avatar. */
   sharedBy?: SharedByInfo;
+  /** Collaborators; tile shows avatar stack when there are three or more (overflow “+N” when more than three). */
+  sharedWith?: SharedByInfo[];
   /** From new-report / publish flow */
   scope?: string;
   month?: string;

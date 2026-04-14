@@ -43,13 +43,16 @@ export const EditorAddWidgetCta = forwardRef<HTMLButtonElement, EditorAddWidgetC
           }}
           className={[
             CANVAS_CLASS_BASE,
-            isLibraryTarget ? 'border-2 border-solid border-[#E20074]' : 'border-0',
+            isLibraryTarget
+              ? 'border-2 border-solid border-[#E20074] shadow-[0_0_0_3px_rgba(226,0,116,0.25)]'
+              : 'border-0',
             className,
           ]
             .filter(Boolean)
             .join(' ')}
           data-neuron-slot="select-widget"
           aria-label="Select Widget"
+          aria-pressed={isLibraryTarget ? true : undefined}
           aria-expanded={isLibraryTarget ? true : undefined}
         >
           <IconPlusSoft className="block size-[18px] shrink-0 text-black/40 transition-colors group-hover:text-[#E20074]" aria-hidden />

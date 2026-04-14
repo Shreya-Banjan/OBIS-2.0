@@ -64,3 +64,20 @@ export const WIDGET_CATEGORIES: WidgetCategory[] = [
   { id: 'performance', title: 'Performance', widgets: PERFORMANCE_WIDGETS },
   { id: 'build', title: 'Build', widgets: BUILD_WIDGETS },
 ];
+
+const widgetById = new Map<string, WidgetTemplate>();
+for (const cat of WIDGET_CATEGORIES) {
+  for (const w of cat.widgets) {
+    widgetById.set(w.id, w);
+  }
+}
+
+/** Resolve catalog label for a template id (canvas rows should show catalog names, not stale stored labels). */
+export function getWidgetTemplateById(templateId: string): WidgetTemplate | undefined {
+  return widgetById.get(templateId);
+}
+
+export function getWidgetDisplayLabel(templateId: string, storedLabel: string): string {
+  if (templateId === '__placeholder__') return storedLabel;
+  return getWidgetTemplateById(templateId)?.label ?? storedLabel;
+}

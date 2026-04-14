@@ -9,6 +9,13 @@ export const INITIAL_DASHBOARDS: SavedDashboard[] = [
     updatedAt: Date.now() - 86400000 * 2,
     status: 'published',
     sharedBy: { displayName: 'Jordan Lee' },
+    sharedWith: [
+      { displayName: 'Sasha Kim' },
+      { displayName: 'Alex Rivera' },
+      { displayName: 'Morgan Lee' },
+      { displayName: 'Casey Wu' },
+      { displayName: 'Drew Patel' },
+    ],
   },
   {
     id: 'seed-nh',
@@ -17,6 +24,12 @@ export const INITIAL_DASHBOARDS: SavedDashboard[] = [
     updatedAt: Date.now() - 86400000 * 5,
     status: 'published',
     sharedBy: { displayName: 'Alex Morgan' },
+    sharedWith: [
+      { displayName: 'Alex Morgan' },
+      { displayName: 'Riley Chen' },
+      { displayName: 'Sam Ortiz' },
+      { displayName: 'Taylor Brooks' },
+    ],
   },
   {
     id: 'seed-facts',
@@ -24,6 +37,11 @@ export const INITIAL_DASHBOARDS: SavedDashboard[] = [
     sections: [],
     updatedAt: Date.now() - 3600000,
     status: 'draft',
+    sharedWith: [
+      { displayName: 'Jamie Fox' },
+      { displayName: 'Chris Park' },
+      { displayName: 'Pat Ng' },
+    ],
   },
   {
     id: 'seed-d2',

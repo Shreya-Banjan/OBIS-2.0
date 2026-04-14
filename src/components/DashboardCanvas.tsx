@@ -2,6 +2,7 @@ import type { CSSProperties, ReactNode } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, useSortable, rectSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { getWidgetDisplayLabel } from '../data/widgets';
 import type { DashboardSection, PlacedWidget, SectionLayoutPreset } from '../types';
 import { useWidgetLibraryOpen } from '../context/WidgetLibraryContext';
 import { IconArrowDown, IconArrowUp, IconClose, IconDrag, IconEdit, IconPlusSoft, IconTrash } from './Icons';
@@ -83,14 +84,19 @@ function SortablePlacedWidget({
     opacity: isDragging ? 0.55 : 1,
   };
 
+  const displayLabel = getWidgetDisplayLabel(widget.templateId, widget.label);
+
   return (
     <div
       ref={setNodeRef}
       style={style}
       className={[
         'group flex min-h-0 flex-col gap-2 rounded-[var(--radius-canvas)] bg-white px-2 py-3 shadow-[var(--shadow-subtle)] sm:flex-row sm:items-center sm:justify-between sm:gap-0',
-        isLibraryTarget ? 'border-2 border-solid border-[#E20074]' : 'border border-[#d7d7d7]',
+        isLibraryTarget
+          ? 'border-2 border-solid border-[#E20074] shadow-[0_0_0_3px_rgba(226,0,116,0.25)]'
+          : 'border border-[#d7d7d7]',
       ].join(' ')}
+      data-neuron-widget-active={isLibraryTarget ? '' : undefined}
     >
       <div className="flex min-w-0 items-center gap-1.5">
         <button
@@ -98,11 +104,11 @@ function SortablePlacedWidget({
           className="inline-flex cursor-grab touch-none items-center justify-center text-[#1e1e1f]/35 active:cursor-grabbing"
           {...listeners}
           {...attributes}
-          aria-label={`Reorder ${widget.label}`}
+          aria-label={`Reorder ${displayLabel}`}
         >
           <IconDrag className="block size-[18px] shrink-0" aria-hidden />
         </button>
-        <span className="min-w-0 font-['Poppins',sans-serif] text-sm leading-snug text-black/80">{widget.label}</span>
+        <span className="min-w-0 font-['Poppins',sans-serif] text-sm leading-snug text-black/80">{displayLabel}</span>
       </div>
       <div className="flex flex-wrap items-center gap-0.5 self-start sm:self-auto">
         <button
@@ -112,8 +118,8 @@ function SortablePlacedWidget({
             openWidgetLibrary(sectionId, widget.instanceId);
           }}
           className="flex size-8 shrink-0 items-center justify-center rounded-md text-[#606080] opacity-100 transition-opacity duration-150 hover:bg-[#f0f0f0] sm:opacity-0 sm:group-hover:opacity-100"
-          aria-label={`Change ${widget.label}`}
-          title={`Change ${widget.label}`}
+          aria-label={`Change ${displayLabel}`}
+          title={`Change ${displayLabel}`}
         >
           <IconEdit className="block size-[18px] shrink-0" aria-hidden />
         </button>
@@ -121,8 +127,8 @@ function SortablePlacedWidget({
           type="button"
           onClick={() => onRemove(widget.instanceId)}
           className="flex size-8 shrink-0 items-center justify-center rounded-md text-[#606080] hover:bg-[#f0f0f0]"
-          aria-label={`Clear ${widget.label}`}
-          title={`Clear ${widget.label}`}
+          aria-label={`Clear ${displayLabel}`}
+          title={`Clear ${displayLabel}`}
         >
           <IconClose className="block size-[18px] shrink-0" aria-hidden />
         </button>

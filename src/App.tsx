@@ -265,6 +265,74 @@ function findNextPlaceholderAfter(
   return null;
 }
 
+/** All non-placeholder instances of a template in canvas order (section → widget). */
+function collectWidgetSlotsForTemplate(
+  sections: DashboardSection[],
+  templateId: string
+): { sectionId: string; instanceId: string }[] {
+  const out: { sectionId: string; instanceId: string }[] = [];
+  for (const s of sections) {
+    for (const w of s.widgets) {
+      if (!w.placeholder && w.templateId === templateId) {
+        out.push({ sectionId: s.id, instanceId: w.instanceId });
+      }
+    }
+  }
+  return out;
+}
+
+/** First empty slot in canvas order. */
+function findFirstPlaceholderSlot(sections: DashboardSection[]): { sectionId: string; instanceId: string } | null {
+  for (const s of sections) {
+    for (const w of s.widgets) {
+      if (w.placeholder) {
+        return { sectionId: s.id, instanceId: w.instanceId };
+      }
+    }
+  }
+  return null;
+}
+
+function countPlaceholderSlots(sections: DashboardSection[]): number {
+  return sections.reduce(
+    (n, s) => n + s.widgets.reduce((m, w) => m + (w.placeholder ? 1 : 0), 0),
+    0
+  );
+}
+
+/**
+ * Next placeholder strictly after (afterSi, afterWi), else first in canvas order (wrap).
+ * Used when leaving a slot (dismiss picker) or after filling a placeholder that may not be the last in order.
+ */
+function nextPlaceholderAfterPosition(
+  sections: DashboardSection[],
+  afterSi: number,
+  afterWi: number
+): { sectionId: string; instanceId: string } | null {
+  if (countPlaceholderSlots(sections) === 0) return null;
+  return findNextPlaceholderAfter(sections, afterSi, afterWi) ?? findFirstPlaceholderSlot(sections);
+}
+
+/** Next empty placeholder in canvas order after the current slot, or first if none after (wrap). */
+function nextEmptySlotToFocus(
+  sections: DashboardSection[],
+  currentInstanceId: string | null
+): { sectionId: string; instanceId: string } | null {
+  if (countPlaceholderSlots(sections) === 0) return null;
+  if (!currentInstanceId) {
+    return findFirstPlaceholderSlot(sections);
+  }
+  const pos = findWidgetGridPosition(sections, currentInstanceId);
+  if (!pos) {
+    return findFirstPlaceholderSlot(sections);
+  }
+  const w = sections[pos.si].widgets[pos.wi];
+  if (!w.placeholder) {
+    return findFirstPlaceholderSlot(sections);
+  }
+  return nextPlaceholderAfterPosition(sections, pos.si, pos.wi);
+}
+
 /** Clears focus from Up/Down/Delete so `group-focus-within` does not leave the row toolbar visible after reorder. */
 function blurSectionRowToolbarFocus() {
   const ae = document.activeElement;
@@ -337,6 +405,8 @@ export default function App() {
   /** Section that receives widgets chosen from the picker; null = last section on canvas. */
   const [widgetPickTargetSectionId, setWidgetPickTargetSectionId] = useState<string | null>(null);
   const [widgetPickReplaceInstanceId, setWidgetPickReplaceInstanceId] = useState<string | null>(null);
+  const widgetPickerUiRef = useRef({ panelOpen: false, replaceId: null as string | null });
+  widgetPickerUiRef.current = { panelOpen, replaceId: widgetPickReplaceInstanceId };
   const [addSectionLayoutOpen, setAddSectionLayoutOpen] = useState(false);
   const [addSectionLayoutKey, setAddSectionLayoutKey] = useState(0);
   const [sections, setSections] = useState<DashboardSection[]>([]);
@@ -528,6 +598,29 @@ export default function App() {
     })
   );
 
+  /** After a placeholder is filled (panel or drag), move “active slot” to the next empty slot or close the picker. */
+  const advancePickerAfterPlaceholderFill = useCallback(
+    (prev: DashboardSection[], filledPlaceholderId: string, next: DashboardSection[]) => {
+      const pos = findWidgetGridPosition(prev, filledPlaceholderId);
+      if (!pos) {
+        setWidgetPickReplaceInstanceId(null);
+        setWidgetPickTargetSectionId(null);
+        setPanelOpen(false);
+        return;
+      }
+      const nextSlot = nextPlaceholderAfterPosition(next, pos.si, pos.wi);
+      if (nextSlot) {
+        setWidgetPickTargetSectionId(nextSlot.sectionId);
+        setWidgetPickReplaceInstanceId(nextSlot.instanceId);
+      } else {
+        setWidgetPickTargetSectionId(null);
+        setWidgetPickReplaceInstanceId(null);
+        setPanelOpen(false);
+      }
+    },
+    []
+  );
+
   const onDragStart = useCallback((e: DragStartEvent) => {
     const src = e.active.data.current?.source;
     if (src === 'palette') {
@@ -556,7 +649,10 @@ export default function App() {
           const sec = prev.find((s) => s.id === sort.containerId);
           const overW = sec?.widgets.find((w) => w.instanceId === String(over.id));
           if (overW?.placeholder) {
-            return replacePlaceholderWithTemplate(prev, String(over.id), widget);
+            const filledId = String(over.id);
+            const next = replacePlaceholderWithTemplate(prev, filledId, widget);
+            queueMicrotask(() => advancePickerAfterPlaceholderFill(prev, filledId, next));
+            return next;
           }
           return insertWidget(prev, sort.containerId, widget, sort.index);
         });
@@ -596,7 +692,7 @@ export default function App() {
         )
       );
     }
-  }, []);
+  }, [advancePickerAfterPlaceholderFill]);
 
   const onDragCancel = useCallback(() => {
     setActivePalette(null);
@@ -691,15 +787,37 @@ export default function App() {
     setView('components');
   }, []);
 
+  /** User dismisses the picker (X / Escape / toggle). Advances to the next empty slot, then closes. */
+  const requestCloseWidgetPicker = useCallback(() => {
+    const sections = sectionsRef.current;
+    const replaceId = widgetPickerUiRef.current.replaceId;
+    if (countPlaceholderSlots(sections) > 0) {
+      const next = nextEmptySlotToFocus(sections, replaceId);
+      if (next) {
+        setWidgetPickTargetSectionId(next.sectionId);
+        setWidgetPickReplaceInstanceId(next.instanceId);
+      }
+    } else {
+      setWidgetPickReplaceInstanceId(null);
+      setWidgetPickTargetSectionId(null);
+    }
+    setPanelOpen(false);
+  }, []);
+
   const openWidgetPicker = useCallback(
     (targetSectionId: string | null = null, replaceInstanceId: string | null = null) => {
       setAddSectionLayoutOpen(false);
       setPublishModalOpen(false);
+      const { panelOpen: wasOpen, replaceId } = widgetPickerUiRef.current;
+      if (replaceInstanceId != null && wasOpen && replaceId === replaceInstanceId) {
+        requestCloseWidgetPicker();
+        return;
+      }
       setWidgetPickTargetSectionId(targetSectionId);
       setWidgetPickReplaceInstanceId(replaceInstanceId);
       setPanelOpen(true);
     },
-    []
+    [requestCloseWidgetPicker]
   );
 
   const handlePickWidgetFromPanel = useCallback(
@@ -714,28 +832,13 @@ export default function App() {
         replaceId != null &&
         prev.some((s) => s.widgets.some((w) => w.instanceId === replaceId && w.placeholder));
 
-      if (wasPlaceholderFill) {
-        const pos = findWidgetGridPosition(prev, replaceId);
-        if (pos) {
-          const nextSlot = findNextPlaceholderAfter(next, pos.si, pos.wi);
-          if (nextSlot) {
-            setWidgetPickTargetSectionId(nextSlot.sectionId);
-            setWidgetPickReplaceInstanceId(nextSlot.instanceId);
-          } else {
-            setWidgetPickTargetSectionId(null);
-            setWidgetPickReplaceInstanceId(null);
-            setPanelOpen(false);
-          }
-        } else {
-          setWidgetPickReplaceInstanceId(null);
-          setWidgetPickTargetSectionId(null);
-          setPanelOpen(false);
-        }
+      if (wasPlaceholderFill && replaceId) {
+        advancePickerAfterPlaceholderFill(prev, replaceId, next);
       } else {
         setWidgetPickReplaceInstanceId(null);
       }
     },
-    [widgetPickTargetSectionId, widgetPickReplaceInstanceId]
+    [advancePickerAfterPlaceholderFill, widgetPickTargetSectionId, widgetPickReplaceInstanceId]
   );
 
   const addSectionWithLayout = useCallback((layout: SectionLayoutPreset) => {
@@ -755,12 +858,48 @@ export default function App() {
       const sec = prev.find((s) => s.id === sectionId);
       const w = sec?.widgets.find((x) => x.instanceId === instanceId);
       if (w?.placeholder) return prev;
-      return removePlacedWidget(prev, sectionId, instanceId);
+      const next = removePlacedWidget(prev, sectionId, instanceId);
+      const backToPlaceholder = next
+        .find((s) => s.id === sectionId)
+        ?.widgets.find((x) => x.instanceId === instanceId)?.placeholder;
+      if (backToPlaceholder) {
+        queueMicrotask(() => {
+          setWidgetPickTargetSectionId(sectionId);
+          setWidgetPickReplaceInstanceId(instanceId);
+        });
+      }
+      return next;
     });
   }, []);
 
   const handleRemoveTemplateFromPicker = useCallback((template: WidgetTemplate) => {
-    setSections((prev) => removeAllWidgetsWithTemplate(prev, template.id));
+    setSections((prev) => {
+      const beforeSlots = collectWidgetSlotsForTemplate(prev, template.id);
+      const next = removeAllWidgetsWithTemplate(prev, template.id);
+      queueMicrotask(() => {
+        for (const { sectionId, instanceId } of beforeSlots) {
+          const sec = next.find((s) => s.id === sectionId);
+          const w = sec?.widgets.find((x) => x.instanceId === instanceId);
+          if (w?.placeholder) {
+            setWidgetPickTargetSectionId(sectionId);
+            setWidgetPickReplaceInstanceId(instanceId);
+            setPanelOpen(true);
+            return;
+          }
+        }
+        const fp = findFirstPlaceholderSlot(next);
+        if (fp) {
+          setWidgetPickTargetSectionId(fp.sectionId);
+          setWidgetPickReplaceInstanceId(fp.instanceId);
+          setPanelOpen(true);
+        } else {
+          setWidgetPickReplaceInstanceId(null);
+          setWidgetPickTargetSectionId(null);
+          setPanelOpen(false);
+        }
+      });
+      return next;
+    });
   }, []);
 
   const handleRemoveSection = useCallback((sectionId: string) => {
@@ -825,6 +964,43 @@ export default function App() {
     return next;
   }, [sections]);
 
+  /** Non-placeholder instances per template id (shown in the widget picker). */
+  const templateInstanceCounts = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const sec of sections) {
+      for (const w of sec.widgets) {
+        if (w.placeholder) continue;
+        m.set(w.templateId, (m.get(w.templateId) ?? 0) + 1);
+      }
+    }
+    return m;
+  }, [sections]);
+
+  const emptyPlaceholderSlotCount = useMemo(() => countPlaceholderSlots(sections), [sections]);
+
+  /** No empty slots left — close picker (requirement 6). */
+  useEffect(() => {
+    if (!panelOpen) return;
+    if (emptyPlaceholderSlotCount === 0) {
+      setPanelOpen(false);
+      setWidgetPickReplaceInstanceId(null);
+      setWidgetPickTargetSectionId(null);
+    }
+  }, [panelOpen, emptyPlaceholderSlotCount]);
+
+  /** Active slot id no longer on canvas (e.g. section removed) — clear selection. */
+  useEffect(() => {
+    if (widgetPickReplaceInstanceId == null) return;
+    const exists = sections.some((s) =>
+      s.widgets.some((w) => w.instanceId === widgetPickReplaceInstanceId)
+    );
+    if (!exists) {
+      setWidgetPickReplaceInstanceId(null);
+      setWidgetPickTargetSectionId(null);
+      setPanelOpen(false);
+    }
+  }, [sections, widgetPickReplaceInstanceId]);
+
   const shareDashboard = useMemo(
     () =>
       shareDashboardId == null ? null : (dashboards.find((d) => d.id === shareDashboardId) ?? null),
@@ -847,7 +1023,6 @@ export default function App() {
           onMenuOpen={() => setNavDrawerOpen(true)}
           onOpenComponents={handleOpenComponents}
           layoutMode={dashboardListLayout}
-          onLayoutModeChange={setDashboardListLayout}
         />
         {shareDashboard ? (
           <ShareDashboardModal
@@ -935,9 +1110,7 @@ export default function App() {
                       onRemoveWidget={handleRemoveWidget}
                       onRemoveSection={handleRemoveSection}
                       onMoveSection={handleMoveSection}
-                      activePlaceholderInstanceId={
-                        panelOpen ? widgetPickReplaceInstanceId : null
-                      }
+                      activePlaceholderInstanceId={widgetPickReplaceInstanceId}
                     />
                   </div>
                 </div>
@@ -949,10 +1122,8 @@ export default function App() {
             open={panelOpen}
             categories={categories}
             selectedTemplateIds={selectedWidgetTemplateIds}
-            onClose={() => {
-              setPanelOpen(false);
-              setWidgetPickReplaceInstanceId(null);
-            }}
+            templateInstanceCounts={templateInstanceCounts}
+            onClose={requestCloseWidgetPicker}
             onPickWidget={handlePickWidgetFromPanel}
             onRemoveFromCanvas={handleRemoveTemplateFromPicker}
           />

@@ -136,24 +136,26 @@ export function ComponentsPage({ onBackToDashboard }: ComponentsPageProps) {
       {/* Grid: on lg+, column 1 is flush-left nav; column 2 is padded content (max width preserved). */}
       <div className="grid min-h-dvh grid-cols-1 grid-rows-[auto_auto_1fr] gap-6 bg-white lg:grid-cols-[minmax(15rem,16rem)_minmax(0,1fr)] lg:grid-rows-[auto_minmax(0,1fr)] lg:gap-x-0 lg:gap-y-0">
         <header className="col-start-1 row-start-1 w-full max-w-none border-b border-[#ebebeb] px-3 pb-4 pt-4 sm:px-4 sm:pb-5 sm:pt-6 lg:col-start-2 lg:row-start-1 lg:w-full lg:justify-self-stretch lg:px-4 lg:pb-5">
-          <div className="flex min-w-0 flex-row flex-nowrap items-center gap-3 sm:gap-4">
-            <button
-              type="button"
-              onClick={handleBack}
-              className="inline-flex shrink-0 items-center gap-1 font-['Inter',sans-serif] text-sm font-medium text-[#e20074] transition-colors hover:text-[#c40062] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e20074]/25 focus-visible:ring-offset-2"
-              aria-label="Back to dashboards"
-            >
-              <IconChevronLeft className="size-4 shrink-0" aria-hidden />
-              Back
-            </button>
-            <span
-              className="h-4 w-px shrink-0 self-center bg-[#ebebeb]"
-              aria-hidden="true"
-            />
-            <h1 className="shrink-0 whitespace-nowrap font-['Poppins',sans-serif] text-[16px] font-semibold leading-snug text-[#1e1e1f]">
-              Neuron Design System
-            </h1>
-            <p className="min-w-0 flex-1 truncate font-['Inter',sans-serif] text-[12px] leading-snug text-[#707070]">
+          <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-nowrap sm:items-center sm:gap-4">
+            <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 sm:flex-nowrap sm:gap-4">
+              <button
+                type="button"
+                onClick={handleBack}
+                className="inline-flex shrink-0 items-center gap-1 font-['Inter',sans-serif] text-sm font-medium text-[#e20074] transition-colors hover:text-[#c40062] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e20074]/25 focus-visible:ring-offset-2"
+                aria-label="Back to dashboards"
+              >
+                <IconChevronLeft className="size-4 shrink-0" aria-hidden />
+                Back
+              </button>
+              <span
+                className="hidden h-4 w-px shrink-0 self-center bg-[#ebebeb] sm:block"
+                aria-hidden="true"
+              />
+              <h1 className="min-w-0 font-['Poppins',sans-serif] text-[16px] font-semibold leading-snug text-[#1e1e1f] sm:shrink-0 sm:whitespace-nowrap">
+                Neuron Design System
+              </h1>
+            </div>
+            <p className="min-w-0 font-['Inter',sans-serif] text-[12px] leading-snug text-[#707070] sm:flex-1 sm:truncate">
               UI primitives for Neuron Builder. Pick a component in the sidebar to open its page.
             </p>
           </div>

@@ -17,6 +17,8 @@ type WidgetPickerPanelProps = {
   onRemoveFromCanvas?: (widget: WidgetTemplate) => void;
   /** Template IDs already placed on the canvas (non-placeholder). */
   selectedTemplateIds?: ReadonlySet<string>;
+  /** Instance count per template id on the canvas. */
+  templateInstanceCounts?: ReadonlyMap<string, number>;
   className?: string;
 };
 
@@ -26,12 +28,14 @@ function PaletteRow({
   onPick,
   onRemoveFromCanvas,
   isSelected,
+  instanceCount,
 }: {
   categoryId: string;
   widget: WidgetTemplate;
   onPick?: () => void;
   onRemoveFromCanvas?: () => void;
   isSelected: boolean;
+  instanceCount: number;
 }) {
   const id = `palette:${categoryId}:${widget.id}`;
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
@@ -86,6 +90,11 @@ function PaletteRow({
             ].join(' ')}
           >
             {widget.label}
+            {instanceCount > 0 ? (
+              <span className="ml-1.5 font-['Inter',sans-serif] text-[11px] font-semibold normal-case tracking-normal text-[#707070]">
+                ({instanceCount})
+              </span>
+            ) : null}
           </span>
           {isSelected ? (
             <span className="flex shrink-0 items-center gap-0.5">
@@ -135,6 +144,7 @@ function WidgetPickerBody({
   onPickWidget,
   onRemoveFromCanvas,
   selectedTemplateIds,
+  templateInstanceCounts,
 }: {
   open: boolean;
   categories: WidgetCategory[];
@@ -142,6 +152,7 @@ function WidgetPickerBody({
   onPickWidget?: (widget: WidgetTemplate) => void;
   onRemoveFromCanvas?: (widget: WidgetTemplate) => void;
   selectedTemplateIds: ReadonlySet<string>;
+  templateInstanceCounts: ReadonlyMap<string, number>;
 }) {
   const [query, setQuery] = useState('');
 
@@ -206,6 +217,7 @@ function WidgetPickerBody({
                     categoryId={cat.id}
                     widget={w}
                     isSelected={selectedTemplateIds.has(w.id)}
+                    instanceCount={templateInstanceCounts.get(w.id) ?? 0}
                     onPick={onPickWidget ? () => onPickWidget(w) : undefined}
                     onRemoveFromCanvas={
                       onRemoveFromCanvas && selectedTemplateIds.has(w.id)
@@ -223,6 +235,8 @@ function WidgetPickerBody({
   );
 }
 
+const EMPTY_INSTANCE_COUNTS = new Map<string, number>();
+
 export function WidgetPickerPanel({
   categories,
   open,
@@ -230,6 +244,7 @@ export function WidgetPickerPanel({
   onPickWidget,
   onRemoveFromCanvas,
   selectedTemplateIds = EMPTY_TEMPLATE_IDS,
+  templateInstanceCounts = EMPTY_INSTANCE_COUNTS,
   className = '',
 }: WidgetPickerPanelProps) {
   useEffect(() => {
@@ -249,28 +264,29 @@ export function WidgetPickerPanel({
     return null;
   }
 
+  /**
+   * Outer uses `pointer-events-none` while open so clicks reach the canvas (e.g. pick another empty slot).
+   * Only the aside uses `pointer-events-auto`. Close via header button or Escape — not a full-screen blocker.
+   */
   const layer = (
     <div
-      className={['fixed inset-0 z-[88]', open ? 'pointer-events-auto' : 'pointer-events-none'].join(' ')}
+      className={['fixed inset-0 z-[88]', 'pointer-events-none'].join(' ')}
       aria-hidden={!open}
     >
       <div
         aria-hidden
         className={[
-          'absolute inset-0 bg-transparent transition-opacity duration-300 ease-out',
-          open ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0',
+          'pointer-events-none absolute inset-0 bg-transparent transition-opacity duration-300 ease-out',
+          open ? 'opacity-100' : 'opacity-0',
         ].join(' ')}
-        onClick={onClose}
       />
       <aside
         role="dialog"
         aria-modal={open}
         aria-label="Select a Widget"
         className={[
-          'absolute right-3 top-3 bottom-3 z-[1] flex min-h-0 w-[var(--widget-panel-width)] flex-col overflow-hidden rounded-2xl border border-[#d9d9d9] bg-white shadow-[var(--shadow-panel)] transition-transform duration-300 ease-out sm:right-4 sm:top-4 sm:bottom-4',
-          open
-            ? 'pointer-events-auto translate-x-0'
-            : 'pointer-events-none translate-x-[calc(100%+1rem)]',
+          'pointer-events-auto absolute right-3 top-3 bottom-3 z-[1] flex min-h-0 w-[var(--widget-panel-width)] flex-col overflow-hidden rounded-2xl border border-[#d9d9d9] bg-white shadow-[var(--shadow-panel)] transition-transform duration-300 ease-out sm:right-4 sm:top-4 sm:bottom-4',
+          open ? 'translate-x-0' : 'translate-x-[calc(100%+1rem)]',
           className,
         ]
           .filter(Boolean)
@@ -284,6 +300,7 @@ export function WidgetPickerPanel({
             onPickWidget={onPickWidget}
             onRemoveFromCanvas={onRemoveFromCanvas}
             selectedTemplateIds={selectedTemplateIds}
+            templateInstanceCounts={templateInstanceCounts}
           />
         </div>
       </aside>
