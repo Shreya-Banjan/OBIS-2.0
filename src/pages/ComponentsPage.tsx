@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  IconChevronLeft,
   IconLayoutGrid,
   IconSearch,
   IconUiCategoryColors,
@@ -141,10 +140,9 @@ export function ComponentsPage({ onBackToDashboard }: ComponentsPageProps) {
               <button
                 type="button"
                 onClick={handleBack}
-                className="inline-flex shrink-0 items-center gap-1 font-['Inter',sans-serif] text-sm font-medium text-[#e20074] transition-colors hover:text-[#c40062] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e20074]/25 focus-visible:ring-offset-2"
+                className="inline-flex shrink-0 items-center font-['Inter',sans-serif] text-sm font-medium text-[#e20074] transition-colors hover:text-[#c40062] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e20074]/25 focus-visible:ring-offset-2"
                 aria-label="Back to dashboards"
               >
-                <IconChevronLeft className="size-4 shrink-0" aria-hidden />
                 Back
               </button>
               <span

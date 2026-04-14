@@ -1077,6 +1077,7 @@ export default function App() {
                   onTitleChange={setReportTitle}
                   onPublish={handleOpenPublishModal}
                   onSaveAndClose={handleSaveAndClose}
+                  onBackToReports={handleSaveAndClose}
                   publishDisabled={sections.length === 0}
                   autoSaveStatus={autoSaveStatus}
                   reportStatus={activeReportStatus}

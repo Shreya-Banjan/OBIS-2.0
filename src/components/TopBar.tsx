@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { IconCalendar, IconCheck, IconEdit, IconLocation, IconShare } from './Icons';
+import { IconCalendar, IconCheck, IconChevronLeft, IconEdit, IconLocation, IconShare } from './Icons';
 import { PrimaryButton } from './PrimaryButton';
 import { SecondaryButton } from './SecondaryButton';
 import { DATE_OPTIONS, SCOPE_OPTIONS } from '../data/headerSelectOptions';
@@ -23,6 +23,8 @@ type TopBarProps = {
   reportStatus?: SavedDashboard['status'] | null;
   /** Opens share dialog (copy link + recipients). Editor only when provided. */
   onShare?: () => void;
+  /** When set, shows a back chevron inline before the title (same row as title / status). */
+  onBackToReports?: () => void;
 };
 
 export function TopBar({
@@ -34,6 +36,7 @@ export function TopBar({
   autoSaveStatus = 'idle',
   reportStatus = null,
   onShare,
+  onBackToReports,
 }: TopBarProps) {
   const [editing, setEditing] = useState(false);
   const [scope, setScope] = useState<string>(SCOPE_OPTIONS[0]);
@@ -42,8 +45,23 @@ export function TopBar({
   return (
     <header className="flex w-full min-w-0 flex-col gap-3 sm:flex-row sm:items-stretch">
       <div className="flex min-h-16 min-w-0 flex-1 flex-col gap-3 rounded-2xl bg-white p-3 shadow-[var(--shadow-card)] sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-3 sm:py-2">
-        <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
-          <div className="flex min-w-0 flex-1 items-center gap-2 rounded-xl px-0 py-1 sm:px-2">
+        <div
+          className={`flex min-w-0 flex-1 items-center ${onBackToReports ? 'gap-0.5 sm:gap-1' : 'gap-2 sm:gap-3'}`}
+        >
+          {onBackToReports ? (
+            <button
+              type="button"
+              onClick={onBackToReports}
+              className="flex size-10 shrink-0 items-center justify-center rounded-lg text-[#1e1e1f] outline-none transition-colors hover:bg-[#f5f5f5] focus-visible:ring-2 focus-visible:ring-[#1e1e1f]/20"
+              aria-label="Back to reports"
+              title="Back to reports"
+            >
+              <IconChevronLeft className="size-5 shrink-0" aria-hidden />
+            </button>
+          ) : null}
+          <div
+            className={`flex min-w-0 flex-1 items-center gap-2 rounded-xl px-0 py-1 ${onBackToReports ? 'sm:pl-0 sm:pr-2' : 'sm:px-2'}`}
+          >
             {editing ? (
               <input
                 autoFocus
@@ -124,9 +142,11 @@ export function TopBar({
                 <IconShare className="block size-5 shrink-0" />
               </button>
             ) : null}
-            <SecondaryButton type="button" onClick={onSaveAndClose} className="w-full sm:w-auto">
-              Cancel
-            </SecondaryButton>
+            {onBackToReports ? null : (
+              <SecondaryButton type="button" onClick={onSaveAndClose} className="w-full sm:w-auto">
+                Cancel
+              </SecondaryButton>
+            )}
             <PrimaryButton type="button" disabled={publishDisabled} onClick={onPublish} className="w-full sm:w-auto">
               Publish
             </PrimaryButton>
