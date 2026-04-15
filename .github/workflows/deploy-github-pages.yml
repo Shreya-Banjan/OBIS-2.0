@@ -1,7 +1,10 @@
 # GitHub Pages — Vite static build
 #
-# REQUIRED ONCE (repo admin): enable Pages + GitHub Actions as the source, or the API returns 404:
-#   Repo → Settings → Pages → "Build and deployment" → Source → GitHub Actions → Save
+# REQUIRED ONCE (repo admin): GitHub Pages must exist AND use "GitHub Actions" as the source.
+# If Source is "Deploy from a branch" or unset, deploy-pages returns 404 "Creating Pages deployment failed".
+#
+# Fix: https://github.com/elannn-ghub/Dashboard_builder/settings/pages
+#   → "Build and deployment" → Source → select **GitHub Actions** → save
 # Docs: https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site#publishing-with-a-custom-github-actions-workflow
 #
 # After that, pushes to main deploy to: https://elannn-ghub.github.io/Dashboard_builder/
@@ -31,6 +34,42 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Check GitHub Pages uses GitHub Actions
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const settingsUrl = `https://github.com/${owner}/${repo}/settings/pages`;
+            let site;
+            try {
+              const res = await github.rest.repos.getPages({ owner, repo });
+              site = res.data;
+            } catch (e) {
+              if (e.status === 404) {
+                core.setFailed(
+                  `GitHub Pages is not enabled for "${owner}/${repo}".\n\n` +
+                  `Open: ${settingsUrl}\n` +
+                  `Under "Build and deployment" → "Source", choose **GitHub Actions**, then save and re-run this workflow.`
+                );
+                return;
+              }
+              throw e;
+            }
+            const bt = site.build_type;
+            const branchSource = site.source && site.source.branch;
+            if (bt === 'legacy' || (branchSource && bt !== 'workflow')) {
+              core.setFailed(
+                `Pages is not set to publish from **GitHub Actions** (build_type: ${bt ?? 'unknown'}).\n\n` +
+                `Open: ${settingsUrl}\n` +
+                `Set Source to **GitHub Actions** (not "Deploy from a branch"), save, re-run.`
+              );
+              return;
+            }
+            if (bt !== 'workflow') {
+              core.info(`Pages site found; build_type=${bt ?? 'unset'} — proceeding.`);
+            }
+
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
@@ -47,9 +86,6 @@ jobs:
 
       - name: SPA fallback (GitHub Pages)
         run: cp dist/index.html dist/404.html
-
-      # Note: we omit actions/configure-pages — it calls GET /repos/.../pages and fails with 404
-      # until Settings → Pages → Source is set to "GitHub Actions". Upload + deploy do not need it.
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v4
