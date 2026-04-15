@@ -134,7 +134,7 @@ export function ComponentsPage({ onBackToDashboard }: ComponentsPageProps) {
     <div className="min-h-dvh overflow-x-hidden bg-white font-[family-name:var(--font-inter)]">
       {/* Grid: on lg+, column 1 is flush-left nav; column 2 is padded content (max width preserved). */}
       <div className="grid min-h-dvh grid-cols-1 grid-rows-[auto_auto_1fr] gap-6 bg-white lg:grid-cols-[minmax(15rem,16rem)_minmax(0,1fr)] lg:grid-rows-[auto_minmax(0,1fr)] lg:gap-x-0 lg:gap-y-0">
-        <header className="col-start-1 row-start-1 w-full max-w-none border-b border-[#ebebeb] px-3 pb-4 pt-4 sm:px-4 sm:pb-5 sm:pt-6 lg:col-start-2 lg:row-start-1 lg:w-full lg:justify-self-stretch lg:px-4 lg:pb-5">
+        <header className="col-start-1 row-start-1 w-full max-w-none border-b border-[#ebebeb] px-3 pb-4 pt-4 sm:px-4 sm:pb-5 sm:pt-6 lg:col-span-2 lg:row-start-1 lg:px-4 lg:pb-5">
           <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-nowrap sm:items-center sm:gap-4">
             <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 sm:flex-nowrap sm:gap-4">
               <button
@@ -160,7 +160,7 @@ export function ComponentsPage({ onBackToDashboard }: ComponentsPageProps) {
         </header>
 
         <aside
-          className="col-start-1 row-start-2 flex min-h-0 w-full flex-col overflow-hidden rounded-none border-[#ebebeb] bg-white sm:mx-3 lg:col-start-1 lg:row-span-2 lg:row-start-1 lg:mx-0 lg:h-full lg:max-h-none lg:w-full lg:max-w-none lg:border-b-0 lg:border-l-0 lg:border-r lg:border-t-0 lg:border-[#ebebeb]"
+          className="col-start-1 row-start-2 flex min-h-0 w-full flex-col overflow-hidden rounded-none border-[#ebebeb] bg-white sm:mx-3 lg:col-start-1 lg:row-start-2 lg:mx-0 lg:h-full lg:min-h-0 lg:max-h-none lg:w-full lg:max-w-none lg:border-b-0 lg:border-l-0 lg:border-r lg:border-t-0 lg:border-[#ebebeb]"
           aria-label="Component navigation"
         >
             <div className="flex h-[67px] shrink-0 items-center border-b border-[#ebebeb] px-3 sm:px-4 lg:px-4">

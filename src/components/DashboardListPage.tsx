@@ -4,7 +4,7 @@ import { DashboardStatusBadge } from './DashboardStatusBadge';
 import { DashboardTileCard } from './DashboardTileCard';
 import { ProfileAvatar } from './ProfileAvatar';
 import { AppBurgerButton } from './AppBurgerButton';
-import { IconAdd, IconLayoutGrid, IconMoreVertical } from './Icons';
+import { IconAdd, IconLayoutGrid, IconMoreVertical, IconSearch } from './Icons';
 import { PrimaryButton } from './PrimaryButton';
 
 type ReportFilterTab = 'all' | 'mine' | 'shared';
@@ -88,7 +88,8 @@ function DashboardOverflowActions({
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   onEdit: () => void;
-  onShare: () => void;
+  /** Omitted for drafts — Share is only for published reports. */
+  onShare?: () => void;
   onDelete: () => void;
   toolbarClassName: string;
 }) {
@@ -154,18 +155,20 @@ function DashboardOverflowActions({
             >
               Edit
             </button>
-            <button
-              type="button"
-              role="menuitem"
-              className="flex w-full items-center px-3 py-2.5 text-left font-['Inter',sans-serif] text-sm text-[#5c3d6e] hover:bg-[#faf5fc]"
-              onClick={(e) => {
-                e.stopPropagation();
-                onOpenChange(false);
-                onShare();
-              }}
-            >
-              Share
-            </button>
+            {onShare ? (
+              <button
+                type="button"
+                role="menuitem"
+                className="flex w-full items-center px-3 py-2.5 text-left font-['Inter',sans-serif] text-sm text-[#5c3d6e] hover:bg-[#faf5fc]"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenChange(false);
+                  onShare();
+                }}
+              >
+                Share
+              </button>
+            ) : null}
             <button
               type="button"
               role="menuitem"
@@ -209,47 +212,65 @@ export function DashboardListPage({
   layoutMode,
 }: DashboardListPageProps) {
   const [reportFilter, setReportFilter] = useState<ReportFilterTab>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchFocused, setSearchFocused] = useState(false);
+  const searchExpanded = searchFocused || searchQuery.trim() !== '';
   const filterCounts = useMemo(() => reportFilterCounts(dashboards), [dashboards]);
-  const filteredDashboards = useMemo(() => {
+  const tabFilteredDashboards = useMemo(() => {
     if (reportFilter === 'all') return dashboards;
     if (reportFilter === 'mine') return dashboards.filter((d) => !d.sharedBy);
     return dashboards.filter((d) => !!d.sharedBy);
   }, [dashboards, reportFilter]);
 
+  const filteredDashboards = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return tabFilteredDashboards;
+    return tabFilteredDashboards.filter((d) => {
+      if (d.title.toLowerCase().includes(q)) return true;
+      if (d.sharedBy?.displayName.toLowerCase().includes(q)) return true;
+      return false;
+    });
+  }, [tabFilteredDashboards, searchQuery]);
+
   const empty = dashboards.length === 0;
   const filteredEmpty = !empty && filteredDashboards.length === 0;
+  const noSearchMatches =
+    !empty &&
+    tabFilteredDashboards.length > 0 &&
+    filteredDashboards.length === 0 &&
+    searchQuery.trim() !== '';
   const [actionsMenuId, setActionsMenuId] = useState<string | null>(null);
 
   return (
     <>
       <div className="min-h-dvh overflow-x-hidden bg-[#ebebeb] px-3 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] font-[family-name:var(--font-inter)] sm:px-4">
-        <div className="mx-auto w-full max-w-[1460px]">
-          <div className="mb-5 flex w-full min-w-0 items-center gap-2 sm:gap-3">
-            <AppBurgerButton
-              onClick={onMenuOpen}
-              className="h-14 min-h-0 w-14 shrink-0 rounded-[16px] border-0 bg-white p-2.5 shadow-[var(--shadow-card)] hover:bg-[#f5f5f5] sm:h-16 sm:w-16 sm:p-3 [&_svg]:size-6"
-            />
+        <div className="mb-5 flex w-full min-w-0 items-center gap-2 sm:gap-3">
+          <AppBurgerButton
+            onClick={onMenuOpen}
+            className="h-14 min-h-0 w-14 shrink-0 rounded-[16px] border-0 bg-white p-2.5 shadow-[var(--shadow-card)] hover:bg-[#f5f5f5] sm:h-16 sm:w-16 sm:p-3 [&_svg]:size-6"
+          />
 
-            <div className="flex h-14 min-h-[3.5rem] min-w-0 flex-1 items-center rounded-[16px] bg-white px-3 py-2 shadow-[var(--shadow-card)] sm:h-16 sm:min-h-16 sm:px-4">
-              <div className="min-w-0">
-                <h1 className="truncate font-['Poppins',sans-serif] text-xl font-semibold leading-tight text-[#1e1e1f] sm:text-2xl sm:leading-normal md:text-[24px]">
-                  Neuron 2.0
-                </h1>
-                <p className="sr-only">Open a report or start a new one.</p>
-              </div>
-            </div>
-
-            <div className="flex h-14 shrink-0 items-center rounded-[16px] bg-white p-2.5 shadow-[var(--shadow-card)] sm:h-16 sm:p-3">
-              <button
-                type="button"
-                className="flex size-9 shrink-0 items-center justify-center rounded-[20px] bg-[#e2f0f5] font-['Poppins',sans-serif] text-[18px] font-semibold leading-normal text-[#333] outline-none transition-colors hover:bg-[#d4e8ef] focus-visible:ring-2 focus-visible:ring-[#1e1e1f]/20 sm:size-10 sm:text-[20px]"
-                aria-label="Account"
-              >
-                S
-              </button>
+          <div className="flex h-14 min-h-[3.5rem] min-w-0 flex-1 items-center rounded-[16px] bg-white px-3 py-2 shadow-[var(--shadow-card)] sm:h-16 sm:min-h-16 sm:px-4">
+            <div className="min-w-0">
+              <h1 className="truncate font-['Poppins',sans-serif] text-xl font-semibold leading-tight text-[#1e1e1f] sm:text-2xl sm:leading-normal md:text-[24px]">
+                Neuron 2.0
+              </h1>
+              <p className="sr-only">Open a report or start a new one.</p>
             </div>
           </div>
 
+          <div className="flex h-14 shrink-0 items-center rounded-[16px] bg-white p-2.5 shadow-[var(--shadow-card)] sm:h-16 sm:p-3">
+            <button
+              type="button"
+              className="flex size-9 shrink-0 items-center justify-center rounded-[20px] bg-[#e2f0f5] font-['Poppins',sans-serif] text-[18px] font-semibold leading-normal text-[#333] outline-none transition-colors hover:bg-[#d4e8ef] focus-visible:ring-2 focus-visible:ring-[#1e1e1f]/20 sm:size-10 sm:text-[20px]"
+              aria-label="Account"
+            >
+              S
+            </button>
+          </div>
+        </div>
+
+        <div className="mx-auto w-full max-w-[1460px]">
           <div className="flex w-full min-w-0 flex-col gap-5">
             <div className="flex w-full min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:gap-3 md:gap-4">
               <div className="min-w-0 w-full sm:max-w-[min(100%,42rem)] sm:flex-1 md:max-w-none">
@@ -264,6 +285,35 @@ export function DashboardListPage({
                   <IconLayoutGrid className="size-5 shrink-0 text-[#707070]" aria-hidden />
                   <span className="truncate">Components</span>
                 </button>
+              </div>
+              <div className="flex w-full min-w-0 justify-end sm:inline-flex sm:w-fit sm:shrink-0 sm:justify-end">
+                <div
+                  className={`relative min-w-12 overflow-hidden rounded-[16px] border border-[#e4e4e4] bg-white shadow-[var(--shadow-card)] transition-[max-width] duration-300 ease-out motion-reduce:transition-none hover:bg-[#fafafa] focus-within:border-[#d7d7d7] focus-within:ring-2 focus-within:ring-[#1e1e1f]/20 focus-within:ring-offset-0 ${
+                    searchExpanded
+                      ? 'max-w-[min(100%,28rem)] md:max-w-sm'
+                      : 'max-w-12 cursor-text'
+                  }`}
+                >
+                  <label htmlFor="reports-toolbar-search" className="sr-only">
+                    Search reports
+                  </label>
+                  <IconSearch
+                    className="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-[#707070]"
+                    aria-hidden
+                  />
+                  <input
+                    id="reports-toolbar-search"
+                    type="search"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onFocus={() => setSearchFocused(true)}
+                    onBlur={() => setSearchFocused(false)}
+                    placeholder="Search reports…"
+                    autoComplete="off"
+                    spellCheck={false}
+                    className="box-border h-12 w-full min-w-0 rounded-[16px] border-0 bg-transparent py-0 pl-10 pr-3 font-['Inter',sans-serif] text-sm text-[#1e1e1f] outline-none placeholder:text-[#707070]"
+                  />
+                </div>
               </div>
               <div className="w-full min-w-0 sm:w-auto sm:shrink-0">
                 <PrimaryButton
@@ -285,7 +335,9 @@ export function DashboardListPage({
           </div>
         ) : filteredEmpty ? (
           <div className="overflow-hidden rounded-2xl bg-white px-6 py-16 text-center shadow-[var(--shadow-card)]">
-            <p className="font-['Inter',sans-serif] text-sm text-[#707070]">No reports in this category.</p>
+            <p className="font-['Inter',sans-serif] text-sm text-[#707070]">
+              {noSearchMatches ? 'No reports match your search.' : 'No reports in this category.'}
+            </p>
           </div>
         ) : layoutMode === 'tile' ? (
           <ul
@@ -311,7 +363,9 @@ export function DashboardListPage({
                         isOpen={menuOpen}
                         onOpenChange={(open) => setActionsMenuId(open ? d.id : null)}
                         onEdit={() => onOpenDashboard(d.id)}
-                        onShare={() => onShareDashboard(d.id)}
+                        onShare={
+                          d.status === 'published' ? () => onShareDashboard(d.id) : undefined
+                        }
                         onDelete={() => onDeleteDashboard(d.id)}
                         toolbarClassName={[
                           'pointer-events-none absolute right-[18px] top-[18px] z-10 max-w-[calc(100%-2.25rem)]',
@@ -370,7 +424,9 @@ export function DashboardListPage({
                         isOpen={menuOpen}
                         onOpenChange={(open) => setActionsMenuId(open ? d.id : null)}
                         onEdit={() => onOpenDashboard(d.id)}
-                        onShare={() => onShareDashboard(d.id)}
+                        onShare={
+                          d.status === 'published' ? () => onShareDashboard(d.id) : undefined
+                        }
                         onDelete={() => onDeleteDashboard(d.id)}
                         toolbarClassName={[
                           'pointer-events-auto flex max-w-[11rem] shrink-0 items-start justify-end px-3 py-4 sm:max-w-none sm:py-5',

@@ -21,7 +21,7 @@ import { DashboardNavDrawer } from './components/DashboardNavDrawer';
 import { PublishDashboardModal, type PublishFormValues } from './components/PublishDashboardModal';
 import { ShareDashboardModal } from './components/ShareDashboardModal';
 import { WidgetPickerPanel } from './components/WidgetPickerPanel';
-import { INITIAL_DASHBOARDS } from './data/initialDashboards';
+import { mergeInitialDashboards } from './data/initialDashboards';
 import { loadDashboardsFromStorage, saveDashboardsToStorage } from './persistence/dashboardStorage';
 import { WIDGET_CATEGORIES } from './data/widgets';
 import type { WidgetTemplate } from './data/widgets';
@@ -370,14 +370,9 @@ export default function App() {
     typeof window !== 'undefined' && window.location.hash.startsWith('#/components') ? 'components' : 'list'
   );
   const [dashboardListLayout, setDashboardListLayout] = useState<DashboardListLayoutMode>('tile');
-  const [dashboards, setDashboards] = useState<SavedDashboard[]>(() => {
-    const stored = loadDashboardsFromStorage();
-    const source = stored ?? INITIAL_DASHBOARDS;
-    return source.map((d) => ({
-      ...d,
-      sections: d.sections.map((s) => ({ ...s, widgets: [...s.widgets] })),
-    }));
-  });
+  const [dashboards, setDashboards] = useState<SavedDashboard[]>(() =>
+    mergeInitialDashboards(loadDashboardsFromStorage())
+  );
 
   const dashboardsRef = useRef(dashboards);
   dashboardsRef.current = dashboards;
@@ -1065,11 +1060,11 @@ export default function App() {
           onConfirmLayout={addSectionWithLayout}
         />
         <div className="relative flex min-h-dvh flex-col overflow-hidden bg-[#ebebeb] font-[family-name:var(--font-inter)]">
-          <div className="shrink-0 px-3 pt-4 sm:px-4 sm:pt-6">
-            <div className="flex items-stretch gap-3">
+          <div className="w-full shrink-0 px-3 pt-[max(1rem,env(safe-area-inset-top))] sm:px-4">
+            <div className="mb-5 flex w-full min-w-0 items-stretch gap-2 sm:gap-3">
               <AppBurgerButton
                 onClick={() => setNavDrawerOpen(true)}
-                className="self-stretch"
+                className="h-14 min-h-0 w-14 shrink-0 self-stretch rounded-[16px] border-0 bg-white p-2.5 shadow-[var(--shadow-card)] hover:bg-[#f5f5f5] sm:h-16 sm:w-16 sm:p-3 [&_svg]:size-6"
               />
               <div className="min-w-0 flex-1">
                 <TopBar
@@ -1082,8 +1077,13 @@ export default function App() {
                   autoSaveStatus={autoSaveStatus}
                   reportStatus={activeReportStatus}
                   onShare={
-                    activeDashboardId
+                    activeDashboardId && activeReportStatus === 'published'
                       ? () => setShareDashboardId(activeDashboardId)
+                      : undefined
+                  }
+                  onDelete={
+                    activeDashboardId != null
+                      ? () => handleDeleteDashboard(activeDashboardId)
                       : undefined
                   }
                 />
@@ -1092,7 +1092,7 @@ export default function App() {
           </div>
 
           <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
-            <div className="px-3 pt-6 pb-6 sm:px-4">
+            <div className="px-3 pt-2 pb-6 sm:px-4 sm:pt-3">
               <div className="mx-auto flex w-full max-w-[1460px] flex-col">
                 <div className="min-w-0 flex-1 bg-[#ebebeb] px-0 pt-0">
                   <div className="mx-auto flex w-full flex-col gap-0">

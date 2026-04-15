@@ -26,7 +26,10 @@ function TagBadge({ kind }: { kind: 'new' | 'updated' }) {
 
 export function UiComponentDetail({ item, categoryTitle }: UiComponentDetailProps) {
   return (
-    <article className="min-w-0" aria-labelledby={`ui-component-${item.id}-title`}>
+    <article
+      className="mx-auto min-w-0 w-full max-w-4xl"
+      aria-labelledby={`ui-component-${item.id}-title`}
+    >
       <div className="flex flex-wrap items-center gap-2 gap-y-1">
         <h2
           id={`ui-component-${item.id}-title`}
