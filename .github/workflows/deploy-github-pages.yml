@@ -1,5 +1,10 @@
-# GitHub Pages — same pattern as https://elannn-ghub.github.io/executive-dashboard-ui/
-# Enable: Repo → Settings → Pages → Build: GitHub Actions
+# GitHub Pages — Vite static build
+#
+# REQUIRED ONCE (repo admin): enable Pages + GitHub Actions as the source, or the API returns 404:
+#   Repo → Settings → Pages → "Build and deployment" → Source → GitHub Actions → Save
+# Docs: https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site#publishing-with-a-custom-github-actions-workflow
+#
+# After that, pushes to main deploy to: https://elannn-ghub.github.io/Dashboard_builder/
 name: Deploy to GitHub Pages
 
 on:
@@ -14,7 +19,7 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   deploy:
@@ -38,14 +43,13 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          # Ensures Vite base is /<repo>/ (see vite.config.ts)
           GITHUB_REPOSITORY: ${{ github.repository }}
 
       - name: SPA fallback (GitHub Pages)
         run: cp dist/index.html dist/404.html
 
-      - name: Configure Pages
-        uses: actions/configure-pages@v5
+      # Note: we omit actions/configure-pages — it calls GET /repos/.../pages and fails with 404
+      # until Settings → Pages → Source is set to "GitHub Actions". Upload + deploy do not need it.
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v4
@@ -54,4 +58,4 @@ jobs:
 
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
