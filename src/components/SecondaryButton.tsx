@@ -27,7 +27,7 @@ export const SecondaryButton = forwardRef<HTMLButtonElement, SecondaryButtonProp
           'inline-flex shrink-0 items-center justify-center whitespace-nowrap',
           secondarySizeClasses[size],
           "font-['Inter',sans-serif] font-medium text-black",
-          'box-border border-[1.5px] border-solid border-black bg-white outline-none [border-image:none]',
+          'box-border border-[1.5px] border-solid border-[rgba(145,145,145,0.92)] bg-white outline-none [border-image:none]',
           'transition-[border-color,box-shadow] duration-150',
           'hover:border-black/75 hover:shadow-[var(--shadow-focus)]',
           'focus-visible:border-black/75 focus-visible:shadow-[var(--shadow-focus)]',

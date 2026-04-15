@@ -8,6 +8,7 @@ import {
   IconMoreVertical,
   IconShare,
 } from './Icons';
+import { FilledSecondaryButton } from './FilledSecondaryButton';
 import { PrimaryButton } from './PrimaryButton';
 import { SecondaryButton } from './SecondaryButton';
 import { DATE_OPTIONS, SCOPE_OPTIONS } from '../data/headerSelectOptions';
@@ -189,14 +190,14 @@ export function TopBar({
               <SecondaryButton type="button" onClick={onSaveAndClose} className="min-w-0 px-4">
                 Cancel
               </SecondaryButton>
-              <PrimaryButton type="button" onClick={onPublish} className="min-w-0 px-4">
+              <FilledSecondaryButton type="button" onClick={onPublish} className="min-w-0 px-4">
                 Edit
-              </PrimaryButton>
+              </FilledSecondaryButton>
               {onShare || onDelete ? (
                 <div ref={overflowRootRef} className="relative shrink-0">
                   <button
                     type="button"
-                    className="inline-flex size-12 shrink-0 items-center justify-center rounded-xl border-[1.5px] border-solid border-black bg-white text-[#1e1e1f] outline-none transition-[border-color,box-shadow] duration-150 hover:border-black/75 hover:shadow-[var(--shadow-focus)] focus-visible:border-black/75 focus-visible:shadow-[var(--shadow-focus)] active:border-black"
+                    className="inline-flex size-12 shrink-0 items-center justify-center rounded-xl border-[1.5px] border-solid border-[rgba(145,145,145,0.92)] bg-white text-[#1e1e1f] outline-none transition-[border-color,box-shadow] duration-150 hover:border-black/75 hover:shadow-[var(--shadow-focus)] focus-visible:border-black/75 focus-visible:shadow-[var(--shadow-focus)] active:border-black"
                     aria-haspopup="menu"
                     aria-expanded={overflowOpen}
                     aria-controls={overflowOpen ? 'topbar-overflow-menu' : undefined}
