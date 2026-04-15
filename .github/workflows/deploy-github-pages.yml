@@ -57,18 +57,17 @@ jobs:
               throw e;
             }
             const bt = site.build_type;
-            const branchSource = site.source && site.source.branch;
-            if (bt === 'legacy' || (branchSource && bt !== 'workflow')) {
+            // Only "legacy" is definitive branch-based publishing. GitHub may omit build_type or
+            // still echo source.branch after switching to GitHub Actions — do not fail on that.
+            if (bt === 'legacy') {
               core.setFailed(
-                `Pages is not set to publish from **GitHub Actions** (build_type: ${bt ?? 'unknown'}).\n\n` +
+                `Pages is still on **Deploy from a branch** (build_type: legacy).\n\n` +
                 `Open: ${settingsUrl}\n` +
-                `Set Source to **GitHub Actions** (not "Deploy from a branch"), save, re-run.`
+                `Set Source to **GitHub Actions**, save, re-run.`
               );
               return;
             }
-            if (bt !== 'workflow') {
-              core.info(`Pages site found; build_type=${bt ?? 'unset'} — proceeding.`);
-            }
+            core.info(`Pages OK (build_type=${bt ?? 'unset'}, status=${site.status ?? '?'})`);
 
       - name: Set up Node
         uses: actions/setup-node@v4
