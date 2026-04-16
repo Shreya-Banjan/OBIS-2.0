@@ -27,6 +27,8 @@ function StackCircle({ person, stackIndex }: StackCircleProps) {
         <img
           src={person.avatarUrl}
           alt=""
+          loading="lazy"
+          decoding="async"
           className="size-6 shrink-0 rounded-full border border-white object-cover"
         />
       </div>

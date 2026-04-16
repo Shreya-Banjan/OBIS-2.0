@@ -212,19 +212,20 @@ function WidgetPickerBody({
               </h3>
               <div className="flex flex-col gap-1">
                 {cat.widgets.map((w) => (
-                  <PaletteRow
-                    key={`${cat.id}-${w.id}`}
-                    categoryId={cat.id}
-                    widget={w}
-                    isSelected={selectedTemplateIds.has(w.id)}
-                    instanceCount={templateInstanceCounts.get(w.id) ?? 0}
-                    onPick={onPickWidget ? () => onPickWidget(w) : undefined}
-                    onRemoveFromCanvas={
-                      onRemoveFromCanvas && selectedTemplateIds.has(w.id)
-                        ? () => onRemoveFromCanvas(w)
-                        : undefined
-                    }
-                  />
+                  <div key={`${cat.id}-${w.id}`} className="min-h-[52px] w-full min-w-0">
+                    <PaletteRow
+                      categoryId={cat.id}
+                      widget={w}
+                      isSelected={selectedTemplateIds.has(w.id)}
+                      instanceCount={templateInstanceCounts.get(w.id) ?? 0}
+                      onPick={onPickWidget ? () => onPickWidget(w) : undefined}
+                      onRemoveFromCanvas={
+                        onRemoveFromCanvas && selectedTemplateIds.has(w.id)
+                          ? () => onRemoveFromCanvas(w)
+                          : undefined
+                      }
+                    />
+                  </div>
                 ))}
               </div>
             </section>

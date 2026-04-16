@@ -22,6 +22,9 @@ export type SharedByInfo = {
   avatarUrl?: string | null;
 };
 
+/** Reports home: tile grid vs list row layout (nav drawer). */
+export type DashboardListLayoutMode = 'tile' | 'list';
+
 export type SavedDashboard = {
   id: string;
   title: string;

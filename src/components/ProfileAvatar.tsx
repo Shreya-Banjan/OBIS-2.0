@@ -33,6 +33,8 @@ export function ProfileAvatar({ sharedBy, size = 'md' }: ProfileAvatarProps) {
       <img
         src={avatarUrl}
         alt=""
+        loading="lazy"
+        decoding="async"
         className={`${sizeClasses[size]} shrink-0 rounded-full object-cover ring-1 ring-black/5`}
       />
     );

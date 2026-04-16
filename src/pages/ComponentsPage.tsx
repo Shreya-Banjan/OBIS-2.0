@@ -170,7 +170,9 @@ export function ComponentsPage({ onBackToDashboard }: ComponentsPageProps) {
                 className="h-[28px] w-auto max-w-[min(100%,200px)] object-contain object-left"
                 width={118}
                 height={28}
+                loading="eager"
                 decoding="async"
+                fetchPriority="high"
               />
             </div>
             <div className="p-3 sm:p-4 sm:pb-3">

@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import type { SavedDashboard, SharedByInfo } from '../types';
 import { ReportStatusBadge } from './ReportStatusBadge';
 import { SharedWithAvatarStack } from './SharedWithAvatarStack';
@@ -38,8 +38,17 @@ export function DashboardTileCard({
   overlay,
 }: DashboardTileCardProps) {
   const hasCover = Boolean(coverImageDataUrl?.trim());
+  const [coverLoaded, setCoverLoaded] = useState(!hasCover);
   const sharedPeople = resolveSharedPeople(sharedBy, sharedWith);
   const showAvatarStack = sharedPeople.length >= 3;
+
+  useEffect(() => {
+    if (!hasCover) {
+      setCoverLoaded(true);
+      return;
+    }
+    setCoverLoaded(false);
+  }, [hasCover, coverImageDataUrl]);
 
   return (
     <div className="dashboard-tile-lift group relative">
@@ -51,7 +60,26 @@ export function DashboardTileCard({
         <div className="flex flex-col gap-3.5 overflow-visible px-[18px] pt-[18px] pb-6">
           <div className="relative h-[130px] w-full min-w-0 shrink-0 overflow-hidden rounded-[20px] bg-[#f3f5f7]">
             {hasCover ? (
-              <img src={coverImageDataUrl!} alt="" className="h-full w-full object-cover" />
+              <>
+                <img
+                  src={coverImageDataUrl!}
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                  fetchPriority="low"
+                  onLoad={() => setCoverLoaded(true)}
+                  onError={() => setCoverLoaded(true)}
+                  className={`relative z-[1] h-full w-full object-cover transition-opacity duration-300 ease-out ${
+                    coverLoaded ? 'opacity-100' : 'opacity-0'
+                  }`}
+                />
+                {!coverLoaded ? (
+                  <div
+                    className="tile-cover-shimmer pointer-events-none absolute inset-0 z-[2]"
+                    aria-hidden
+                  />
+                ) : null}
+              </>
             ) : (
               <span className="absolute inset-0 flex items-center justify-center font-['Inter',sans-serif] text-[10px] font-medium leading-[22px] text-[#1f1f1f]/38">
                 No Preview Yet

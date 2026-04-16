@@ -35,6 +35,8 @@ export function Avatar({ name, src, alt, className = '', fallbackClassName }: Av
       <img
         src={src}
         alt={label}
+        loading="lazy"
+        decoding="async"
         className={`box-border size-6 shrink-0 rounded-full border border-solid border-white object-cover ${className}`.trim()}
       />
     );

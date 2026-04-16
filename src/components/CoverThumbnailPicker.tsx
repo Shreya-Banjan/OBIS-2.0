@@ -250,7 +250,13 @@ export const CoverThumbnailPicker = forwardRef<CoverThumbnailPickerHandle, Cover
                 ].join(' ')}
                 title={p.label}
               >
-                <img src={p.src} alt="" className="h-full w-full object-cover" />
+                <img
+                  src={p.src}
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                  className="h-full w-full object-cover"
+                />
               </button>
             );
           })}
@@ -272,6 +278,8 @@ export const CoverThumbnailPicker = forwardRef<CoverThumbnailPickerHandle, Cover
               ref={imgRef}
               src={imageSrc}
               alt=""
+              loading="eager"
+              decoding="async"
               className="pointer-events-none h-full w-full object-contain"
               onLoad={onImgLoad}
               draggable={false}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import {
   DndContext,
@@ -14,21 +14,33 @@ import { arrayMove } from '@dnd-kit/sortable';
 import { AppBurgerButton } from './components/AppBurgerButton';
 import { TopBar } from './components/TopBar';
 import { AddSectionLayoutModal } from './components/AddSectionLayoutModal';
-import { DashboardCanvas } from './components/DashboardCanvas';
-import { ComponentsPage } from './pages/ComponentsPage';
-import { DashboardListPage, type DashboardListLayoutMode } from './components/DashboardListPage';
+import { DashboardListPage } from './components/DashboardListPage';
+import { ViewportSizePresetBar } from './components/ViewportSizePresetBar';
 import { DashboardNavDrawer } from './components/DashboardNavDrawer';
 import { PublishDashboardModal, type PublishFormValues } from './components/PublishDashboardModal';
 import { ShareDashboardModal } from './components/ShareDashboardModal';
 import { WidgetPickerPanel } from './components/WidgetPickerPanel';
+import { layoutColumnCount, reportsContentMaxWidthPx } from './layoutUtils';
 import { mergeInitialDashboards } from './data/initialDashboards';
 import { loadDashboardsFromStorage, saveDashboardsToStorage } from './persistence/dashboardStorage';
 import { WIDGET_CATEGORIES } from './data/widgets';
 import type { WidgetTemplate } from './data/widgets';
 import { WidgetLibraryOpenProvider } from './context/WidgetLibraryContext';
-import { layoutColumnCount } from './layoutUtils';
-import type { DashboardSection, PlacedWidget, SavedDashboard, SectionLayoutPreset } from './types';
+import type {
+  DashboardListLayoutMode,
+  DashboardSection,
+  PlacedWidget,
+  SavedDashboard,
+  SectionLayoutPreset,
+} from './types';
+import { useEffectiveLayoutWidth } from './useEffectiveLayoutWidth';
 
+const ComponentsPage = lazy(() =>
+  import('./pages/ComponentsPage').then((m) => ({ default: m.ComponentsPage }))
+);
+const DashboardCanvas = lazy(() =>
+  import('./components/DashboardCanvas').then((m) => ({ default: m.DashboardCanvas }))
+);
 const PLACEHOLDER_TEMPLATE_ID = '__placeholder__';
 
 type AutoSaveIndicator = 'idle' | 'saving' | 'saved';
@@ -396,6 +408,13 @@ export default function App() {
   const [reportTitle, setReportTitle] = useState('Enter Title');
   const [publishModalOpen, setPublishModalOpen] = useState(false);
   const [navDrawerOpen, setNavDrawerOpen] = useState(false);
+  /** Shared between reports list and editor: simulated viewport width for layout preview. */
+  const [previewViewportWidth, setPreviewViewportWidth] = useState<number | null>(null);
+  const effectiveLayoutWidth = useEffectiveLayoutWidth(previewViewportWidth);
+  const reportsContentMaxWidth = useMemo(
+    () => reportsContentMaxWidthPx(effectiveLayoutWidth),
+    [effectiveLayoutWidth]
+  );
   const [panelOpen, setPanelOpen] = useState(false);
   /** Section that receives widgets chosen from the picker; null = last section on canvas. */
   const [widgetPickTargetSectionId, setWidgetPickTargetSectionId] = useState<string | null>(null);
@@ -1003,7 +1022,11 @@ export default function App() {
   );
 
   if (view === 'components') {
-    return <ComponentsPage onBackToDashboard={() => setView('list')} />;
+    return (
+      <Suspense fallback={null}>
+        <ComponentsPage onBackToDashboard={() => setView('list')} />
+      </Suspense>
+    );
   }
 
   if (view === 'list') {
@@ -1018,6 +1041,9 @@ export default function App() {
           onMenuOpen={() => setNavDrawerOpen(true)}
           onOpenComponents={handleOpenComponents}
           layoutMode={dashboardListLayout}
+          previewViewportWidth={previewViewportWidth}
+          onPreviewViewportWidthChange={setPreviewViewportWidth}
+          reportsContentMaxWidth={reportsContentMaxWidth}
         />
         {shareDashboard ? (
           <ShareDashboardModal
@@ -1060,59 +1086,83 @@ export default function App() {
           onConfirmLayout={addSectionWithLayout}
         />
         <div className="relative flex min-h-dvh flex-col overflow-hidden bg-[#ebebeb] font-[family-name:var(--font-inter)]">
-          <div className="w-full shrink-0 px-3 pt-[max(1rem,env(safe-area-inset-top))] sm:px-4">
-            <div className="mb-5 flex w-full min-w-0 items-stretch gap-2 sm:gap-3">
-              <AppBurgerButton
-                onClick={() => setNavDrawerOpen(true)}
-                className="h-14 min-h-0 w-14 shrink-0 self-stretch rounded-[16px] border-0 bg-white p-2.5 shadow-[var(--shadow-card)] hover:bg-[#f5f5f5] sm:h-16 sm:w-16 sm:p-3 [&_svg]:size-6"
-              />
-              <div className="min-w-0 flex-1">
-                <TopBar
-                  title={reportTitle}
-                  onTitleChange={setReportTitle}
-                  onPublish={handleOpenPublishModal}
-                  onSaveAndClose={handleSaveAndClose}
-                  onBackToReports={handleSaveAndClose}
-                  publishDisabled={sections.length === 0}
-                  autoSaveStatus={autoSaveStatus}
-                  reportStatus={activeReportStatus}
-                  onShare={
-                    activeDashboardId && activeReportStatus === 'published'
-                      ? () => setShareDashboardId(activeDashboardId)
-                      : undefined
-                  }
-                  onDelete={
-                    activeDashboardId != null
-                      ? () => handleDeleteDashboard(activeDashboardId)
-                      : undefined
-                  }
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
-            <div className="px-3 pt-2 pb-6 sm:px-4 sm:pt-3">
-              <div className="mx-auto flex w-full max-w-[1460px] flex-col">
-                <div className="min-w-0 flex-1 bg-[#ebebeb] px-0 pt-0">
-                  <div className="mx-auto flex w-full flex-col gap-0">
-                    {publishModalOpen ? (
-                      <PublishDashboardModal
-                        onClose={() => setPublishModalOpen(false)}
-                        onConfirm={handleConfirmPublish}
-                        initialTitle={reportTitle}
-                      />
-                    ) : null}
-
-                    <DashboardCanvas
-                      key={activeDashboardId ?? 'no-dashboard'}
-                      sections={sections}
-                      onRequestAddSection={requestAddSection}
-                      onRemoveWidget={handleRemoveWidget}
-                      onRemoveSection={handleRemoveSection}
-                      onMoveSection={handleMoveSection}
-                      activePlaceholderInstanceId={widgetPickReplaceInstanceId}
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col px-3 pt-[max(1rem,env(safe-area-inset-top))] sm:px-4">
+            <ViewportSizePresetBar
+              selectedWidth={previewViewportWidth}
+              onSelectWidth={setPreviewViewportWidth}
+            />
+            <div
+              className={
+                previewViewportWidth != null
+                  ? 'mx-auto flex min-h-0 w-full min-w-0 flex-1 flex-col'
+                  : 'flex min-h-0 min-w-0 flex-1 flex-col'
+              }
+              style={
+                previewViewportWidth != null
+                  ? { maxWidth: `${previewViewportWidth}px` }
+                  : undefined
+              }
+            >
+              <div className="w-full shrink-0">
+                <div className="mb-5 flex w-full min-w-0 items-stretch gap-2 sm:gap-3">
+                  <AppBurgerButton
+                    onClick={() => setNavDrawerOpen(true)}
+                    className="h-14 min-h-0 w-14 shrink-0 self-stretch rounded-[16px] border-0 bg-white p-2.5 shadow-[var(--shadow-card)] hover:bg-[#f5f5f5] sm:h-16 sm:w-16 sm:p-3 [&_svg]:size-6"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <TopBar
+                      title={reportTitle}
+                      onTitleChange={setReportTitle}
+                      onPublish={handleOpenPublishModal}
+                      onSaveAndClose={handleSaveAndClose}
+                      onBackToReports={handleSaveAndClose}
+                      publishDisabled={sections.length === 0}
+                      autoSaveStatus={autoSaveStatus}
+                      reportStatus={activeReportStatus}
+                      onShare={
+                        activeDashboardId && activeReportStatus === 'published'
+                          ? () => setShareDashboardId(activeDashboardId)
+                          : undefined
+                      }
+                      onDelete={
+                        activeDashboardId != null
+                          ? () => handleDeleteDashboard(activeDashboardId)
+                          : undefined
+                      }
                     />
+                  </div>
+                </div>
+              </div>
+
+              <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
+                <div className="pt-2 pb-6 sm:pt-3">
+                  <div
+                    className="mx-auto flex w-full flex-col"
+                    style={{ maxWidth: `${reportsContentMaxWidth}px` }}
+                  >
+                    <div className="min-w-0 flex-1 bg-[#ebebeb] px-0 pt-0">
+                      <div className="mx-auto flex w-full flex-col gap-0">
+                        {publishModalOpen ? (
+                          <PublishDashboardModal
+                            onClose={() => setPublishModalOpen(false)}
+                            onConfirm={handleConfirmPublish}
+                            initialTitle={reportTitle}
+                          />
+                        ) : null}
+
+                        <Suspense fallback={null}>
+                          <DashboardCanvas
+                            key={activeDashboardId ?? 'no-dashboard'}
+                            sections={sections}
+                            onRequestAddSection={requestAddSection}
+                            onRemoveWidget={handleRemoveWidget}
+                            onRemoveSection={handleRemoveSection}
+                            onMoveSection={handleMoveSection}
+                            activePlaceholderInstanceId={widgetPickReplaceInstanceId}
+                          />
+                        </Suspense>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>

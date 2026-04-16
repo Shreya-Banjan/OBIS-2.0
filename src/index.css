@@ -85,6 +85,146 @@ body {
   }
 }
 
+/* Initial boot loader (main.tsx) — equalizer-style bars */
+@keyframes initial-loader-bar {
+  0%,
+  100% {
+    transform: scaleY(0.35);
+    opacity: 0.55;
+  }
+  50% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+.initial-loader-bar {
+  height: 2.25rem;
+  transform-origin: center bottom;
+  animation: initial-loader-bar 0.85s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .initial-loader-bar {
+    animation: none;
+    opacity: 0.85;
+    transform: scaleY(0.65);
+  }
+}
+
+/* Dashboard list page: light stagger for header → toolbar → content */
+@keyframes dashboard-list-page-layer-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.dashboard-list-page-layer {
+  animation: dashboard-list-page-layer-in 0.48s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+  animation-delay: calc(var(--page-stack, 0) * 48ms);
+}
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-list-page-layer {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Tile cover image loading (distinct motion from skeleton shimmer) */
+@keyframes tile-cover-shimmer-sweep {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+.tile-cover-shimmer {
+  background: linear-gradient(
+    105deg,
+    #e8eaed 0%,
+    #f3f5f7 38%,
+    #fafbfc 50%,
+    #f3f5f7 62%,
+    #e8eaed 100%
+  );
+  background-size: 220% 100%;
+  animation: tile-cover-shimmer-sweep 1.15s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tile-cover-shimmer {
+    animation: none;
+    background: #f3f5f7;
+  }
+}
+
+/* Skeleton loading (dashboard list, lazy fallbacks) */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+.skeleton-shimmer {
+  background: linear-gradient(90deg, #e5e7eb 25%, #f0f1f3 50%, #e5e7eb 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-shimmer {
+    animation: none;
+    background: #e5e7eb;
+  }
+}
+
+/* Card stack entrance — aligned with executive-dashboard-ui DashboardView KPI cards */
+@keyframes cardStackIn {
+  0% {
+    opacity: 0;
+    transform: translateY(40px) scale(0.97);
+  }
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@media (max-width: 767px) {
+  @keyframes cardStackIn {
+    0% {
+      opacity: 0;
+      transform: translateY(20px) scale(0.98);
+    }
+    60% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  @keyframes cardStackIn {
+    from {
+      opacity: 1;
+      transform: none;
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
+
 /* Native <select> option list: keep menu surface white where browsers allow */
 select option {
   background-color: #fff;
