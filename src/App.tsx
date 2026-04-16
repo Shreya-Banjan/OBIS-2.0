@@ -20,7 +20,11 @@ import { DashboardNavDrawer } from './components/DashboardNavDrawer';
 import { PublishDashboardModal, type PublishFormValues } from './components/PublishDashboardModal';
 import { ShareDashboardModal } from './components/ShareDashboardModal';
 import { WidgetPickerPanel } from './components/WidgetPickerPanel';
-import { layoutColumnCount, reportsContentMaxWidthPx } from './layoutUtils';
+import {
+  layoutColumnCount,
+  NAV_BURGER_MIN_LAYOUT_WIDTH_PX,
+  reportsContentMaxWidthPx,
+} from './layoutUtils';
 import { mergeInitialDashboards } from './data/initialDashboards';
 import { loadDashboardsFromStorage, saveDashboardsToStorage } from './persistence/dashboardStorage';
 import { WIDGET_CATEGORIES } from './data/widgets';
@@ -1105,10 +1109,12 @@ export default function App() {
             >
               <div className="w-full shrink-0">
                 <div className="mb-5 flex w-full min-w-0 items-stretch gap-2 sm:gap-3">
-                  <AppBurgerButton
-                    onClick={() => setNavDrawerOpen(true)}
-                    className="h-14 min-h-0 w-14 shrink-0 self-stretch rounded-[16px] border-0 bg-white p-2.5 shadow-[var(--shadow-card)] hover:bg-[#f5f5f5] sm:h-16 sm:w-16 sm:p-3 [&_svg]:size-6"
-                  />
+                  {effectiveLayoutWidth >= NAV_BURGER_MIN_LAYOUT_WIDTH_PX ? (
+                    <AppBurgerButton
+                      onClick={() => setNavDrawerOpen(true)}
+                      className="h-14 min-h-0 w-14 shrink-0 self-stretch rounded-[16px] border-0 bg-white p-2.5 shadow-[var(--shadow-card)] hover:bg-[#f5f5f5] sm:h-16 sm:w-16 sm:p-3 [&_svg]:size-6"
+                    />
+                  ) : null}
                   <div className="min-w-0 flex-1">
                     <TopBar
                       title={reportTitle}
@@ -1119,6 +1125,7 @@ export default function App() {
                       publishDisabled={sections.length === 0}
                       autoSaveStatus={autoSaveStatus}
                       reportStatus={activeReportStatus}
+                      effectiveLayoutWidth={effectiveLayoutWidth}
                       onShare={
                         activeDashboardId && activeReportStatus === 'published'
                           ? () => setShareDashboardId(activeDashboardId)

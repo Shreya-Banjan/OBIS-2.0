@@ -11,7 +11,7 @@ export function AppBurgerButton({ onClick, className = '' }: AppBurgerButtonProp
     <button
       type="button"
       onClick={onClick}
-      className={`flex min-h-16 w-[60px] shrink-0 items-center justify-center rounded-xl border border-[#e4e4e4] bg-white text-[#1e1e1f] shadow-sm transition-colors hover:bg-[#f5f5f5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e1e1f]/20 ${className}`.trim()}
+      className={`min-h-16 w-[60px] shrink-0 items-center justify-center rounded-xl border border-[#e4e4e4] bg-white text-[#1e1e1f] shadow-sm transition-colors hover:bg-[#f5f5f5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e1e1f]/20 ${className}`.trim()}
       aria-label="Open menu"
       aria-haspopup="dialog"
     >

@@ -12,6 +12,7 @@ import { FilledSecondaryButton } from './FilledSecondaryButton';
 import { PrimaryButton } from './PrimaryButton';
 import { SecondaryButton } from './SecondaryButton';
 import { DATE_OPTIONS, SCOPE_OPTIONS } from '../data/headerSelectOptions';
+import { NAV_BURGER_MIN_LAYOUT_WIDTH_PX } from '../layoutUtils';
 import type { SavedDashboard } from '../types';
 import { DashboardStatusBadge } from './DashboardStatusBadge';
 import { HeaderSelect } from './HeaderSelect';
@@ -36,6 +37,8 @@ type TopBarProps = {
   onDelete?: () => void;
   /** When set, shows a back chevron inline before the title (same row as title / status). */
   onBackToReports?: () => void;
+  /** Window or preview rail width — same as burger / layout; avoids viewport-only breakpoints missing narrow preview columns. */
+  effectiveLayoutWidth: number;
 };
 
 export function TopBar({
@@ -49,6 +52,7 @@ export function TopBar({
   onShare,
   onDelete,
   onBackToReports,
+  effectiveLayoutWidth,
 }: TopBarProps) {
   const [editing, setEditing] = useState(false);
   const [overflowOpen, setOverflowOpen] = useState(false);
@@ -79,11 +83,21 @@ export function TopBar({
   const cardShell =
     'rounded-2xl bg-white shadow-[var(--shadow-card)]';
 
+  const narrowLayout = effectiveLayoutWidth < NAV_BURGER_MIN_LAYOUT_WIDTH_PX;
+  /** Share space evenly when the actions strip is full-width (preview / phone). */
+  const ctaClass = narrowLayout
+    ? 'min-w-0 flex-1 basis-0 justify-center px-3'
+    : 'min-w-0 px-4';
+  const actionsToolbarClass = narrowLayout
+    ? `flex min-h-16 w-full max-w-full min-w-0 shrink-0 basis-full flex-nowrap items-stretch gap-2 p-2 px-3 ${cardShell}`
+    : `flex min-h-16 w-full min-w-0 shrink-0 flex-wrap items-center justify-end gap-2 p-2 px-3 sm:ml-auto sm:w-auto sm:shrink-0 sm:p-2 sm:px-3 ${cardShell}`;
+
   return (
     <header className="flex w-full min-w-0 flex-wrap items-stretch gap-2 sm:gap-3">
       <div
-        className={`flex min-h-16 min-w-0 flex-[1_1_12rem] flex-wrap items-center gap-x-2 gap-y-2 p-3 sm:gap-x-3 sm:px-3 sm:py-2 ${cardShell}`}
+        className={`flex min-h-16 w-full min-w-0 flex-col gap-2 p-3 sm:basis-auto sm:gap-x-3 sm:px-3 sm:py-2 basis-full sm:flex-[1_1_12rem] ${cardShell}`}
       >
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2">
         {onBackToReports ? (
           <button
             type="button"
@@ -148,9 +162,12 @@ export function TopBar({
             </span>
           ) : null}
         </div>
+        </div>
 
+        <div className="flex w-full min-w-0 flex-nowrap items-stretch gap-2 sm:gap-3">
         <HeaderSelect
           layout="toolbar"
+          toolbarPair
           label="Report scope"
           icon={IconLocation}
           value={scope}
@@ -160,6 +177,7 @@ export function TopBar({
         />
         <HeaderSelect
           layout="toolbar"
+          toolbarPair
           label="Report date"
           icon={IconCalendar}
           value={reportDate}
@@ -167,30 +185,27 @@ export function TopBar({
           options={DATE_OPTIONS}
           textClass="text-[#1e1e1f]"
         />
+        </div>
       </div>
 
-      <div
-        role="toolbar"
-        aria-label="Report actions"
-        className={`flex min-h-16 w-full min-w-0 shrink-0 flex-wrap items-center justify-end gap-2 p-2 px-3 sm:ml-auto sm:w-auto sm:shrink-0 sm:p-2 sm:px-3 ${cardShell}`}
-      >
+      <div role="toolbar" aria-label="Report actions" className={actionsToolbarClass}>
           {isPublished ? (
             <>
               {onShare ? (
                 <SecondaryButton
                   type="button"
                   onClick={onShare}
-                  className="min-w-0 gap-2 px-4"
+                  className={`gap-2 ${ctaClass}`}
                   aria-label="Share report"
                 >
                   <IconShare className="size-5 shrink-0" aria-hidden />
                   Share
                 </SecondaryButton>
               ) : null}
-              <SecondaryButton type="button" onClick={onSaveAndClose} className="min-w-0 px-4">
+              <SecondaryButton type="button" onClick={onSaveAndClose} className={ctaClass}>
                 Cancel
               </SecondaryButton>
-              <FilledSecondaryButton type="button" onClick={onPublish} className="min-w-0 px-4">
+              <FilledSecondaryButton type="button" onClick={onPublish} className={ctaClass}>
                 Edit
               </FilledSecondaryButton>
               {onShare || onDelete ? (
@@ -246,14 +261,14 @@ export function TopBar({
             </>
           ) : (
             <>
-              <SecondaryButton type="button" onClick={onSaveAndClose} className="min-w-0 px-4">
+              <SecondaryButton type="button" onClick={onSaveAndClose} className={ctaClass}>
                 Cancel
               </SecondaryButton>
               <PrimaryButton
                 type="button"
                 disabled={publishDisabled}
                 onClick={onPublish}
-                className="min-w-0 px-4"
+                className={ctaClass}
               >
                 Publish
               </PrimaryButton>
