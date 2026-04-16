@@ -17,8 +17,14 @@
   --shadow-panel: 0 2px 20px 0 rgb(30 30 31 / 0.14);
   --shadow-focus: 0 0 0 3px rgb(0 0 0 / 0.06);
   --shadow-focus-brand: 0 0 0 3px rgb(226 0 116 / 0.2);
-  /* Widget library overlay width; caps on narrow viewports. */
-  --widget-panel-width: min(380px, calc(100vw - 1.5rem));
+  /* Widget library overlay: 280px cap on mobile; 380px from `sm` up (see override below). */
+  --widget-panel-width: min(280px, calc(100vw - 1.5rem));
+}
+
+@media (min-width: 640px) {
+  :root {
+    --widget-panel-width: min(380px, calc(100vw - 1.5rem));
+  }
 }
 
 body {

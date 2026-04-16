@@ -84,109 +84,126 @@ export function TopBar({
     'rounded-2xl bg-white shadow-[var(--shadow-card)]';
 
   const narrowLayout = effectiveLayoutWidth < NAV_BURGER_MIN_LAYOUT_WIDTH_PX;
-  /** Share space evenly when the actions strip is full-width (preview / phone). */
+  /** Narrow: full-width action pills; wide: original fixed padding. */
   const ctaClass = narrowLayout
     ? 'min-w-0 flex-1 basis-0 justify-center px-3'
     : 'min-w-0 px-4';
+  const shareCtaClass = narrowLayout ? `gap-2 ${ctaClass}` : 'min-w-0 gap-2 px-4';
   const actionsToolbarClass = narrowLayout
     ? `flex min-h-16 w-full max-w-full min-w-0 shrink-0 basis-full flex-nowrap items-stretch gap-2 p-2 px-3 ${cardShell}`
     : `flex min-h-16 w-full min-w-0 shrink-0 flex-wrap items-center justify-end gap-2 p-2 px-3 sm:ml-auto sm:w-auto sm:shrink-0 sm:p-2 sm:px-3 ${cardShell}`;
 
-  return (
-    <header className="flex w-full min-w-0 flex-wrap items-stretch gap-2 sm:gap-3">
+  const headerSelects = (
+    <>
+      <HeaderSelect
+        layout="toolbar"
+        toolbarPair={narrowLayout}
+        label="Report scope"
+        icon={IconLocation}
+        value={scope}
+        onChange={setScope}
+        options={SCOPE_OPTIONS}
+        textClass="text-[#333]"
+      />
+      <HeaderSelect
+        layout="toolbar"
+        toolbarPair={narrowLayout}
+        label="Report date"
+        icon={IconCalendar}
+        value={reportDate}
+        onChange={setReportDate}
+        options={DATE_OPTIONS}
+        textClass="text-[#1e1e1f]"
+      />
+    </>
+  );
+
+  const titleRow = (
+    <>
+      {onBackToReports ? (
+        <button
+          type="button"
+          onClick={onBackToReports}
+          className="flex size-10 shrink-0 items-center justify-center rounded-lg text-[#1e1e1f] outline-none transition-colors hover:bg-[#f5f5f5] focus-visible:ring-2 focus-visible:ring-[#1e1e1f]/20"
+          aria-label="Back to reports"
+          title="Back to reports"
+        >
+          <IconChevronLeft className="size-5 shrink-0" aria-hidden />
+        </button>
+      ) : null}
+
       <div
-        className={`flex min-h-16 w-full min-w-0 flex-col gap-2 p-3 sm:basis-auto sm:gap-x-3 sm:px-3 sm:py-2 basis-full sm:flex-[1_1_12rem] ${cardShell}`}
+        className={`flex min-w-0 flex-[1_1_10rem] items-center gap-2 rounded-xl px-0 py-1 sm:min-w-[10rem] ${onBackToReports ? 'sm:pl-0 sm:pr-1' : 'sm:px-1'}`}
       >
-        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2">
-        {onBackToReports ? (
+        {editing ? (
+          <input
+            autoFocus
+            className="min-w-0 max-w-full flex-1 border-b border-[#d7d7d7] bg-transparent font-['Poppins',sans-serif] text-lg font-semibold text-[#1e1e1f] outline-none sm:min-w-[8rem] sm:text-xl"
+            value={title}
+            onChange={(e) => onTitleChange(e.target.value)}
+            onBlur={() => setEditing(false)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') setEditing(false);
+            }}
+            aria-label="Report title"
+          />
+        ) : (
           <button
             type="button"
-            onClick={onBackToReports}
-            className="flex size-10 shrink-0 items-center justify-center rounded-lg text-[#1e1e1f] outline-none transition-colors hover:bg-[#f5f5f5] focus-visible:ring-2 focus-visible:ring-[#1e1e1f]/20"
-            aria-label="Back to reports"
-            title="Back to reports"
+            className="group inline-flex w-max max-w-full min-w-0 shrink items-center gap-2 rounded-lg px-2 py-1 text-left hover:bg-[#f5f5f5]"
+            onClick={() => setEditing(true)}
           >
-            <IconChevronLeft className="size-5 shrink-0" aria-hidden />
+            <span className="truncate font-['Poppins',sans-serif] text-lg font-semibold leading-tight text-[#1e1e1f] sm:text-xl">
+              {title || 'Enter Title'}
+            </span>
+            <IconEdit className="block size-[18px] shrink-0 text-[#1e1e1f]/50 group-hover:text-[#1e1e1f]/70" aria-hidden />
           </button>
+        )}
+        {reportStatus ? <DashboardStatusBadge status={reportStatus} /> : null}
+        {autoSaveStatus === 'saving' ? (
+          <span
+            className="flex shrink-0 items-center gap-1.5 whitespace-nowrap font-['Poppins',sans-serif] text-[10px] font-medium leading-none text-[#1e1e1f]/50"
+            role="status"
+            aria-live="polite"
+            aria-busy="true"
+          >
+            <span className="autosave-spinner size-2.5 shrink-0" aria-hidden />
+            Saving…
+          </span>
         ) : null}
-
-        <div
-          className={`flex min-w-0 flex-[1_1_10rem] items-center gap-2 rounded-xl px-0 py-1 sm:min-w-[10rem] ${onBackToReports ? 'sm:pl-0 sm:pr-1' : 'sm:px-1'}`}
-        >
-          {editing ? (
-            <input
-              autoFocus
-              className="min-w-0 max-w-full flex-1 border-b border-[#d7d7d7] bg-transparent font-['Poppins',sans-serif] text-lg font-semibold text-[#1e1e1f] outline-none sm:min-w-[8rem] sm:text-xl"
-              value={title}
-              onChange={(e) => onTitleChange(e.target.value)}
-              onBlur={() => setEditing(false)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') setEditing(false);
-              }}
-              aria-label="Report title"
-            />
-          ) : (
-            <button
-              type="button"
-              className="group inline-flex w-max max-w-full min-w-0 shrink items-center gap-2 rounded-lg px-2 py-1 text-left hover:bg-[#f5f5f5]"
-              onClick={() => setEditing(true)}
-            >
-              <span className="truncate font-['Poppins',sans-serif] text-lg font-semibold leading-tight text-[#1e1e1f] sm:text-xl">
-                {title || 'Enter Title'}
-              </span>
-              <IconEdit className="block size-[18px] shrink-0 text-[#1e1e1f]/50 group-hover:text-[#1e1e1f]/70" aria-hidden />
-            </button>
-          )}
-          {reportStatus ? <DashboardStatusBadge status={reportStatus} /> : null}
-          {autoSaveStatus === 'saving' ? (
-            <span
-              className="flex shrink-0 items-center gap-1.5 whitespace-nowrap font-['Poppins',sans-serif] text-[10px] font-medium leading-none text-[#1e1e1f]/50"
-              role="status"
-              aria-live="polite"
-              aria-busy="true"
-            >
-              <span className="autosave-spinner size-2.5 shrink-0" aria-hidden />
-              Saving…
+        {autoSaveStatus === 'saved' ? (
+          <span
+            className="flex shrink-0 items-center gap-1 whitespace-nowrap font-['Poppins',sans-serif] text-[10px] font-medium leading-none text-[#1e1e1f]/45"
+            role="status"
+            aria-live="polite"
+          >
+            <span className="autosave-check-in inline-flex shrink-0" aria-hidden>
+              <IconCheck className="size-2.5 text-emerald-600/85" />
             </span>
-          ) : null}
-          {autoSaveStatus === 'saved' ? (
-            <span
-              className="flex shrink-0 items-center gap-1 whitespace-nowrap font-['Poppins',sans-serif] text-[10px] font-medium leading-none text-[#1e1e1f]/45"
-              role="status"
-              aria-live="polite"
-            >
-              <span className="autosave-check-in inline-flex shrink-0" aria-hidden>
-                <IconCheck className="size-2.5 text-emerald-600/85" />
-              </span>
-              Auto saved
-            </span>
-          ) : null}
-        </div>
-        </div>
-
-        <div className="flex w-full min-w-0 flex-nowrap items-stretch gap-2 sm:gap-3">
-        <HeaderSelect
-          layout="toolbar"
-          toolbarPair
-          label="Report scope"
-          icon={IconLocation}
-          value={scope}
-          onChange={setScope}
-          options={SCOPE_OPTIONS}
-          textClass="text-[#333]"
-        />
-        <HeaderSelect
-          layout="toolbar"
-          toolbarPair
-          label="Report date"
-          icon={IconCalendar}
-          value={reportDate}
-          onChange={setReportDate}
-          options={DATE_OPTIONS}
-          textClass="text-[#1e1e1f]"
-        />
-        </div>
+            Auto saved
+          </span>
+        ) : null}
       </div>
+    </>
+  );
+
+  return (
+    <header className="flex w-full min-w-0 flex-wrap items-stretch gap-2 sm:gap-3">
+      {narrowLayout ? (
+        <div
+          className={`flex min-h-16 w-full min-w-0 flex-col gap-2 p-3 sm:basis-auto sm:gap-x-3 sm:px-3 sm:py-2 basis-full sm:flex-[1_1_12rem] ${cardShell}`}
+        >
+          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2">{titleRow}</div>
+          <div className="flex w-full min-w-0 flex-nowrap items-stretch gap-2 sm:gap-3">{headerSelects}</div>
+        </div>
+      ) : (
+        <div
+          className={`flex min-h-16 min-w-0 flex-[1_1_12rem] flex-wrap items-center gap-x-2 gap-y-2 p-3 sm:gap-x-3 sm:px-3 sm:py-2 ${cardShell}`}
+        >
+          {titleRow}
+          {headerSelects}
+        </div>
+      )}
 
       <div role="toolbar" aria-label="Report actions" className={actionsToolbarClass}>
           {isPublished ? (
@@ -195,7 +212,7 @@ export function TopBar({
                 <SecondaryButton
                   type="button"
                   onClick={onShare}
-                  className={`gap-2 ${ctaClass}`}
+                  className={shareCtaClass}
                   aria-label="Share report"
                 >
                   <IconShare className="size-5 shrink-0" aria-hidden />

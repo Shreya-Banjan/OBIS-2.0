@@ -6,6 +6,9 @@ import { IconPlusSoft } from './Icons';
 /** Fixed height for canvas placeholder tiles (also set inline so flex/dnd cannot collapse it). */
 const CANVAS_PLACEHOLDER_HEIGHT_PX = 280;
 
+/** Narrow viewport / preview rail: L1 placeholder tile height (mobile). */
+const CANVAS_PLACEHOLDER_HEIGHT_MOBILE_L1_PX = 220;
+
 /** Inner tile: default no border; magenta ring when widget library targets this slot. */
 const CANVAS_CLASS_BASE =
   "group min-w-0 w-full box-border flex shrink-0 flex-col items-center justify-center gap-3 rounded-[var(--radius-canvas)] bg-white px-4 py-6 text-center outline-none transition-[background-color,color,border-color] font-['Inter',sans-serif] text-[13px] font-normal text-black/80 hover:bg-[#fafafa] focus-visible:shadow-[var(--shadow-focus)] active:bg-[#f0f0f0]";
@@ -15,17 +18,20 @@ export type EditorAddWidgetCtaProps = {
   placeholderInstanceId?: string;
   /** Widget library is open for this placeholder (outer focus ring + aria). */
   isLibraryTarget?: boolean;
+  /** Narrow canvas (below 640px effective width): L1 placeholder uses 220px height; web uses 280px. */
+  canvasListL1?: boolean;
   style?: CSSProperties;
 } & Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'type' | 'children'>;
 
 export const EditorAddWidgetCta = forwardRef<HTMLButtonElement, EditorAddWidgetCtaProps>(
   function EditorAddWidgetCta(
-    { layout, placeholderInstanceId, isLibraryTarget, className, style, onClick, ...rest },
+    { layout, placeholderInstanceId, isLibraryTarget, canvasListL1 = false, className, style, onClick, ...rest },
     ref
   ) {
     const open = useWidgetLibraryOpen();
 
     if (layout === 'canvas') {
+      const h = canvasListL1 ? CANVAS_PLACEHOLDER_HEIGHT_MOBILE_L1_PX : CANVAS_PLACEHOLDER_HEIGHT_PX;
       return (
         <button
           ref={ref}
@@ -38,8 +44,8 @@ export const EditorAddWidgetCta = forwardRef<HTMLButtonElement, EditorAddWidgetC
           style={{
             ...style,
             boxSizing: 'border-box',
-            height: CANVAS_PLACEHOLDER_HEIGHT_PX,
-            minHeight: CANVAS_PLACEHOLDER_HEIGHT_PX,
+            height: h,
+            minHeight: h,
           }}
           className={[
             CANVAS_CLASS_BASE,

@@ -1166,6 +1166,7 @@ export default function App() {
                             onRemoveSection={handleRemoveSection}
                             onMoveSection={handleMoveSection}
                             activePlaceholderInstanceId={widgetPickReplaceInstanceId}
+                            effectiveLayoutWidth={effectiveLayoutWidth}
                           />
                         </Suspense>
                       </div>

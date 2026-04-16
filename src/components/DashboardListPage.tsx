@@ -1,8 +1,6 @@
 import { lazy, Suspense, useMemo, useState, type CSSProperties } from 'react';
 import type { DashboardListLayoutMode, SavedDashboard } from '../types';
-import { NAV_BURGER_MIN_LAYOUT_WIDTH_PX } from '../layoutUtils';
 import { useContainerNarrowToolbar } from '../useContainerNarrowToolbar';
-import { useEffectiveLayoutWidth } from '../useEffectiveLayoutWidth';
 import { AppBurgerButton } from './AppBurgerButton';
 import { IconLayoutGrid } from './Icons';
 import { DashboardListPageSkeleton } from './DashboardListPageSkeleton';
@@ -132,7 +130,6 @@ export function DashboardListPage({
     searchQuery.trim() !== '';
 
   const { containerRef, narrowToolbar } = useContainerNarrowToolbar();
-  const effectiveLayoutWidth = useEffectiveLayoutWidth(previewViewportWidth);
 
   const listBody =
     empty ? (
@@ -219,12 +216,10 @@ export function DashboardListPage({
             className="dashboard-list-page-layer mb-5 flex w-full min-w-0 items-center gap-2 sm:gap-3"
             style={{ ['--page-stack']: 0 } as CSSProperties}
           >
-            {effectiveLayoutWidth >= NAV_BURGER_MIN_LAYOUT_WIDTH_PX ? (
-              <AppBurgerButton
-                onClick={onMenuOpen}
-                className="h-14 min-h-0 w-14 shrink-0 rounded-[16px] border-0 bg-white p-2.5 shadow-[var(--shadow-card)] hover:bg-[#f5f5f5] sm:h-16 sm:w-16 sm:p-3 [&_svg]:size-6"
-              />
-            ) : null}
+            <AppBurgerButton
+              onClick={onMenuOpen}
+              className="h-14 min-h-0 w-14 shrink-0 rounded-[16px] border-0 bg-white p-2.5 shadow-[var(--shadow-card)] hover:bg-[#f5f5f5] sm:h-16 sm:w-16 sm:p-3 [&_svg]:size-6"
+            />
 
             <div className="flex h-14 min-h-[3.5rem] min-w-0 flex-1 items-center rounded-[16px] bg-white px-3 py-2 shadow-[var(--shadow-card)] sm:h-16 sm:min-h-16 sm:px-4">
               <div className="min-w-0">

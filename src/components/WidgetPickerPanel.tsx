@@ -259,7 +259,7 @@ export function WidgetPickerPanel({
 
   /**
    * Portaled overlay: backdrop + right panel slide (`translate-x`). Stays mounted for enter/exit motion.
-   * Panel width `--widget-panel-width` (380px max). Vertical `inset-y` matches viewport (page) height minus gutters.
+   * Panel width `--widget-panel-width` (280px max on mobile, 380px from `sm` up). Vertical insets match viewport minus gutters.
    */
   if (typeof document === 'undefined') {
     return null;
