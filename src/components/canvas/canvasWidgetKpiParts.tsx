@@ -60,6 +60,29 @@ function KpiMetricDeltaChip({ children }: { children: string }) {
   );
 }
 
+/** Letter-based units (e.g. `days`) stay at 16px; symbols and mixed glyphs use 20px next to the headline value. */
+function isKpiUnitWordOnly(unit: string | undefined): boolean {
+  if (unit == null || unit.trim() === '') return false;
+  const s = unit.trim();
+  return /^[\p{L}\s-]+$/u.test(s) && /\p{L}/u.test(s);
+}
+
+/**
+ * When no explicit `kpiDemoUnit`, treat a trailing `%` as the unit so the glyph sits in the secondary column
+ * instead of the large metric type.
+ */
+function splitKpiValueAndUnit(valueDemo: string, valueUnit?: string): { value: string; unit?: string } {
+  const explicit = valueUnit?.trim();
+  if (explicit) return { value: valueDemo, unit: explicit };
+
+  const trimmed = valueDemo.trimEnd();
+  if (trimmed.endsWith('%')) {
+    const base = trimmed.slice(0, -1).trimEnd();
+    if (base.length > 0) return { value: base, unit: '%' };
+  }
+  return { value: valueDemo };
+}
+
 /** KPI title: full label when the widget is wide enough and viewport is `sm+`; compact on small screens or narrow slots. */
 function KpiTileHeading({ displayLabel, displayLabelCompact }: { displayLabel: string; displayLabelCompact?: string }) {
   const h2Class =
@@ -80,7 +103,7 @@ type MetricColumnProps = {
   displayLabelCompact?: string;
   catalogEyebrow: string;
   valueDemo: string;
-  /** Second column in the metric row (Figma 716:4258); omitted for a single-line value (e.g. em dash). */
+  /** Second column in the metric row (Figma 716:4258); omitted for a single-line value with no unit. */
   valueUnit?: string;
   /** Shown after `valueUnit` when both unit and headline row are used (Figma 716:4262). */
   metricDeltaChip?: string;
@@ -108,6 +131,9 @@ export function CanvasWidgetKpiMetricColumn({
   titlesOnly,
   valuesOnly,
 }: MetricColumnProps) {
+  const { value: valueDisplay, unit: unitDisplay } = splitKpiValueAndUnit(valueDemo, valueUnit);
+  const hasUnit = unitDisplay != null && unitDisplay !== '';
+
   if (titlesOnly) {
     return (
       <div className={['relative z-0 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden', className].filter(Boolean).join(' ')}>
@@ -123,43 +149,78 @@ export function CanvasWidgetKpiMetricColumn({
 
   const valueSpan = (
     <span className="shrink-0 font-['Inter',sans-serif] text-[32px] font-semibold leading-none tracking-[-0.02em] text-[var(--color-ink)] tabular-nums">
-      {valueDemo}
+      {valueDisplay}
     </span>
   );
   const unitSpan = (
-    <span className="min-w-0 shrink-0 whitespace-nowrap font-['Inter',sans-serif] text-[16px] leading-none [font-weight:400] text-[rgba(0,0,0,0.7)]">
-      {valueUnit}
+    <span
+      className={[
+        "min-w-0 shrink-0 whitespace-nowrap font-['Inter',sans-serif]",
+        isKpiUnitWordOnly(unitDisplay) ? 'text-[16px]' : 'text-[20px]',
+        'leading-none [font-weight:400] text-[rgba(0,0,0,0.7)]',
+      ].join(' ')}
+    >
+      {unitDisplay}
     </span>
   );
 
-  const metricRow =
-    valueUnit != null && valueUnit !== '' ? (
-      metricDeltaChip ? (
+  const valueOnlyLarge = (
+    <p className="font-['Inter',sans-serif] text-[2.5rem] font-semibold leading-none tracking-[-0.02em] text-[var(--color-ink)] tabular-nums">
+      {valueDisplay}
+    </p>
+  );
+
+  /** L2 definition rail: chip at trailing (top-right) edge of the rail, same row as the headline metric. */
+  const l2RailChipTrailing = Boolean(valuesOnly && metricDeltaChip);
+  const deltaChipEl = metricDeltaChip ? <KpiMetricDeltaChip>{metricDeltaChip}</KpiMetricDeltaChip> : null;
+
+  const metricRow = hasUnit ? (
+    deltaChipEl ? (
+      l2RailChipTrailing ? (
+        <div className="flex min-h-0 min-w-0 w-full max-w-full flex-row flex-nowrap items-center justify-between gap-2">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-row flex-nowrap items-baseline gap-[5px] overflow-hidden whitespace-nowrap">
+            {valueSpan}
+            {unitSpan}
+          </div>
+          <div className="shrink-0">{deltaChipEl}</div>
+        </div>
+      ) : (
         <div className="flex min-w-0 flex-row flex-nowrap items-center gap-2 whitespace-nowrap">
           <div className="flex min-w-0 flex-row flex-nowrap items-baseline gap-[5px]">
             {valueSpan}
             {unitSpan}
           </div>
-          <KpiMetricDeltaChip>{metricDeltaChip}</KpiMetricDeltaChip>
-        </div>
-      ) : (
-        <div className="flex min-w-0 flex-row flex-nowrap items-baseline gap-[5px] whitespace-nowrap">
-          {valueSpan}
-          {unitSpan}
+          {deltaChipEl}
         </div>
       )
     ) : (
-      <p className="font-['Inter',sans-serif] text-[2.5rem] font-semibold leading-none tracking-[-0.02em] text-[var(--color-ink)] tabular-nums">
-        {valueDemo}
-      </p>
-    );
+      <div className="flex min-w-0 flex-row flex-nowrap items-baseline gap-[5px] whitespace-nowrap">
+        {valueSpan}
+        {unitSpan}
+      </div>
+    )
+  ) : deltaChipEl ? (
+    l2RailChipTrailing ? (
+      <div className="flex min-h-0 min-w-0 w-full max-w-full flex-row flex-nowrap items-center justify-between gap-2">
+        <div className="min-h-0 min-w-0 flex-1 overflow-hidden">{valueOnlyLarge}</div>
+        <div className="shrink-0">{deltaChipEl}</div>
+      </div>
+    ) : (
+      <div className="flex min-w-0 flex-row flex-nowrap items-center gap-2 whitespace-nowrap">
+        {valueOnlyLarge}
+        {deltaChipEl}
+      </div>
+    )
+  ) : (
+    valueOnlyLarge
+  );
 
   const valueSection = (railTop: boolean) =>
     metricSparkline ? (
       <div
         className={
           railTop
-            ? 'flex min-h-0 min-w-0 flex-col justify-start gap-0 pt-0'
+            ? 'flex min-h-0 min-w-0 w-full max-w-full flex-col justify-start gap-0 pt-0'
             : 'flex min-h-0 min-w-0 flex-1 flex-col justify-end pt-4'
         }
       >
@@ -176,7 +237,9 @@ export function CanvasWidgetKpiMetricColumn({
     ) : (
       <div
         className={
-          railTop ? 'flex min-h-0 flex-col justify-start gap-0 pt-0' : 'flex min-h-0 flex-1 flex-col justify-end pt-4'
+          railTop
+            ? 'flex min-h-0 w-full max-w-full flex-col justify-start gap-0 pt-0'
+            : 'flex min-h-0 flex-1 flex-col justify-end pt-4'
         }
       >
         {metricRow}

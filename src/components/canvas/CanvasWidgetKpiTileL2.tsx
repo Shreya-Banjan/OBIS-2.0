@@ -10,7 +10,7 @@ export function CanvasWidgetKpiTileL2({
   displayLabelCompact,
   catalogEyebrow,
   definition = '',
-  valueDemo = '—',
+  valueDemo = '2.1%',
   valueUnit,
   metricDeltaChip,
   metricSparkline,
@@ -49,8 +49,8 @@ export function CanvasWidgetKpiTileL2({
                 KPI_DEFINITION_FOOTER_SURFACE,
               ].join(' ')}
             >
-              <div className="shrink-0">
-                <CanvasWidgetKpiMetricColumn {...metricProps} valuesOnly className="min-w-0" />
+              <div className="w-full min-w-0 shrink-0">
+                <CanvasWidgetKpiMetricColumn {...metricProps} valuesOnly className="min-w-0 w-full" />
               </div>
               <div className="flex min-h-0 min-w-0 flex-1 flex-col justify-end overflow-hidden pt-4">
                 <p className="max-h-full min-h-0 overflow-y-auto text-left font-['Inter',sans-serif] text-[13px] font-normal leading-relaxed text-[#4a4a4a] break-words">

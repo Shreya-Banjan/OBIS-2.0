@@ -10,7 +10,7 @@ export function CanvasWidgetKpiTileL1({
   displayLabelCompact,
   catalogEyebrow,
   definition = '',
-  valueDemo = '—',
+  valueDemo = '2.1%',
   valueUnit,
   metricDeltaChip,
   metricSparkline,

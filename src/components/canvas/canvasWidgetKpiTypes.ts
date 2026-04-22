@@ -7,7 +7,7 @@ export type CanvasWidgetKpiTileBaseProps = {
   catalogEyebrow: string;
   definition?: string;
   valueDemo?: string;
-  /** When set with `valueDemo`, renders the Figma 716:4258 value + unit row instead of a single em dash. */
+  /** With `valueDemo`, renders the Figma 716:4258 value + muted unit row; a trailing `%` in `valueDemo` counts as the unit when this is omitted. */
   valueUnit?: string;
   /** Trend / delta chip after the unit (Figma 716:4262). */
   metricDeltaChip?: string;

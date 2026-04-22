@@ -219,7 +219,7 @@ export function widgetKpiDemoMetric(templateId: string): {
 } {
   const t = getWidgetTemplateById(templateId);
   const value = t?.kpiDemoValue?.trim();
-  if (!value) return { value: '—' };
+  if (!value) return { value: '2.1', unit: '%', metricDeltaChip: '+0.2↑' };
   const unit = t?.kpiDemoUnit?.trim();
   const metricDeltaChip = t?.kpiDemoDeltaChip?.trim() || undefined;
   const metricSparkline = Boolean(t?.kpiDemoSparkline);
