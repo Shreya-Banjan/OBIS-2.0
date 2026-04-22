@@ -75,7 +75,7 @@ export function DashboardNavDrawer({ open, onClose, onNewReport, onSignOut }: Da
     >
       <div
         role="presentation"
-        className={`absolute inset-0 bg-black/45 transition-opacity duration-300 ease-out ${
+        className={`absolute inset-0 bg-[var(--color-ink)]/50 transition-opacity duration-300 ease-out ${
           open ? 'opacity-100' : 'opacity-0'
         }`}
         onClick={onClose}
@@ -87,11 +87,13 @@ export function DashboardNavDrawer({ open, onClose, onNewReport, onSignOut }: Da
         }`}
         role="dialog"
         aria-modal="true"
-        aria-label="Neuron 2.0 navigation"
+        aria-label="OBIS 2.0 navigation"
       >
         <div className="flex w-full max-w-[280px] flex-1 flex-col">
           <div className="flex shrink-0 items-start justify-between gap-3">
-            <p className="font-['Poppins',sans-serif] text-lg font-semibold text-black">Neuron 2.0</p>
+            <p className="font-['Poppins',sans-serif] text-lg font-semibold text-[var(--color-grey-darkest)]">
+              OBIS 2.0
+            </p>
             <button
               type="button"
               onClick={onClose}
@@ -148,10 +150,10 @@ export function DashboardNavDrawer({ open, onClose, onNewReport, onSignOut }: Da
                 <button
                   type="button"
                   onClick={handleNewReport}
-                  className="flex shrink-0 items-center gap-1.5 rounded-xl border border-[#333] bg-white px-2.5 py-1 font-['Poppins',sans-serif] text-xs tracking-[-0.24px] text-[#333] transition-[border-color,box-shadow] duration-150 hover:border-black hover:shadow-[var(--shadow-focus)]"
+                  className="flex shrink-0 items-center gap-1.5 rounded-xl border border-[#333] bg-white px-2.5 py-1 font-['Poppins',sans-serif] text-xs tracking-[-0.24px] text-[#333] transition-[border-color,box-shadow] duration-150 hover:border-[var(--color-grey-darkest)] hover:shadow-[var(--shadow-focus)]"
                 >
                   <span>New Report</span>
-                  <IconAdd className="size-[18px] text-[#e20074]" />
+                  <IconAdd className="size-[18px] text-[var(--color-brand-primary)]" />
                 </button>
               </div>
               {draftOpen ? (
@@ -162,7 +164,7 @@ export function DashboardNavDrawer({ open, onClose, onNewReport, onSignOut }: Da
                         type="button"
                         className={`w-full rounded-[10px] px-3 py-2 text-left font-['Poppins',sans-serif] text-sm hover:bg-[#f5f5f5] ${
                           item.selected
-                            ? 'bg-[rgba(226,0,116,0.1)] font-medium text-[#e20074]'
+                            ? 'bg-[rgba(249,108,80,0.12)] font-medium text-[var(--color-brand-primary)]'
                             : 'text-[#333]'
                         }`}
                       >

@@ -1,3 +1,7 @@
+import type { ReportDomain } from './data/reportDomains';
+
+export type { ReportDomain };
+
 export type PlacedWidget = {
   instanceId: string;
   templateId: string;
@@ -7,13 +11,26 @@ export type PlacedWidget = {
 };
 
 /** Section column layout from Add section → Select Layout (Figma Actions). */
-export type SectionLayoutPreset = 'full' | 'sidebar-left' | 'sidebar-right' | 'three-column';
+export type SectionLayoutPreset =
+  | 'full'
+  | 'sidebar-left'
+  | 'sidebar-right'
+  | 'three-column'
+  | 'three-column-right'
+  | 'three-column-middle'
+  | 'four-small';
 
 export type DashboardSection = {
   id: string;
   widgets: PlacedWidget[];
   layout?: SectionLayoutPreset;
 };
+
+/**
+ * Canvas KPI widget slot tier per OBIS layout: **L1** = narrow / equal columns, **L2** = wide row or emphasis column.
+ * Routed to `CanvasWidgetKpiTileL1` vs `CanvasWidgetKpiTileL2` in the editor.
+ */
+export type CanvasKpiWidgetTier = 'l1' | 'l2';
 
 /** Present when this report was shared with you by someone else (demo / future API). */
 export type SharedByInfo = {
@@ -31,6 +48,8 @@ export type SavedDashboard = {
   sections: DashboardSection[];
   updatedAt: number;
   status: 'draft' | 'published';
+  /** Set from the New Report flow. */
+  domain?: ReportDomain;
   /** When set, the home list shows “Shared by …” with a profile avatar. */
   sharedBy?: SharedByInfo;
   /** Collaborators; tile shows avatar stack when there are three or more (overflow “+N” when more than three). */

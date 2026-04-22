@@ -8,6 +8,20 @@ export function IconMenu({ className }: IconProps) {
   );
 }
 
+/**
+ * Nav drawer trigger — tiered list bars (Figma OBIS2.0 `Action_Button_ CountryList` / Icon_List, node 395:5745).
+ */
+export function IconNavDrawerListMark({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M3 5.75C3 5.55109 3.07902 5.36032 3.21967 5.21967C3.36032 5.07902 3.55109 5 3.75 5H15.75C15.9489 5 16.1397 5.07902 16.2803 5.21967C16.421 5.36032 16.5 5.55109 16.5 5.75C16.5 5.94891 16.421 6.13968 16.2803 6.28033C16.1397 6.42098 15.9489 6.5 15.75 6.5H3.75C3.55109 6.5 3.36032 6.42098 3.21967 6.28033C3.07902 6.13968 3 5.94891 3 5.75ZM3 17.75C3 17.5511 3.07902 17.3603 3.21967 17.2197C3.36032 17.079 3.55109 17 3.75 17H14.25C14.4489 17 14.6397 17.079 14.7803 17.2197C14.921 17.3603 15 17.5511 15 17.75C15 17.9489 14.921 18.1397 14.7803 18.2803C14.6397 18.421 14.4489 18.5 14.25 18.5H3.75C3.55109 18.5 3.36032 18.421 3.21967 18.2803C3.07902 18.1397 3 17.9489 3 17.75ZM3.75 11C3.55109 11 3.36032 11.079 3.21967 11.2197C3.07902 11.3603 3 11.5511 3 11.75C3 11.9489 3.07902 12.1397 3.21967 12.2803C3.36032 12.421 3.55109 12.5 3.75 12.5H20.25C20.4489 12.5 20.6397 12.421 20.7803 12.2803C20.921 12.1397 21 11.9489 21 11.75C21 11.5511 20.921 11.3603 20.7803 11.2197C20.6397 11.079 20.4489 11 20.25 11H3.75Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
 /** More actions (kebab) — three vertical dots. */
 export function IconMoreVertical({ className }: IconProps) {
   return (
@@ -19,7 +33,7 @@ export function IconMoreVertical({ className }: IconProps) {
   );
 }
 
-/** Grid / tile layout — Fluent Grid 28 Regular (Neuron 2.0, Figma node 6326-37497). */
+/** Grid / tile layout — Fluent Grid 28 Regular (OBIS 2.0, Figma node 6326-37497). */
 export function IconLayoutGrid({ className }: IconProps) {
   return (
     <svg className={className} viewBox="0 0 28 28" fill="none" aria-hidden>
@@ -46,7 +60,7 @@ export function IconImageUpload({ className }: IconProps) {
   );
 }
 
-/** List layout — Fluent List 28 Regular (Neuron 2.0, Figma node 6326-37523). */
+/** List layout — Fluent List 28 Regular (OBIS 2.0, Figma node 6326-37523). */
 export function IconLayoutList({ className }: IconProps) {
   return (
     <svg className={className} viewBox="0 0 28 28" fill="none" aria-hidden>
@@ -86,13 +100,15 @@ export function IconChevronLeft({ className }: IconProps) {
 export function IconArrowUp({ className }: IconProps) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M12 20V9m0 0l-4.5 4.5M12 9l4.5 4.5"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+      <g transform="translate(0, -2)">
+        <path
+          d="M12 20V9m0 0l-4.5 4.5M12 9l4.5 4.5"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </g>
     </svg>
   );
 }
@@ -101,13 +117,15 @@ export function IconArrowUp({ className }: IconProps) {
 export function IconArrowDown({ className }: IconProps) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M12 4v11m0 0l-4.5-4.5M12 15l4.5-4.5"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+      <g transform="translate(0, 2)">
+        <path
+          d="M12 4v11m0 0l-4.5-4.5M12 15l4.5-4.5"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </g>
     </svg>
   );
 }
@@ -128,14 +146,14 @@ export function IconCopy({ className }: IconProps) {
   );
 }
 
-/** Share / send — outline “upload from tray” style. */
+/** Share / send — soft rounded stroke (tray + arrow). */
 export function IconShare({ className }: IconProps) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path
-        d="M4 12v6a2 2 0 002 2h12a2 2 0 002-2v-6M16 6l-4-4-4 4M12 2v13"
+        d="M5 12.5v5.5a2.5 2.5 0 002.5 2.5h9a2.5 2.5 0 002.5-2.5v-5.5M16 7l-4-4-4 4M12 3.5v12"
         stroke="currentColor"
-        strokeWidth="2"
+        strokeWidth="1.5"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -157,14 +175,40 @@ export function IconSearch({ className }: IconProps) {
   );
 }
 
-/** Trash / delete — 24×24 viewBox; size via `className` (fixed width/height break Tailwind `size-*`). */
+/**
+ * Filter — Fluent `ic_fluent_filter_24_regular` (Microsoft fluentui-system-icons).
+ * Matches OBIS2.0 Figma node 683-13118.
+ */
+export function IconFilter({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M13.5 16C13.9142 16 14.25 16.3358 14.25 16.75C14.25 17.1642 13.9142 17.5 13.5 17.5H10.5C10.0858 17.5 9.75 17.1642 9.75 16.75C9.75 16.3358 10.0858 16 10.5 16H13.5ZM16.5 11C16.9142 11 17.25 11.3358 17.25 11.75C17.25 12.1642 16.9142 12.5 16.5 12.5H7.5C7.08579 12.5 6.75 12.1642 6.75 11.75C6.75 11.3358 7.08579 11 7.5 11H16.5ZM19.5 6C19.9142 6 20.25 6.33579 20.25 6.75C20.25 7.16421 19.9142 7.5 19.5 7.5H4.5C4.08579 7.5 3.75 7.16421 3.75 6.75C3.75 6.33579 4.08579 6 4.5 6H19.5Z"
+        fill="currentColor"
+        style={{ width: '16px', height: '11px' }}
+      />
+    </svg>
+  );
+}
+
+/**
+ * Trash / delete — Lucide `trash` geometry (VELOCE Figma lucide:trash, node 11874:3363).
+ * Two paths for lid+handle vs bin; 1.5 stroke + round caps to align with IconEdit / IconShare.
+ */
 export function IconTrash({ className }: IconProps) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path
-        d="M4 7h16M10 11v6M14 11v6M6 7v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"
+        d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
         stroke="currentColor"
-        strokeWidth="2"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M10 11v6M14 11v6"
+        stroke="currentColor"
+        strokeWidth="1.5"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -239,13 +283,15 @@ export function IconClose({ className }: IconProps) {
   );
 }
 
+/** Edit / pencil — soft rounded stroke. */
 export function IconEdit({ className }: IconProps) {
   return (
-    <svg className={className} width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden>
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path
-        d="M12.3 2.3l3.4 3.4-9 9H3.3v-3.4l9-9z"
+        d="M4 20h3.5l11-11a2.5 2.5 0 00-3.5-3.5L4 16.5V20zM14 6l4 4"
         stroke="currentColor"
         strokeWidth="1.5"
+        strokeLinecap="round"
         strokeLinejoin="round"
       />
     </svg>

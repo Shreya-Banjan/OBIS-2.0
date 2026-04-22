@@ -13,16 +13,22 @@ const DashboardListBody = lazy(() =>
   import('./DashboardListBody').then((m) => ({ default: m.DashboardListBody }))
 );
 
-type ReportFilterTab = 'all' | 'mine' | 'shared';
+type ReportFilterTab = 'all' | 'mine' | 'shared' | 'drafts';
+
+function publishedDashboards(dashboards: SavedDashboard[]) {
+  return dashboards.filter((d) => d.status === 'published');
+}
 
 function reportFilterCounts(dashboards: SavedDashboard[]) {
+  const published = publishedDashboards(dashboards);
   let mine = 0;
   let shared = 0;
-  for (const d of dashboards) {
+  for (const d of published) {
     if (d.sharedBy) shared += 1;
     else mine += 1;
   }
-  return { all: dashboards.length, mine, shared };
+  const drafts = dashboards.filter((d) => d.status === 'draft').length;
+  return { all: published.length, mine, shared, drafts };
 }
 
 function ReportFilterToggle({
@@ -32,12 +38,13 @@ function ReportFilterToggle({
 }: {
   value: ReportFilterTab;
   onChange: (next: ReportFilterTab) => void;
-  counts: { all: number; mine: number; shared: number };
+  counts: { all: number; mine: number; shared: number; drafts: number };
 }) {
   const segments: { id: ReportFilterTab; label: string; count: number }[] = [
     { id: 'all', label: 'All', count: counts.all },
     { id: 'mine', label: 'My Reports', count: counts.mine },
     { id: 'shared', label: 'Shared With Me', count: counts.shared },
+    { id: 'drafts', label: 'Drafts', count: counts.drafts },
   ];
 
   return (
@@ -55,10 +62,10 @@ function ReportFilterToggle({
             role="tab"
             aria-selected={selected}
             onClick={() => onChange(id)}
-            className={`flex min-h-12 shrink-0 touch-manipulation items-center justify-center self-stretch rounded-[10px] px-2 font-['Inter',sans-serif] text-xs font-normal leading-none whitespace-nowrap transition-colors sm:min-h-0 sm:px-3 sm:text-sm ${
+            className={`flex min-h-12 shrink-0 touch-manipulation items-center justify-center self-stretch rounded-[10px] px-2 font-['Inter',sans-serif] text-xs leading-none whitespace-nowrap transition-colors sm:min-h-0 sm:px-3 sm:text-sm ${
               selected
-                ? 'bg-[#e20074] text-white'
-                : 'bg-white text-[#1e1e1f] hover:bg-[#f5f5f5]'
+                ? 'bg-[var(--color-brand-primary)] font-medium text-white'
+                : 'bg-white font-normal text-[#1e1e1f] hover:bg-[#f5f5f5]'
             }`}
           >
             {label} ({count})
@@ -76,6 +83,7 @@ type DashboardListPageProps = {
   onDeleteDashboard: (id: string) => void;
   onNewReport: () => void;
   onMenuOpen: () => void;
+  onLogoClick: () => void;
   onOpenComponents: () => void;
   layoutMode: DashboardListLayoutMode;
   previewViewportWidth: number | null;
@@ -95,6 +103,7 @@ export function DashboardListPage({
   onDeleteDashboard,
   onNewReport,
   onMenuOpen,
+  onLogoClick,
   onOpenComponents,
   layoutMode,
   previewViewportWidth,
@@ -106,9 +115,11 @@ export function DashboardListPage({
   const [searchFocused, setSearchFocused] = useState(false);
   const filterCounts = useMemo(() => reportFilterCounts(dashboards), [dashboards]);
   const tabFilteredDashboards = useMemo(() => {
-    if (reportFilter === 'all') return dashboards;
-    if (reportFilter === 'mine') return dashboards.filter((d) => !d.sharedBy);
-    return dashboards.filter((d) => !!d.sharedBy);
+    const published = publishedDashboards(dashboards);
+    if (reportFilter === 'all') return published;
+    if (reportFilter === 'mine') return published.filter((d) => !d.sharedBy);
+    if (reportFilter === 'shared') return published.filter((d) => !!d.sharedBy);
+    return dashboards.filter((d) => d.status === 'draft');
   }, [dashboards, reportFilter]);
 
   const filteredDashboards = useMemo(() => {
@@ -218,13 +229,14 @@ export function DashboardListPage({
           >
             <AppBurgerButton
               onClick={onMenuOpen}
-              className="h-14 min-h-0 w-14 shrink-0 rounded-[16px] border-0 bg-white p-2.5 shadow-[var(--shadow-card)] hover:bg-[#f5f5f5] sm:h-16 sm:w-16 sm:p-3 [&_svg]:size-6"
+              onLogoClick={onLogoClick}
+              className="h-14 min-h-0 w-auto min-w-0 shrink-0 rounded-[16px] border-0 bg-white shadow-[var(--shadow-card)] sm:h-16"
             />
 
             <div className="flex h-14 min-h-[3.5rem] min-w-0 flex-1 items-center rounded-[16px] bg-white px-3 py-2 shadow-[var(--shadow-card)] sm:h-16 sm:min-h-16 sm:px-4">
               <div className="min-w-0">
                 <h1 className="truncate font-['Poppins',sans-serif] text-xl font-semibold leading-tight text-[#1e1e1f] sm:text-2xl sm:leading-normal md:text-[24px]">
-                  Neuron 2.0
+                  OBIS 2.0
                 </h1>
                 <p className="sr-only">Open a report or start a new one.</p>
               </div>

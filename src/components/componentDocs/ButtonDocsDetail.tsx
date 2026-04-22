@@ -11,7 +11,7 @@ const SIZE_ROWS = [
 ];
 
 /**
- * Live preview for the design-system Button page, aligned to Neuron 2.0 Figma
+ * Live preview for the design-system Button page, aligned to OBIS 2.0 Figma
  * (`Button_Primary` / `Button_Secondary` — see file link below).
  */
 export function ButtonDocsDetail() {
@@ -25,7 +25,7 @@ export function ButtonDocsDetail() {
           rel="noopener noreferrer"
           className="font-medium text-[#5360e1] underline decoration-[#5360e1]/35 underline-offset-2 hover:text-[#1e1e1f] hover:decoration-[#1e1e1f]/40"
         >
-          Neuron 2.0 — Button (Primary &amp; Secondary)
+          OBIS 2.0 — Button (Primary &amp; Secondary)
         </a>
       </p>
 

@@ -70,13 +70,13 @@ export function InitialPageLoader({ onDone }: InitialPageLoaderProps) {
         {[0, 1, 2, 3, 4].map((i) => (
           <span
             key={i}
-            className="initial-loader-bar w-1.5 rounded-full bg-[#e20074] motion-reduce:animate-none"
+            className="initial-loader-bar w-1.5 rounded-full bg-[var(--color-brand-primary)] motion-reduce:animate-none"
             style={{ animationDelay: `${i * 0.09}s` }}
           />
         ))}
       </div>
       <p className="font-[family-name:var(--font-poppins)] text-lg font-semibold tracking-tight text-[#1e1e1f]">
-        Neuron 2.0
+        OBIS 2.0
       </p>
     </div>
   );

@@ -12,7 +12,7 @@ type UiComponentDetailProps = {
 function TagBadge({ kind }: { kind: 'new' | 'updated' }) {
   if (kind === 'new') {
     return (
-      <span className="inline-flex shrink-0 rounded-md bg-[rgba(226,0,116,0.1)] px-2 py-0.5 font-['Inter',sans-serif] text-xs font-medium text-[#e20074]">
+      <span className="inline-flex shrink-0 rounded-md bg-[rgba(249,108,80,0.12)] px-2 py-0.5 font-['Inter',sans-serif] text-xs font-medium text-[var(--color-brand-primary)]">
         New
       </span>
     );

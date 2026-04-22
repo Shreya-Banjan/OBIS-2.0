@@ -27,7 +27,7 @@ const LAYOUT_SEGMENTS = [
 ] as const;
 
 /**
- * Live preview for the design-system Toggle Group page — Neuron 2.0 layout toggle (Grid / List).
+ * Live preview for the design-system Toggle Group page — OBIS 2.0 layout toggle (Grid / List).
  */
 export function ToggleGroupDocsDetail() {
   const [layoutLarge, setLayoutLarge] = useState<LayoutMode>('grid');
@@ -55,7 +55,7 @@ export function ToggleGroupDocsDetail() {
           rel="noopener noreferrer"
           className="font-medium text-[#5360e1] underline decoration-[#5360e1]/35 underline-offset-2 hover:text-[#1e1e1f] hover:decoration-[#1e1e1f]/40"
         >
-          Neuron 2.0 — Toggle Group
+          OBIS 2.0 — Toggle Group
         </a>
       </p>
 
@@ -67,7 +67,7 @@ export function ToggleGroupDocsDetail() {
           Layout (Grid / List)
         </h3>
         <p className="mb-4 max-w-xl font-['Inter',sans-serif] text-sm text-[#707070]">
-          Two-segment icon toggle. Selected segment uses a black pill; the other stays white.{' '}
+          Two-segment icon toggle. Selected segment uses a #333333 pill; the other stays white.{' '}
           <span className="font-medium text-[#1e1e1f]">Medium</span> keeps a 28×56 inner track (Figma)
           with 4px padding on the outer box; large and small scale proportionally.
         </p>

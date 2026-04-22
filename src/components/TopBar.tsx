@@ -1,21 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import {
-  IconCalendar,
-  IconCheck,
-  IconChevronLeft,
-  IconEdit,
-  IconLocation,
-  IconMoreVertical,
-  IconShare,
-} from './Icons';
+import { IconCheck, IconChevronLeft, IconEdit, IconMoreVertical, IconShare } from './Icons';
 import { FilledSecondaryButton } from './FilledSecondaryButton';
 import { PrimaryButton } from './PrimaryButton';
 import { SecondaryButton } from './SecondaryButton';
-import { DATE_OPTIONS, SCOPE_OPTIONS } from '../data/headerSelectOptions';
 import { NAV_BURGER_MIN_LAYOUT_WIDTH_PX } from '../layoutUtils';
 import type { SavedDashboard } from '../types';
 import { DashboardStatusBadge } from './DashboardStatusBadge';
-import { HeaderSelect } from './HeaderSelect';
+import { PartnerScopePickerField } from './PartnerScopePickerField';
+import { TimelinePickerField } from './TimelinePickerField';
 
 type AutoSaveIndicator = 'idle' | 'saving' | 'saved';
 
@@ -39,6 +31,9 @@ type TopBarProps = {
   onBackToReports?: () => void;
   /** Window or preview rail width — same as burger / layout; avoids viewport-only breakpoints missing narrow preview columns. */
   effectiveLayoutWidth: number;
+  /** Timeline control (drives KPI period label on canvas when set to a custom range). */
+  timeline: string;
+  onTimelineChange: (value: string) => void;
 };
 
 export function TopBar({
@@ -53,12 +48,13 @@ export function TopBar({
   onDelete,
   onBackToReports,
   effectiveLayoutWidth,
+  timeline,
+  onTimelineChange,
 }: TopBarProps) {
   const [editing, setEditing] = useState(false);
   const [overflowOpen, setOverflowOpen] = useState(false);
   const overflowRootRef = useRef<HTMLDivElement>(null);
-  const [scope, setScope] = useState<string>(SCOPE_OPTIONS[0]);
-  const [reportDate, setReportDate] = useState<string>(DATE_OPTIONS[0]);
+  const [selectedPartners, setSelectedPartners] = useState<string[]>([]);
 
   const isPublished = reportStatus === 'published';
 
@@ -95,25 +91,19 @@ export function TopBar({
 
   const headerSelects = (
     <>
-      <HeaderSelect
+      <PartnerScopePickerField
         layout="toolbar"
         toolbarPair={narrowLayout}
         label="Report scope"
-        icon={IconLocation}
-        value={scope}
-        onChange={setScope}
-        options={SCOPE_OPTIONS}
-        textClass="text-[#333]"
+        selectedPartners={selectedPartners}
+        onPartnersChange={setSelectedPartners}
       />
-      <HeaderSelect
+      <TimelinePickerField
         layout="toolbar"
         toolbarPair={narrowLayout}
-        label="Report date"
-        icon={IconCalendar}
-        value={reportDate}
-        onChange={setReportDate}
-        options={DATE_OPTIONS}
-        textClass="text-[#1e1e1f]"
+        label="Timeline"
+        value={timeline}
+        onChange={onTimelineChange}
       />
     </>
   );
@@ -229,7 +219,7 @@ export function TopBar({
                 <div ref={overflowRootRef} className="relative shrink-0">
                   <button
                     type="button"
-                    className="inline-flex size-12 shrink-0 items-center justify-center rounded-xl border-[1.5px] border-solid border-[rgba(145,145,145,0.92)] bg-white text-[#1e1e1f] outline-none transition-[border-color,box-shadow] duration-150 hover:border-black/75 hover:shadow-[var(--shadow-focus)] focus-visible:border-black/75 focus-visible:shadow-[var(--shadow-focus)] active:border-black"
+                    className="inline-flex size-12 shrink-0 items-center justify-center rounded-xl border-[1.5px] border-solid border-[rgba(145,145,145,0.92)] bg-white text-[#1e1e1f] outline-none transition-[border-color,box-shadow] duration-150 hover:border-[var(--color-grey-darkest)]/75 hover:shadow-[var(--shadow-focus)] focus-visible:border-[var(--color-grey-darkest)]/75 focus-visible:shadow-[var(--shadow-focus)] active:border-[var(--color-brand-primary)] active:bg-[var(--color-brand-press-surface)] active:shadow-[var(--shadow-focus-brand)]"
                     aria-haspopup="menu"
                     aria-expanded={overflowOpen}
                     aria-controls={overflowOpen ? 'topbar-overflow-menu' : undefined}

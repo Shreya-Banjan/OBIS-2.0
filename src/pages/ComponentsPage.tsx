@@ -28,7 +28,7 @@ function NavTagBadge({ kind, selected }: { kind: UiComponentTag; selected: boole
     return (
       <span
         className={`ml-auto inline-flex shrink-0 rounded px-1.5 py-0.5 font-['Inter',sans-serif] text-[10px] font-semibold uppercase tracking-wide ${
-          selected ? 'bg-white/15 text-[#ffb8d9]' : 'text-[#e20074]'
+          selected ? 'bg-white/15 text-[#ffc9bf]' : 'text-[var(--color-brand-primary)]'
         }`}
       >
         New
@@ -140,7 +140,7 @@ export function ComponentsPage({ onBackToDashboard }: ComponentsPageProps) {
               <button
                 type="button"
                 onClick={handleBack}
-                className="inline-flex shrink-0 items-center font-['Inter',sans-serif] text-sm font-medium text-[#e20074] transition-colors hover:text-[#c40062] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e20074]/25 focus-visible:ring-offset-2"
+                className="inline-flex shrink-0 items-center font-['Inter',sans-serif] text-sm font-medium text-[var(--color-brand-primary)] transition-colors hover:text-[#e55a3d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-brand-primary)]/25 focus-visible:ring-offset-2"
                 aria-label="Back to dashboards"
               >
                 Back
@@ -192,7 +192,7 @@ export function ComponentsPage({ onBackToDashboard }: ComponentsPageProps) {
                   placeholder="Search components…"
                   autoComplete="off"
                   spellCheck={false}
-                  className="w-full min-w-0 rounded-lg border border-[#ebebeb] bg-[#fafafa] py-2 pl-9 pr-3 font-['Inter',sans-serif] text-sm text-[#1e1e1f] placeholder:text-[#999] outline-none ring-[#1e1e1f] focus:border-[#d7d7d7] focus:bg-white focus:ring-2 focus:ring-offset-0"
+                  className="w-full min-w-0 rounded-lg border border-[#ebebeb] bg-[#fafafa] py-2 pl-9 pr-3 font-['Inter',sans-serif] text-sm text-[#1e1e1f] placeholder:text-[#999] outline-none ring-[var(--color-brand-primary)] hover:border-[var(--color-brand-primary)] hover:bg-white hover:ring-2 hover:ring-[var(--ring-input-focus)] focus:border-[var(--color-brand-primary)] focus:bg-white focus:ring-2 focus:ring-[var(--ring-input-focus)] focus:ring-offset-0 active:border-[var(--color-brand-primary)] active:ring-2 active:ring-[var(--ring-input-focus)]"
                 />
               </div>
             </div>

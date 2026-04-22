@@ -1,6 +1,9 @@
+import { REPORT_DOMAIN_OPTIONS } from '../data/reportDomains';
 import type { DashboardSection, PlacedWidget, SavedDashboard, SharedByInfo } from '../types';
 
 const STORAGE_KEY = 'neuron-builder-dashboards-v1';
+
+const REPORT_DOMAIN_SET = new Set<string>(REPORT_DOMAIN_OPTIONS);
 
 function isPlacedWidget(x: unknown): x is PlacedWidget {
   if (!x || typeof x !== 'object') return false;
@@ -8,7 +11,15 @@ function isPlacedWidget(x: unknown): x is PlacedWidget {
   return typeof w.instanceId === 'string' && typeof w.templateId === 'string' && typeof w.label === 'string';
 }
 
-const LAYOUTS = new Set(['full', 'sidebar-left', 'sidebar-right', 'three-column']);
+const LAYOUTS = new Set([
+  'full',
+  'sidebar-left',
+  'sidebar-right',
+  'three-column',
+  'three-column-right',
+  'three-column-middle',
+  'four-small',
+]);
 
 function isDashboardSection(x: unknown): x is DashboardSection {
   if (!x || typeof x !== 'object') return false;
@@ -35,6 +46,12 @@ function isSavedDashboard(x: unknown): x is SavedDashboard {
   if (d.status !== 'draft' && d.status !== 'published') return false;
   if (!d.sections.every(isDashboardSection)) return false;
   if (d.sharedBy !== undefined && !isSharedBy(d.sharedBy)) return false;
+  if (
+    d.domain !== undefined &&
+    (typeof d.domain !== 'string' || !REPORT_DOMAIN_SET.has(d.domain))
+  ) {
+    return false;
+  }
   return true;
 }
 

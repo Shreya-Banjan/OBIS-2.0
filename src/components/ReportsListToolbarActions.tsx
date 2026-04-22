@@ -14,7 +14,7 @@ export function ReportsListComponentsCta({ onOpenComponents }: ReportsListCompon
       <button
         type="button"
         onClick={onOpenComponents}
-        className="inline-flex h-8 min-w-0 shrink-0 touch-manipulation items-center justify-center gap-1.5 rounded-lg border border-[#e4e4e4] bg-white px-2 py-1 font-['Inter',sans-serif] text-[10px] font-medium leading-none text-[#1e1e1f] transition-[color,background-color,scale] duration-200 ease-out hover:bg-[#f5f5f5] active:scale-[0.97] motion-reduce:active:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e1e1f]/20 sm:h-9 sm:gap-2 sm:px-2.5 sm:py-1.5 sm:text-xs w-auto max-w-[10rem] sm:max-w-none"
+        className="inline-flex h-8 min-w-0 shrink-0 touch-manipulation items-center justify-center gap-1.5 rounded-lg border border-[#e4e4e4] bg-white px-2 py-1 font-['Inter',sans-serif] text-[10px] font-medium leading-none text-[#1e1e1f] transition-[color,background-color,scale,border-color,box-shadow] duration-200 ease-out hover:bg-[#f5f5f5] active:scale-[0.97] active:border-[var(--color-brand-primary)] active:bg-[var(--color-brand-press-surface)] active:shadow-[var(--shadow-focus-brand)] motion-reduce:active:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-input-focus)] sm:h-9 sm:gap-2 sm:px-2.5 sm:py-1.5 sm:text-xs w-auto max-w-[10rem] sm:max-w-none"
       >
         <IconLayoutGrid className="size-[14px] shrink-0 text-[#707070] sm:size-4" aria-hidden />
         <span className="truncate">Components</span>
@@ -52,12 +52,12 @@ export function ReportsListToolbarActions({
   const narrowExpanded = narrow && searchExpanded;
 
   const searchInnerClasses = wide
-    ? `relative min-h-12 min-w-12 overflow-hidden rounded-[16px] border border-[#e4e4e4] bg-white shadow-[var(--shadow-card)] transition-[max-width] duration-300 ease-out motion-reduce:transition-none hover:bg-[#fafafa] focus-within:border-[#d7d7d7] focus-within:ring-2 focus-within:ring-[#1e1e1f]/20 focus-within:ring-offset-0 ${
+    ? `relative min-h-12 min-w-12 overflow-hidden rounded-[16px] border border-[#e4e4e4] bg-white shadow-[var(--shadow-card)] transition-[max-width,border-color,box-shadow] duration-300 ease-out motion-reduce:transition-none hover:border-[var(--color-brand-primary)] hover:bg-[#fafafa] hover:ring-2 hover:ring-[var(--ring-input-focus)] focus-within:border-[var(--color-brand-primary)] focus-within:ring-2 focus-within:ring-[var(--ring-input-focus)] focus-within:ring-offset-0 ${
         searchExpanded
           ? 'max-w-[min(100%,28rem)] @min-[768px]:max-w-sm'
           : 'max-w-12 cursor-text'
       }`
-    : `relative min-h-12 overflow-hidden rounded-[16px] border border-[#e4e4e4] bg-white shadow-[var(--shadow-card)] transition-[max-width] duration-300 ease-out motion-reduce:transition-none hover:bg-[#fafafa] focus-within:border-[#d7d7d7] focus-within:ring-2 focus-within:ring-[#1e1e1f]/20 focus-within:ring-offset-0 ${
+    : `relative min-h-12 overflow-hidden rounded-[16px] border border-[#e4e4e4] bg-white shadow-[var(--shadow-card)] transition-[max-width,border-color,box-shadow] duration-300 ease-out motion-reduce:transition-none hover:border-[var(--color-brand-primary)] hover:bg-[#fafafa] hover:ring-2 hover:ring-[var(--ring-input-focus)] focus-within:border-[var(--color-brand-primary)] focus-within:ring-2 focus-within:ring-[var(--ring-input-focus)] focus-within:ring-offset-0 ${
         searchExpanded
           ? 'min-w-0 w-full max-w-none flex-1'
           : 'w-12 max-w-12 shrink-0 cursor-text'
@@ -98,7 +98,7 @@ export function ReportsListToolbarActions({
             placeholder="Search reports…"
             autoComplete="off"
             spellCheck={false}
-            className="box-border h-12 w-full min-w-0 rounded-[16px] border-0 bg-transparent py-0 pl-10 pr-3 font-['Inter',sans-serif] text-sm text-[#1e1e1f] outline-none placeholder:text-[#707070]"
+            className="box-border h-12 w-full min-w-0 rounded-[16px] border-0 bg-transparent py-0 pl-10 pr-3 font-['Inter',sans-serif] text-sm text-[#1e1e1f] outline-none ring-[var(--color-brand-primary)] placeholder:text-[#707070] transition-[box-shadow] duration-150 active:ring-2 active:ring-[var(--ring-input-focus)]"
           />
         </div>
       </div>

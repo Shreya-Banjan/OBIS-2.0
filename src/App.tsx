@@ -318,7 +318,7 @@ function countPlaceholderSlots(sections: DashboardSection[]): number {
 
 /**
  * Next placeholder strictly after (afterSi, afterWi), else first in canvas order (wrap).
- * Used when leaving a slot (dismiss picker) or after filling a placeholder that may not be the last in order.
+ * Used after filling a placeholder that may not be the last in order.
  */
 function nextPlaceholderAfterPosition(
   sections: DashboardSection[],
@@ -327,26 +327,6 @@ function nextPlaceholderAfterPosition(
 ): { sectionId: string; instanceId: string } | null {
   if (countPlaceholderSlots(sections) === 0) return null;
   return findNextPlaceholderAfter(sections, afterSi, afterWi) ?? findFirstPlaceholderSlot(sections);
-}
-
-/** Next empty placeholder in canvas order after the current slot, or first if none after (wrap). */
-function nextEmptySlotToFocus(
-  sections: DashboardSection[],
-  currentInstanceId: string | null
-): { sectionId: string; instanceId: string } | null {
-  if (countPlaceholderSlots(sections) === 0) return null;
-  if (!currentInstanceId) {
-    return findFirstPlaceholderSlot(sections);
-  }
-  const pos = findWidgetGridPosition(sections, currentInstanceId);
-  if (!pos) {
-    return findFirstPlaceholderSlot(sections);
-  }
-  const w = sections[pos.si].widgets[pos.wi];
-  if (!w.placeholder) {
-    return findFirstPlaceholderSlot(sections);
-  }
-  return nextPlaceholderAfterPosition(sections, pos.si, pos.wi);
 }
 
 /** Clears focus from Up/Down/Delete so `group-focus-within` does not leave the row toolbar visible after reorder. */
@@ -410,6 +390,8 @@ export default function App() {
   const [shareDashboardId, setShareDashboardId] = useState<string | null>(null);
 
   const [reportTitle, setReportTitle] = useState('Enter Title');
+  /** Toolbar timeline; synced to KPI period line on canvas. */
+  const [editorTimeline, setEditorTimeline] = useState('');
   const [publishModalOpen, setPublishModalOpen] = useState(false);
   const [navDrawerOpen, setNavDrawerOpen] = useState(false);
   /** Shared between reports list and editor: simulated viewport width for layout preview. */
@@ -487,6 +469,7 @@ export default function App() {
     if (!d) return;
     setActiveDashboardId(id);
     setReportTitle(d.title);
+    setEditorTimeline('');
     const next = cloneSections(d.sections);
     setSections(next);
     setView('editor');
@@ -586,6 +569,7 @@ export default function App() {
         sections: [],
         updatedAt: Date.now(),
         status: 'draft',
+        domain: values.domain,
         scope: values.scope,
         month: values.month,
         shareEmails: values.shareEmails.length > 0 ? values.shareEmails : undefined,
@@ -594,6 +578,7 @@ export default function App() {
       setDashboards((prev) => [newDash, ...prev]);
       setActiveDashboardId(id);
       setReportTitle(title);
+      setEditorTimeline('');
       setSections([]);
       setNewReportModalOpen(false);
       setView('editor');
@@ -805,20 +790,10 @@ export default function App() {
     setView('components');
   }, []);
 
-  /** User dismisses the picker (X / Escape / toggle). Advances to the next empty slot, then closes. */
+  /** User dismisses the picker (X / Escape / toggle). Clears the targeted slot so canvas chrome does not stay “selected”. */
   const requestCloseWidgetPicker = useCallback(() => {
-    const sections = sectionsRef.current;
-    const replaceId = widgetPickerUiRef.current.replaceId;
-    if (countPlaceholderSlots(sections) > 0) {
-      const next = nextEmptySlotToFocus(sections, replaceId);
-      if (next) {
-        setWidgetPickTargetSectionId(next.sectionId);
-        setWidgetPickReplaceInstanceId(next.instanceId);
-      }
-    } else {
-      setWidgetPickReplaceInstanceId(null);
-      setWidgetPickTargetSectionId(null);
-    }
+    setWidgetPickReplaceInstanceId(null);
+    setWidgetPickTargetSectionId(null);
     setPanelOpen(false);
   }, []);
 
@@ -876,17 +851,7 @@ export default function App() {
       const sec = prev.find((s) => s.id === sectionId);
       const w = sec?.widgets.find((x) => x.instanceId === instanceId);
       if (w?.placeholder) return prev;
-      const next = removePlacedWidget(prev, sectionId, instanceId);
-      const backToPlaceholder = next
-        .find((s) => s.id === sectionId)
-        ?.widgets.find((x) => x.instanceId === instanceId)?.placeholder;
-      if (backToPlaceholder) {
-        queueMicrotask(() => {
-          setWidgetPickTargetSectionId(sectionId);
-          setWidgetPickReplaceInstanceId(instanceId);
-        });
-      }
-      return next;
+      return removePlacedWidget(prev, sectionId, instanceId);
     });
   }, []);
 
@@ -1043,6 +1008,10 @@ export default function App() {
           onDeleteDashboard={handleDeleteDashboard}
           onNewReport={openNewReportModal}
           onMenuOpen={() => setNavDrawerOpen(true)}
+          onLogoClick={() => {
+            setNavDrawerOpen(false);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
           onOpenComponents={handleOpenComponents}
           layoutMode={dashboardListLayout}
           previewViewportWidth={previewViewportWidth}
@@ -1112,7 +1081,8 @@ export default function App() {
                   {effectiveLayoutWidth >= NAV_BURGER_MIN_LAYOUT_WIDTH_PX ? (
                     <AppBurgerButton
                       onClick={() => setNavDrawerOpen(true)}
-                      className="h-14 min-h-0 w-14 shrink-0 self-stretch rounded-[16px] border-0 bg-white p-2.5 shadow-[var(--shadow-card)] hover:bg-[#f5f5f5] sm:h-16 sm:w-16 sm:p-3 [&_svg]:size-6"
+                      onLogoClick={handleSaveAndClose}
+                      className="h-14 min-h-0 w-auto min-w-0 shrink-0 self-stretch rounded-[16px] border-0 bg-white shadow-[var(--shadow-card)] sm:h-16"
                     />
                   ) : null}
                   <div className="min-w-0 flex-1">
@@ -1126,6 +1096,8 @@ export default function App() {
                       autoSaveStatus={autoSaveStatus}
                       reportStatus={activeReportStatus}
                       effectiveLayoutWidth={effectiveLayoutWidth}
+                      timeline={editorTimeline}
+                      onTimelineChange={setEditorTimeline}
                       onShare={
                         activeDashboardId && activeReportStatus === 'published'
                           ? () => setShareDashboardId(activeDashboardId)
@@ -1165,8 +1137,11 @@ export default function App() {
                             onRemoveWidget={handleRemoveWidget}
                             onRemoveSection={handleRemoveSection}
                             onMoveSection={handleMoveSection}
-                            activePlaceholderInstanceId={widgetPickReplaceInstanceId}
+                            activePlaceholderInstanceId={
+                              panelOpen ? widgetPickReplaceInstanceId : null
+                            }
                             effectiveLayoutWidth={effectiveLayoutWidth}
+                            timelineValue={editorTimeline}
                           />
                         </Suspense>
                       </div>
@@ -1215,7 +1190,7 @@ export default function App() {
         <DragOverlay dropAnimation={null}>
           {activePalette ? (
             <div className="flex w-[min(100vw-2rem,16rem)] max-w-full items-center justify-between rounded-xl border border-[#d7d7d7] bg-white px-2 py-3 shadow-[var(--shadow-elevated)] sm:w-64">
-              <span className="font-['Poppins',sans-serif] text-sm text-black/80">{activePalette.label}</span>
+              <span className="font-['Poppins',sans-serif] text-sm text-[var(--color-grey-darkest)]/80">{activePalette.label}</span>
             </div>
           ) : null}
         </DragOverlay>

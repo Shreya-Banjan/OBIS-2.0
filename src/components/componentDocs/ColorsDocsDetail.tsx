@@ -25,7 +25,7 @@ function SwatchRow({
 }
 
 /**
- * Design-token reference for Neuron 2.0 brand colors — Primary and Secondary on one page.
+ * Design-token reference for OBIS 2.0 brand colors — Primary and Secondary on one page.
  */
 export function ColorsDocsDetail() {
   return (
@@ -39,25 +39,45 @@ export function ColorsDocsDetail() {
         </h3>
         <div className="flex flex-col gap-6">
           <p className="max-w-xl font-['Inter',sans-serif] text-sm text-[#707070]">
-            Brand magenta for primary actions, emphasis, and interactive highlights. Matches{' '}
-            <span className="font-medium text-[#1e1e1f]">PrimaryButton</span> fill and focus rings that
-            reference this hue.
+            Brand coral for emphasis, selected filters, focus rings, and interactive highlights. Primary
+            actions use the separate CTA fill below.
           </p>
 
           <div className="overflow-hidden rounded-2xl border border-[#ebebeb] bg-[#fafafa] p-6">
             <div
               className="h-28 w-full max-w-md rounded-xl shadow-[var(--shadow-card)]"
-              style={{ backgroundColor: '#e20074' }}
+              style={{ backgroundColor: '#f96c50' }}
               aria-hidden
             />
             <dl className="mt-4 grid gap-2 font-['Inter',sans-serif] text-sm">
               <div className="flex flex-wrap gap-x-6 gap-y-1">
                 <dt className="text-[#707070]">Hex</dt>
-                <dd className="font-mono text-[#1e1e1f]">#E20074</dd>
+                <dd className="font-mono text-[#1e1e1f]">#F96C50</dd>
               </div>
               <div className="flex flex-wrap gap-x-6 gap-y-1">
                 <dt className="text-[#707070]">RGB</dt>
-                <dd className="font-mono text-[#1e1e1f]">rgb(226, 0, 116)</dd>
+                <dd className="font-mono text-[#1e1e1f]">rgb(249, 108, 80)</dd>
+              </div>
+            </dl>
+          </div>
+
+          <div className="overflow-hidden rounded-2xl border border-[#ebebeb] bg-[#fafafa] p-6">
+            <p className="mb-3 font-['Inter',sans-serif] text-xs font-medium text-[#707070]">
+              Primary CTA (filled buttons)
+            </p>
+            <div
+              className="h-20 w-full max-w-md rounded-xl shadow-[var(--shadow-card)]"
+              style={{ backgroundColor: '#333333' }}
+              aria-hidden
+            />
+            <dl className="mt-4 grid gap-2 font-['Inter',sans-serif] text-sm">
+              <div className="flex flex-wrap gap-x-6 gap-y-1">
+                <dt className="text-[#707070]">Hex</dt>
+                <dd className="font-mono text-[#1e1e1f]">#333333</dd>
+              </div>
+              <div className="flex flex-wrap gap-x-6 gap-y-1">
+                <dt className="text-[#707070]">RGB</dt>
+                <dd className="font-mono text-[#1e1e1f]">rgb(51, 51, 51)</dd>
               </div>
             </dl>
           </div>
@@ -82,21 +102,26 @@ export function ColorsDocsDetail() {
         </h3>
         <div className="flex flex-col gap-6">
           <p className="max-w-xl font-['Inter',sans-serif] text-sm text-[#707070]">
-            Neutral outline treatment: white surface, black border, dark text. Used for secondary actions
-            alongside primary brand color. Matches{' '}
+            Neutral outline treatment: white surface, darkest grey border, dark text. Used for secondary
+            actions alongside primary brand color. Matches{' '}
             <span className="font-medium text-[#1e1e1f]">SecondaryButton</span>.
           </p>
 
           <div className="flex flex-col gap-4 rounded-2xl border border-[#ebebeb] bg-[#fafafa] p-6">
-            <SwatchRow label="Border" hex="#000000" className="bg-white ring-2 ring-inset ring-black" />
+            <SwatchRow
+              label="Border"
+              hex="#333333"
+              className="bg-white ring-2 ring-inset ring-[var(--color-grey-darkest)]"
+            />
             <SwatchRow label="Surface" hex="#FFFFFF" className="bg-white" />
-            <SwatchRow label="Label (default)" hex="#000000" className="bg-black" />
+            <SwatchRow label="Label (default)" hex="#333333" className="bg-[var(--color-grey-darkest)]" />
           </div>
 
           <p className="max-w-xl font-['Inter',sans-serif] text-xs text-[#707070]">
             Body copy often uses ink <span className="font-mono text-[#1e1e1f]">#1E1E1F</span> (
-            <code className="font-mono">--color-ink</code>); buttons use solid black for maximum contrast on
-            secondary controls.
+            <code className="font-mono">--color-ink</code>); secondary labels use{' '}
+            <span className="font-mono text-[#1e1e1f]">#333333</span> (
+            <code className="font-mono">--color-grey-darkest</code>) for maximum contrast on white.
           </p>
 
           <div>

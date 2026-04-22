@@ -48,7 +48,7 @@ export function ViewportSizePresetBar({
           title="Use full browser width"
           className={`shrink-0 rounded-lg border px-2 py-1 font-['Inter',sans-serif] text-[10px] font-medium leading-none transition-colors sm:px-2.5 sm:py-1.5 sm:text-xs ${
             selectedWidth === null
-              ? 'border-[#e20074] bg-[#e20074] text-white'
+              ? 'border-[var(--color-brand-primary)] bg-[var(--color-brand-primary)] text-white'
               : 'border-[#e4e4e4] bg-white text-[#1e1e1f] hover:bg-[#f5f5f5]'
           }`}
         >
@@ -65,7 +65,7 @@ export function ViewportSizePresetBar({
               title={p.label}
               className={`max-w-[10rem] shrink-0 truncate rounded-lg border px-2 py-1 font-['Inter',sans-serif] text-[10px] font-medium leading-none transition-colors sm:max-w-none sm:px-2.5 sm:py-1.5 sm:text-xs ${
                 active
-                  ? 'border-[#e20074] bg-[#e20074] text-white'
+                  ? 'border-[var(--color-brand-primary)] bg-[var(--color-brand-primary)] text-white'
                   : 'border-[#e4e4e4] bg-white text-[#1e1e1f] hover:bg-[#f5f5f5]'
               }`}
             >

@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import type { DashboardListLayoutMode, SavedDashboard } from '../types';
-import { DashboardStatusBadge } from './DashboardStatusBadge';
+import { displayDomainForDashboard } from '../utils/displayDomain';
+import { DomainChip } from './DomainChip';
 import { DashboardTileCard } from './DashboardTileCard';
 import { ProfileAvatar } from './ProfileAvatar';
-import { IconMoreVertical } from './Icons';
+import { IconEdit, IconMoreVertical, IconShare, IconTrash } from './Icons';
 import { REPORTS_LAYOUT_WIDE_MIN_PX } from '../layoutUtils';
 
 /** Stagger between cards — higher = slower cascade (tile grid + list). */
@@ -127,7 +128,7 @@ function DashboardOverflowActions({
       <div className="relative">
         <button
           type="button"
-          className="pointer-events-auto inline-flex size-9 items-center justify-center rounded-lg border border-[#e4e4e4] bg-white text-[#1e1e1f] shadow-sm transition-colors hover:bg-[#f5f5f5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e1e1f]/20"
+          className="pointer-events-auto inline-flex size-9 items-center justify-center rounded-lg border border-[#e4e4e4] bg-white text-[#1e1e1f] shadow-sm transition-[color,background-color,border-color,box-shadow] hover:bg-[#f5f5f5] active:border-[var(--color-brand-primary)] active:bg-[var(--color-brand-press-surface)] active:shadow-[var(--shadow-focus-brand)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-input-focus)]"
           aria-haspopup="menu"
           aria-expanded={isOpen}
           aria-controls={isOpen ? `dashboard-overflow-${dashboardId}` : undefined}
@@ -144,46 +145,49 @@ function DashboardOverflowActions({
           <div
             id={`dashboard-overflow-${dashboardId}`}
             role="menu"
-            className="pointer-events-auto absolute right-0 top-[calc(100%+6px)] z-[25] max-w-[min(18rem,calc(100vw-1.5rem))] min-w-[11rem] overflow-hidden rounded-xl border border-[#e8e8e8] bg-white py-1 shadow-[var(--shadow-elevated)]"
+            className="pointer-events-auto absolute right-0 top-[calc(100%+6px)] z-[25] flex max-w-[min(18rem,calc(100vw-1.5rem))] min-w-[11rem] flex-col gap-1 rounded-xl border border-[#e8e8e8] bg-white p-1.5 shadow-[var(--shadow-elevated)]"
             onClick={(e) => e.stopPropagation()}
           >
             <button
               type="button"
               role="menuitem"
-              className="flex w-full items-center px-3 py-2.5 text-left font-['Inter',sans-serif] text-sm text-[#1e1e1f] hover:bg-[#f5f5f5]"
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left font-['Inter',sans-serif] text-sm text-[#333333] transition-colors hover:bg-[#f2f2f2]"
               onClick={(e) => {
                 e.stopPropagation();
                 onOpenChange(false);
                 onEdit();
               }}
             >
-              Edit
+              <IconEdit className="size-5 shrink-0 text-[#333333]" aria-hidden />
+              <span>Edit</span>
             </button>
             {onShare ? (
               <button
                 type="button"
                 role="menuitem"
-                className="flex w-full items-center px-3 py-2.5 text-left font-['Inter',sans-serif] text-sm text-[#5c3d6e] hover:bg-[#faf5fc]"
+                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left font-['Inter',sans-serif] text-sm text-[#333333] transition-colors hover:bg-[#f2f2f2]"
                 onClick={(e) => {
                   e.stopPropagation();
                   onOpenChange(false);
                   onShare();
                 }}
               >
-                Share
+                <IconShare className="size-5 shrink-0 text-[#333333]" aria-hidden />
+                <span>Share</span>
               </button>
             ) : null}
             <button
               type="button"
               role="menuitem"
-              className="flex w-full items-center px-3 py-2.5 text-left font-['Inter',sans-serif] text-sm text-[#9e1f16] hover:bg-[#fff5f5]"
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left font-['Inter',sans-serif] text-sm text-[#9e1f16] transition-colors hover:bg-[#fff5f5]"
               onClick={(e) => {
                 e.stopPropagation();
                 onOpenChange(false);
                 onDelete();
               }}
             >
-              Delete
+              <IconTrash className="size-5 shrink-0 text-[#9e1f16]" aria-hidden />
+              <span>Delete</span>
             </button>
           </div>
         ) : null}
@@ -324,7 +328,7 @@ export function DashboardListBody({
                     <div className={revealed ? undefined : 'pointer-events-none'}>
                       <DashboardTileCard
                         title={d.title}
-                        status={d.status}
+                        domainLabel={displayDomainForDashboard(d)}
                         lastUpdatedLabel={`Last Updated ${formatUpdated(d.updatedAt)}`}
                         coverImageDataUrl={d.coverImageDataUrl}
                         sharedBy={d.sharedBy}
@@ -426,7 +430,7 @@ export function DashboardListBody({
                             </span>
                           </div>
                         </div>
-                        <DashboardStatusBadge status={d.status} />
+                        <DomainChip label={displayDomainForDashboard(d)} className="shrink-0" />
                       </button>
                       <DashboardOverflowActions
                         dashboardId={d.id}

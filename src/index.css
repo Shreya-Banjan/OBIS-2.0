@@ -10,13 +10,25 @@
   --color-muted: #707070;
   --color-border-widget: #d7d7d7;
   --color-publish: #b6bec8;
+  /* Brand accent (links, selection rings, chips) + filled primary CTAs */
+  --color-brand-primary: #f96c50;
+  /* Text fields: focus / hover / active ring (pairs with border = brand primary) */
+  --ring-input-focus: rgb(249 108 80 / 0.28);
+  /* Darkest UI grey (typography, borders, toggles) — do not use #000 */
+  --color-grey-darkest: #333333;
+  --color-cta-primary: var(--color-grey-darkest);
   /* Elevation — shared ink (#1e1e1f) tint for consistent depth */
   --shadow-subtle: 0 1px 3px 0 rgb(30 30 31 / 0.08);
   --shadow-card: 0 1px 5px 0 rgb(30 30 31 / 0.1);
   --shadow-elevated: 0 4px 14px 0 rgb(30 30 31 / 0.12);
   --shadow-panel: 0 2px 20px 0 rgb(30 30 31 / 0.14);
-  --shadow-focus: 0 0 0 3px rgb(0 0 0 / 0.06);
-  --shadow-focus-brand: 0 0 0 3px rgb(226 0 116 / 0.2);
+  --shadow-focus: 0 0 0 3px rgb(51 51 51 / 0.12);
+  --shadow-focus-brand: 0 0 0 3px rgb(249 108 80 / 0.25);
+  --shadow-focus-cta: 0 0 0 3px rgb(249 108 80 / 0.35);
+  /* Filled buttons (primary / dark CTA): pressed fill */
+  --shadow-button-active-filled: 0 0 0 3px rgb(249 108 80 / 0.32);
+  /* Outline / ghost buttons: pressed surface tint */
+  --color-brand-press-surface: rgb(249 108 80 / 0.14);
   /* Widget library overlay: 280px cap on mobile; 380px from `sm` up (see override below). */
   --widget-panel-width: min(280px, calc(100vw - 1.5rem));
 }

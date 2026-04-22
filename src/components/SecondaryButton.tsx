@@ -26,12 +26,13 @@ export const SecondaryButton = forwardRef<HTMLButtonElement, SecondaryButtonProp
         className={[
           'inline-flex shrink-0 items-center justify-center whitespace-nowrap',
           secondarySizeClasses[size],
-          "font-['Inter',sans-serif] font-medium text-black",
+          "font-['Inter',sans-serif] font-medium text-[var(--color-grey-darkest)]",
           'box-border border-[1.5px] border-solid border-[rgba(145,145,145,0.92)] bg-white outline-none [border-image:none]',
-          'transition-[border-color,box-shadow] duration-150',
-          'hover:border-black/75 hover:shadow-[var(--shadow-focus)]',
-          'focus-visible:border-black/75 focus-visible:shadow-[var(--shadow-focus)]',
-          'active:border-black',
+          'transition-[box-shadow,filter,scale,background-color,border-color] duration-200 ease-out',
+          'hover:shadow-[var(--shadow-focus-cta)] hover:brightness-[1.06]',
+          'focus-visible:shadow-[var(--shadow-focus-cta)] focus-visible:brightness-[1.06]',
+          'active:scale-[0.97] active:border-[var(--color-brand-primary)] active:bg-[var(--color-brand-press-surface)] active:shadow-[var(--shadow-focus-brand)] active:brightness-100',
+          'motion-reduce:transition-[box-shadow,filter,background-color,border-color] motion-reduce:active:scale-100',
           'disabled:pointer-events-none disabled:opacity-50',
           className,
         ]

@@ -1,24 +1,19 @@
 import { forwardRef, type ButtonHTMLAttributes, type CSSProperties } from 'react';
+import { canvasWidgetSlotHeightPx } from '../canvasWidgetSlot';
 import { useWidgetLibraryOpen } from '../context/WidgetLibraryContext';
 import { AddWidgetCta, ADD_WIDGET_CTA_TOP_BAR_LAYOUT_CLASS } from './AddWidgetCta';
 import { IconPlusSoft } from './Icons';
 
-/** Fixed height for canvas placeholder tiles (also set inline so flex/dnd cannot collapse it). */
-const CANVAS_PLACEHOLDER_HEIGHT_PX = 280;
-
-/** Narrow viewport / preview rail: L1 placeholder tile height (mobile). */
-const CANVAS_PLACEHOLDER_HEIGHT_MOBILE_L1_PX = 220;
-
-/** Inner tile: default no border; magenta ring when widget library targets this slot. */
+/** Inner tile: default no border; brand ring when widget library targets this slot. */
 const CANVAS_CLASS_BASE =
-  "group min-w-0 w-full box-border flex shrink-0 flex-col items-center justify-center gap-3 rounded-[var(--radius-canvas)] bg-white px-4 py-6 text-center outline-none transition-[background-color,color,border-color] font-['Inter',sans-serif] text-[13px] font-normal text-black/80 hover:bg-[#fafafa] focus-visible:shadow-[var(--shadow-focus)] active:bg-[#f0f0f0]";
+  "group min-w-0 w-full box-border flex shrink-0 flex-col items-center justify-center gap-3 rounded-[var(--radius-canvas)] bg-white px-4 py-6 text-center outline-none transition-[background-color,color,border-color] font-['Inter',sans-serif] text-[13px] font-normal text-[var(--color-grey-darkest)]/80 hover:bg-[#fafafa] focus-visible:shadow-[var(--shadow-focus)] active:bg-[#f0f0f0]";
 
 export type EditorAddWidgetCtaProps = {
   layout: 'topBar' | 'canvas';
   placeholderInstanceId?: string;
   /** Widget library is open for this placeholder (outer focus ring + aria). */
   isLibraryTarget?: boolean;
-  /** Narrow canvas (below 640px effective width): L1 placeholder uses 220px height; web uses 280px. */
+  /** Narrow canvas (below 640px effective width): placeholder height matches `canvasWidgetSlotHeightPx`. */
   canvasListL1?: boolean;
   style?: CSSProperties;
 } & Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'type' | 'children'>;
@@ -31,7 +26,7 @@ export const EditorAddWidgetCta = forwardRef<HTMLButtonElement, EditorAddWidgetC
     const open = useWidgetLibraryOpen();
 
     if (layout === 'canvas') {
-      const h = canvasListL1 ? CANVAS_PLACEHOLDER_HEIGHT_MOBILE_L1_PX : CANVAS_PLACEHOLDER_HEIGHT_PX;
+      const h = canvasWidgetSlotHeightPx(canvasListL1);
       return (
         <button
           ref={ref}
@@ -50,7 +45,7 @@ export const EditorAddWidgetCta = forwardRef<HTMLButtonElement, EditorAddWidgetC
           className={[
             CANVAS_CLASS_BASE,
             isLibraryTarget
-              ? 'border-2 border-solid border-[#E20074] shadow-[0_0_0_3px_rgba(226,0,116,0.25)]'
+              ? 'border-2 border-solid border-[var(--color-brand-primary)] shadow-[0_0_0_3px_rgba(249,108,80,0.25)]'
               : 'border-0',
             className,
           ]
@@ -61,7 +56,7 @@ export const EditorAddWidgetCta = forwardRef<HTMLButtonElement, EditorAddWidgetC
           aria-pressed={isLibraryTarget ? true : undefined}
           aria-expanded={isLibraryTarget ? true : undefined}
         >
-          <IconPlusSoft className="block size-[18px] shrink-0 text-black/40 transition-colors group-hover:text-[#E20074]" aria-hidden />
+          <IconPlusSoft className="block size-[18px] shrink-0 text-[var(--color-grey-darkest)]/40 transition-colors group-hover:text-[var(--color-brand-primary)]" aria-hidden />
           <span className="max-w-[9rem] text-center text-pretty leading-snug">Select Widget</span>
         </button>
       );

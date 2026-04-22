@@ -65,11 +65,40 @@ function ThumbnailSectionSlots({
         </div>
       );
     case 'three-column':
-      return (
-        <div className={`flex min-h-0 flex-row gap-0.5 overflow-hidden ${compact ? 'max-h-full' : ''}`}>
+    case 'three-column-right': {
+      const pairFirst = preset === 'three-column';
+      const pair = (
+        <div className="flex min-h-0 min-w-0 flex-1 basis-0 flex-row gap-0.5 overflow-hidden">
           <div className="min-h-0 min-w-0 flex-1 basis-0 overflow-hidden">{a ? cell(a) : null}</div>
           <div className="min-h-0 min-w-0 flex-1 basis-0 overflow-hidden">{b ? cell(b) : null}</div>
-          <div className="min-h-0 min-w-0 flex-1 basis-0 overflow-hidden">{c ? cell(c) : null}</div>
+        </div>
+      );
+      const large = (
+        <div className="min-h-0 min-w-0 flex-1 basis-0 overflow-hidden">{c ? cell(c) : null}</div>
+      );
+      return (
+        <div className={`flex min-h-0 flex-row gap-0.5 overflow-hidden ${compact ? 'max-h-full' : ''}`}>
+          {pairFirst ? pair : large}
+          {pairFirst ? large : pair}
+        </div>
+      );
+    }
+    case 'three-column-middle':
+      return (
+        <div className={`flex min-h-0 flex-row gap-0.5 overflow-hidden ${compact ? 'max-h-full' : ''}`}>
+          <div className="min-h-0 min-w-0 flex-[1_1_0%] overflow-hidden">{a ? cell(a) : null}</div>
+          <div className="min-h-0 min-w-0 flex-[2_1_0%] overflow-hidden">{c ? cell(c) : null}</div>
+          <div className="min-h-0 min-w-0 flex-[1_1_0%] overflow-hidden">{b ? cell(b) : null}</div>
+        </div>
+      );
+    case 'four-small':
+      return (
+        <div className={`flex min-h-0 flex-row gap-0.5 overflow-hidden ${compact ? 'max-h-full' : ''}`}>
+          {widgets.slice(0, 4).map((w) => (
+            <div key={w.instanceId} className="min-h-0 min-w-0 flex-1 basis-0 overflow-hidden">
+              {cell(w)}
+            </div>
+          ))}
         </div>
       );
   }

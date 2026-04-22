@@ -36,7 +36,7 @@ export type ToggleGroupSize = keyof typeof toggleSizeStyles;
 export type ToggleGroupProps<T extends string> = {
   value: T;
   onValueChange: (value: T) => void;
-  /** Exactly two segments — layout matches Neuron 2.0 icon toggle. */
+  /** Exactly two segments — layout matches OBIS 2.0 icon toggle. */
   segments: readonly [ToggleSegment<T>, ToggleSegment<T>];
   'aria-label': string;
   /** Default `medium`: inner track matches 28×56 Figma frame (outer includes 4px padding). */
@@ -45,7 +45,7 @@ export type ToggleGroupProps<T extends string> = {
 };
 
 /**
- * Two-segment icon toggle (pill). Aligned to Neuron 2.0 Figma — Grid/List layout control.
+ * Two-segment icon toggle (pill). Aligned to OBIS 2.0 Figma — Grid/List layout control.
  */
 export function ToggleGroup<T extends string>({
   value,
@@ -75,7 +75,7 @@ export function ToggleGroup<T extends string>({
         <div
           aria-hidden
           className={[
-            'pointer-events-none absolute inset-y-0 left-0 w-1/2 bg-black',
+            'pointer-events-none absolute inset-y-0 left-0 w-1/2 bg-[var(--color-grey-darkest)]',
             sz.pill,
             'transform-gpu transition-transform duration-300 ease-[cubic-bezier(0.34,1.02,0.64,1)] will-change-transform',
             'motion-reduce:transition-none motion-reduce:duration-0',
@@ -99,7 +99,7 @@ export function ToggleGroup<T extends string>({
                 'motion-reduce:transition-none motion-reduce:duration-0',
                 selected
                   ? 'text-white hover:bg-white/10'
-                  : 'text-black hover:bg-black/[0.06]',
+                  : 'text-[var(--color-grey-darkest)] hover:bg-[#333333]/10',
                 'focus-visible:shadow-[var(--shadow-focus)]',
               ].join(' ')}
             >

@@ -1,11 +1,12 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import type { SavedDashboard, SharedByInfo } from '../types';
-import { ReportStatusBadge } from './ReportStatusBadge';
+import type { SharedByInfo } from '../types';
+import { DomainChip } from './DomainChip';
 import { SharedWithAvatarStack } from './SharedWithAvatarStack';
 
 export type DashboardTileCardProps = {
   title: string;
-  status: SavedDashboard['status'];
+  /** Domain chip (replaces published/draft chip on the card). */
+  domainLabel: string;
   /** e.g. `Last Updated Apr 9, 2026, 10:23 PM` */
   lastUpdatedLabel: string;
   coverImageDataUrl?: string | null;
@@ -29,7 +30,7 @@ function resolveSharedPeople(sharedBy?: SharedByInfo, sharedWith?: SharedByInfo[
  */
 export function DashboardTileCard({
   title,
-  status,
+  domainLabel,
   lastUpdatedLabel,
   coverImageDataUrl,
   sharedBy,
@@ -88,11 +89,13 @@ export function DashboardTileCard({
           </div>
 
           <div className="min-w-0 overflow-visible">
-            <ReportStatusBadge status={status} />
+            <div className="flex w-full min-w-0">
+              <DomainChip label={domainLabel} />
+            </div>
             <div className="mt-3 w-full min-w-0">
               {showAvatarStack ? (
                 <div className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-x-2">
-                  <span className="min-w-0 font-['Poppins',sans-serif] text-base font-semibold leading-normal text-black [overflow-wrap:anywhere]">
+                  <span className="min-w-0 font-['Poppins',sans-serif] text-base font-semibold leading-normal text-[var(--color-grey-darkest)] [overflow-wrap:anywhere]">
                     {title}
                   </span>
                   <div className="relative z-10 min-w-[4.5rem] shrink-0 justify-self-end">
@@ -100,7 +103,7 @@ export function DashboardTileCard({
                   </div>
                 </div>
               ) : (
-                <span className="block min-w-0 font-['Poppins',sans-serif] text-base font-semibold leading-normal text-black [overflow-wrap:anywhere]">
+                <span className="block min-w-0 font-['Poppins',sans-serif] text-base font-semibold leading-normal text-[var(--color-grey-darkest)] [overflow-wrap:anywhere]">
                   {title}
                 </span>
               )}

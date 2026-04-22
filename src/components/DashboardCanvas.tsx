@@ -2,11 +2,21 @@ import type { CSSProperties, ReactNode } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, useSortable, rectSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { getWidgetDisplayLabel } from '../data/widgets';
+import { canvasWidgetSlotFrameStyle } from '../canvasWidgetSlot';
+import {
+  getWidgetDisplayLabel,
+  widgetCatalogEyebrow,
+  widgetKpiDefinitionForCanvas,
+  widgetKpiDemoMetric,
+  widgetKpiLabelCompact,
+  widgetUsesKpiCanvasPresentation,
+} from '../data/widgets';
+import { formatKpiCanvasPeriodLabel } from './TimelinePickerField';
 import { NAV_BURGER_MIN_LAYOUT_WIDTH_PX } from '../layoutUtils';
-import type { DashboardSection, PlacedWidget, SectionLayoutPreset } from '../types';
+import type { CanvasKpiWidgetTier, DashboardSection, PlacedWidget, SectionLayoutPreset } from '../types';
 import { useWidgetLibraryOpen } from '../context/WidgetLibraryContext';
 import { IconArrowDown, IconArrowUp, IconClose, IconDrag, IconEdit, IconPlusSoft, IconTrash } from './Icons';
+import { CanvasWidgetKpiTile } from './canvas/CanvasWidgetKpiTile';
 import { EditorAddWidgetCta } from './EditorAddWidgetCta';
 
 /** Shared view-transition name so the add-section CTA animates when rows are deleted or reordered. */
@@ -14,9 +24,26 @@ const addSectionCtaViewTransition: CSSProperties = {
   viewTransitionName: 'neuron-add-section-cta',
 };
 
-/** Slot wrapper — subtle elevation; magenta highlight is on the inner tile (EditorAddWidgetCta / SortablePlacedWidget). */
-function slotSurfaceClass() {
-  return 'min-h-0 min-w-0 rounded-[var(--radius-canvas)] bg-white box-border shadow-[var(--shadow-subtle)]';
+/**
+ * Top chrome strip only — scoped to `group/widget` so section `article.group` does not trigger all tiles.
+ * Gradient: white 100% → white 70% opacity (top → bottom).
+ */
+const CANVAS_ROW_OVERLAY_STRIP =
+  'pointer-events-none absolute left-0 right-0 top-0 z-20 opacity-0 transition-opacity duration-200 ease-out motion-reduce:transition-none max-sm:pointer-events-auto max-sm:opacity-100 sm:group-hover/widget:pointer-events-auto sm:group-hover/widget:opacity-100 sm:group-focus-within/widget:pointer-events-auto sm:group-focus-within/widget:opacity-100';
+
+const CANVAS_ROW_OVERLAY_BTN =
+  'inline-flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-md bg-white text-[#4a4a4c] active:cursor-grabbing';
+
+/**
+ * Slot wrapper around each canvas cell. KPI tiles bring their own fixed-height card; legacy row tiles
+ * expect the lifted white shell on this wrapper (pre–KPI card behavior).
+ */
+function canvasSlotShellClass(w: PlacedWidget): string {
+  const base = 'min-h-0 min-w-0';
+  if (!w.placeholder && widgetUsesKpiCanvasPresentation(w.templateId)) {
+    return `${base} rounded-[var(--radius-canvas)] overflow-hidden`;
+  }
+  return `${base} rounded-[var(--radius-canvas)] bg-white box-border shadow-[var(--shadow-subtle)]`;
 }
 
 function SortablePlaceholderSlot({
@@ -66,11 +93,17 @@ function SortablePlacedWidget({
   widget,
   onRemove,
   isLibraryTarget,
+  canvasListL1,
+  kpiWidgetTier,
+  kpiPeriodContextLabel,
 }: {
   sectionId: string;
   widget: PlacedWidget;
   onRemove: (instanceId: string) => void;
   isLibraryTarget: boolean;
+  canvasListL1: boolean;
+  kpiWidgetTier: CanvasKpiWidgetTier;
+  kpiPeriodContextLabel: string;
 }) {
   const openWidgetLibrary = useWidgetLibraryOpen();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -82,60 +115,120 @@ function SortablePlacedWidget({
     },
   });
 
+  const displayLabel = getWidgetDisplayLabel(widget.templateId, widget.label);
+  const kpi = widgetUsesKpiCanvasPresentation(widget.templateId);
+
+  if (kpi) {
+    const kpiDemo = widgetKpiDemoMetric(widget.templateId);
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+      opacity: isDragging ? 0.55 : 1,
+      ...canvasWidgetSlotFrameStyle(canvasListL1),
+    };
+    const shellClass = [
+      'group/widget @container/kpi flex w-full min-h-0 min-w-0 flex-col overflow-hidden rounded-[var(--radius-canvas)] bg-white shadow-[var(--shadow-subtle)]',
+      isLibraryTarget
+        ? 'border-2 border-solid border-[var(--color-brand-primary)] shadow-[0_0_0_3px_rgba(249,108,80,0.25)]'
+        : 'border border-solid border-[#e6e6e6]',
+    ].join(' ');
+
+    return (
+      <div
+        ref={setNodeRef}
+        style={style}
+        className={shellClass}
+        data-neuron-canvas-widget-tier={kpiWidgetTier}
+        data-neuron-widget-active={isLibraryTarget ? '' : undefined}
+      >
+        <CanvasWidgetKpiTile
+          tier={kpiWidgetTier}
+          displayLabel={displayLabel}
+          displayLabelCompact={widgetKpiLabelCompact(widget.templateId)}
+          catalogEyebrow={widgetCatalogEyebrow(widget.templateId)}
+          definition={widgetKpiDefinitionForCanvas(widget.templateId, kpiWidgetTier)}
+          valueDemo={kpiDemo.value}
+          valueUnit={kpiDemo.unit}
+          metricDeltaChip={kpiDemo.metricDeltaChip}
+          metricSparkline={kpiDemo.metricSparkline}
+          periodContextLabel={kpiPeriodContextLabel}
+          attributes={attributes}
+          listeners={listeners as Record<string, unknown> | undefined}
+          onChangeClick={(e) => {
+            e.stopPropagation();
+            openWidgetLibrary(sectionId, widget.instanceId);
+          }}
+          onRemoveClick={() => onRemove(widget.instanceId)}
+        />
+      </div>
+    );
+  }
+
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.55 : 1,
   };
 
-  const displayLabel = getWidgetDisplayLabel(widget.templateId, widget.label);
-
   return (
     <div
       ref={setNodeRef}
       style={style}
       className={[
-        'group flex min-h-0 flex-col gap-2 rounded-[var(--radius-canvas)] bg-white px-2 py-3 shadow-[var(--shadow-subtle)] sm:flex-row sm:items-center sm:justify-between sm:gap-0',
+        'group/widget relative isolate min-h-0 overflow-hidden rounded-[var(--radius-canvas)] bg-white shadow-[var(--shadow-subtle)]',
         isLibraryTarget
-          ? 'border-2 border-solid border-[#E20074] shadow-[0_0_0_3px_rgba(226,0,116,0.25)]'
+          ? 'border-2 border-solid border-[var(--color-brand-primary)] shadow-[0_0_0_3px_rgba(249,108,80,0.25)]'
           : 'border border-[#d7d7d7]',
       ].join(' ')}
       data-neuron-widget-active={isLibraryTarget ? '' : undefined}
     >
-      <div className="flex min-w-0 items-center gap-1.5">
-        <button
-          type="button"
-          className="inline-flex cursor-grab touch-none items-center justify-center text-[#1e1e1f]/35 active:cursor-grabbing"
-          {...listeners}
-          {...attributes}
-          aria-label={`Reorder ${displayLabel}`}
-        >
-          <IconDrag className="block size-[18px] shrink-0" aria-hidden />
-        </button>
-        <span className="min-w-0 font-['Poppins',sans-serif] text-sm leading-snug text-black/80">{displayLabel}</span>
+      <div className="relative z-0 flex min-h-0 items-center px-3 py-3">
+        <span className="min-w-0 font-['Poppins',sans-serif] text-sm leading-snug text-[var(--color-grey-darkest)]/80">
+          {displayLabel}
+        </span>
       </div>
-      <div className="flex flex-wrap items-center gap-0.5 self-start sm:self-auto">
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            openWidgetLibrary(sectionId, widget.instanceId);
-          }}
-          className="flex size-8 shrink-0 items-center justify-center rounded-md text-[#606080] opacity-100 transition-opacity duration-150 hover:bg-[#f0f0f0] sm:opacity-0 sm:group-hover:opacity-100"
-          aria-label={`Change ${displayLabel}`}
-          title={`Change ${displayLabel}`}
-        >
-          <IconEdit className="block size-[18px] shrink-0" aria-hidden />
-        </button>
-        <button
-          type="button"
-          onClick={() => onRemove(widget.instanceId)}
-          className="flex size-8 shrink-0 items-center justify-center rounded-md text-[#606080] hover:bg-[#f0f0f0]"
-          aria-label={`Clear ${displayLabel}`}
-          title={`Clear ${displayLabel}`}
-        >
-          <IconClose className="block size-[18px] shrink-0" aria-hidden />
-        </button>
+
+      <div className={CANVAS_ROW_OVERLAY_STRIP}>
+        <div className="relative px-2.5 pb-2 pt-2">
+          <div
+            className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white to-white/70"
+            aria-hidden
+          />
+          <div className="relative z-[1] flex flex-row items-center justify-between gap-2">
+            <button
+              type="button"
+              className={[CANVAS_ROW_OVERLAY_BTN, 'touch-none text-[#1e1e1f]/45'].join(' ')}
+              {...listeners}
+              {...attributes}
+              aria-label={`Reorder ${displayLabel}`}
+            >
+              <IconDrag className="block size-[18px] shrink-0" aria-hidden />
+            </button>
+            <div className="flex shrink-0 items-center gap-1">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openWidgetLibrary(sectionId, widget.instanceId);
+                }}
+                className={CANVAS_ROW_OVERLAY_BTN}
+                aria-label={`Change ${displayLabel}`}
+                title={`Change ${displayLabel}`}
+              >
+                <IconEdit className="block size-[18px] shrink-0" aria-hidden />
+              </button>
+              <button
+                type="button"
+                onClick={() => onRemove(widget.instanceId)}
+                className={CANVAS_ROW_OVERLAY_BTN}
+                aria-label={`Clear ${displayLabel}`}
+                title={`Clear ${displayLabel}`}
+              >
+                <IconClose className="block size-[18px] shrink-0" aria-hidden />
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -146,8 +239,12 @@ function renderSlot(
   w: PlacedWidget,
   onRemoveWidget: (sectionId: string, instanceId: string) => void,
   activePlaceholderInstanceId: string | null,
-  canvasListL1: boolean
+  canvasListL1: boolean,
+  kpiWidgetTier: CanvasKpiWidgetTier,
+  stackMultiColumnLayout: boolean,
+  kpiPeriodContextLabel: string
 ) {
+  const kpiTierEffective: CanvasKpiWidgetTier = stackMultiColumnLayout ? 'l1' : kpiWidgetTier;
   return w.placeholder ? (
     <SortablePlaceholderSlot
       sectionId={section.id}
@@ -161,6 +258,9 @@ function renderSlot(
       widget={w}
       onRemove={(id) => onRemoveWidget(section.id, id)}
       isLibraryTarget={activePlaceholderInstanceId === w.instanceId}
+      canvasListL1={canvasListL1}
+      kpiWidgetTier={kpiTierEffective}
+      kpiPeriodContextLabel={kpiPeriodContextLabel}
     />
   );
 }
@@ -178,6 +278,7 @@ function SectionLayoutFrame({
   activePlaceholderInstanceId,
   stackMultiColumnLayout,
   canvasListL1,
+  kpiPeriodContextLabel,
 }: {
   layout: SectionLayoutPreset;
   section: DashboardSection;
@@ -187,8 +288,9 @@ function SectionLayoutFrame({
   activePlaceholderInstanceId: string | null;
   /** Narrow viewport / preview rail: multi-column presets stack vertically; wide keeps chosen layout. */
   stackMultiColumnLayout: boolean;
-  /** Narrow canvas: L1 placeholder height (220px). */
+  /** Narrow viewport: shorter KPI tile / placeholder height (`canvasWidgetSlotHeightPx`); not the same as widget tier L1/L2. */
   canvasListL1: boolean;
+  kpiPeriodContextLabel: string;
 }) {
   const ws = section.widgets;
   const [a, b, c] = ws;
@@ -202,17 +304,27 @@ function SectionLayoutFrame({
   const multiColumnRowClass = stackMultiColumnLayout
     ? 'flex w-full flex-col gap-[20px]'
     : 'flex w-full flex-row items-stretch gap-[20px]';
-  const multiColumnSlotClass = stackMultiColumnLayout
-    ? `min-h-0 min-w-0 w-full ${slotSurfaceClass()}`
-    : `min-h-0 min-w-0 flex-1 basis-0 ${slotSurfaceClass()}`;
+  const multiColumnSlotClass = (w: PlacedWidget) =>
+    stackMultiColumnLayout
+      ? `min-h-0 min-w-0 w-full ${canvasSlotShellClass(w)}`
+      : `min-h-0 min-w-0 flex-1 basis-0 ${canvasSlotShellClass(w)}`;
 
   switch (layout) {
     case 'full':
       return shell(
         <div className="flex w-full flex-col gap-[20px]">
           {ws.map((w) => (
-            <div key={w.instanceId} className={slotSurfaceClass()}>
-              {renderSlot(section, w, onRemoveWidget, activePlaceholderInstanceId, canvasListL1)}
+            <div key={w.instanceId} className={canvasSlotShellClass(w)}>
+              {renderSlot(
+                section,
+                w,
+                onRemoveWidget,
+                activePlaceholderInstanceId,
+                canvasListL1,
+                'l2',
+                stackMultiColumnLayout,
+                kpiPeriodContextLabel
+              )}
             </div>
           ))}
         </div>
@@ -222,13 +334,31 @@ function SectionLayoutFrame({
       return shell(
         <div className={multiColumnRowClass}>
           {a ? (
-            <div key={a.instanceId} className={multiColumnSlotClass}>
-              {renderSlot(section, a, onRemoveWidget, activePlaceholderInstanceId, canvasListL1)}
+            <div key={a.instanceId} className={multiColumnSlotClass(a)}>
+              {renderSlot(
+                section,
+                a,
+                onRemoveWidget,
+                activePlaceholderInstanceId,
+                canvasListL1,
+                'l1',
+                stackMultiColumnLayout,
+                kpiPeriodContextLabel
+              )}
             </div>
           ) : null}
           {b ? (
-            <div key={b.instanceId} className={multiColumnSlotClass}>
-              {renderSlot(section, b, onRemoveWidget, activePlaceholderInstanceId, canvasListL1)}
+            <div key={b.instanceId} className={multiColumnSlotClass(b)}>
+              {renderSlot(
+                section,
+                b,
+                onRemoveWidget,
+                activePlaceholderInstanceId,
+                canvasListL1,
+                'l1',
+                stackMultiColumnLayout,
+                kpiPeriodContextLabel
+              )}
             </div>
           ) : null}
         </div>
@@ -238,36 +368,185 @@ function SectionLayoutFrame({
       return shell(
         <div className={multiColumnRowClass}>
           {a ? (
-            <div key={a.instanceId} className={multiColumnSlotClass}>
-              {renderSlot(section, a, onRemoveWidget, activePlaceholderInstanceId, canvasListL1)}
+            <div key={a.instanceId} className={multiColumnSlotClass(a)}>
+              {renderSlot(
+                section,
+                a,
+                onRemoveWidget,
+                activePlaceholderInstanceId,
+                canvasListL1,
+                'l1',
+                stackMultiColumnLayout,
+                kpiPeriodContextLabel
+              )}
             </div>
           ) : null}
           {b ? (
-            <div key={b.instanceId} className={multiColumnSlotClass}>
-              {renderSlot(section, b, onRemoveWidget, activePlaceholderInstanceId, canvasListL1)}
+            <div key={b.instanceId} className={multiColumnSlotClass(b)}>
+              {renderSlot(
+                section,
+                b,
+                onRemoveWidget,
+                activePlaceholderInstanceId,
+                canvasListL1,
+                'l1',
+                stackMultiColumnLayout,
+                kpiPeriodContextLabel
+              )}
             </div>
           ) : null}
         </div>
       );
 
     case 'three-column':
-      return shell(
-        <div className={multiColumnRowClass}>
+    case 'three-column-right': {
+      /** Two small (a,b) + inner gap share one flex half; large (c) is the other half — widths match. */
+      const pairFirst = layout === 'three-column';
+      const smallInPair = (w: PlacedWidget) => `min-h-0 min-w-0 flex-1 basis-0 ${canvasSlotShellClass(w)}`;
+      const largeSlot = (w: PlacedWidget) =>
+        stackMultiColumnLayout
+          ? `min-h-0 min-w-0 w-full flex-1 basis-0 ${canvasSlotShellClass(w)}`
+          : `min-h-0 min-w-0 flex-1 basis-0 ${canvasSlotShellClass(w)}`;
+      const pairRow = stackMultiColumnLayout
+        ? 'flex w-full min-h-0 min-w-0 flex-row items-stretch gap-[20px]'
+        : 'flex min-h-0 min-w-0 flex-1 basis-0 flex-row items-stretch gap-[20px]';
+      const outerRow = stackMultiColumnLayout
+        ? 'flex w-full flex-col items-stretch gap-[20px]'
+        : 'flex w-full flex-row items-stretch gap-[20px]';
+
+      const pair = (
+        <div className={pairRow}>
           {a ? (
-            <div key={a.instanceId} className={multiColumnSlotClass}>
-              {renderSlot(section, a, onRemoveWidget, activePlaceholderInstanceId, canvasListL1)}
+            <div key={a.instanceId} className={smallInPair(a)}>
+              {renderSlot(
+                section,
+                a,
+                onRemoveWidget,
+                activePlaceholderInstanceId,
+                canvasListL1,
+                'l1',
+                stackMultiColumnLayout,
+                kpiPeriodContextLabel
+              )}
             </div>
           ) : null}
           {b ? (
-            <div key={b.instanceId} className={multiColumnSlotClass}>
-              {renderSlot(section, b, onRemoveWidget, activePlaceholderInstanceId, canvasListL1)}
+            <div key={b.instanceId} className={smallInPair(b)}>
+              {renderSlot(
+                section,
+                b,
+                onRemoveWidget,
+                activePlaceholderInstanceId,
+                canvasListL1,
+                'l1',
+                stackMultiColumnLayout,
+                kpiPeriodContextLabel
+              )}
+            </div>
+          ) : null}
+        </div>
+      );
+      const large = c ? (
+        <div key={c.instanceId} className={largeSlot(c)}>
+          {renderSlot(
+            section,
+            c,
+            onRemoveWidget,
+            activePlaceholderInstanceId,
+            canvasListL1,
+            'l2',
+            stackMultiColumnLayout,
+            kpiPeriodContextLabel
+          )}
+        </div>
+      ) : null;
+
+      return shell(
+        <div className={outerRow}>
+          {pairFirst ? pair : large}
+          {pairFirst ? large : pair}
+        </div>
+      );
+    }
+
+    case 'three-column-middle': {
+      /** a = left L1, c = center L2, b = right L1; flex grow 1 : 2 : 1. */
+      const smallCol = (w: PlacedWidget) =>
+        stackMultiColumnLayout
+          ? `min-h-0 min-w-0 w-full ${canvasSlotShellClass(w)}`
+          : `min-h-0 min-w-0 flex-[1_1_0%] ${canvasSlotShellClass(w)}`;
+      const centerCol = (w: PlacedWidget) =>
+        stackMultiColumnLayout
+          ? `min-h-0 min-w-0 w-full flex-1 basis-0 ${canvasSlotShellClass(w)}`
+          : `min-h-0 min-w-0 flex-[2_1_0%] ${canvasSlotShellClass(w)}`;
+      const outer = stackMultiColumnLayout
+        ? 'flex w-full flex-col items-stretch gap-[20px]'
+        : 'flex w-full flex-row items-stretch gap-[20px]';
+      return shell(
+        <div className={outer}>
+          {a ? (
+            <div key={a.instanceId} className={smallCol(a)}>
+              {renderSlot(
+                section,
+                a,
+                onRemoveWidget,
+                activePlaceholderInstanceId,
+                canvasListL1,
+                'l1',
+                stackMultiColumnLayout,
+                kpiPeriodContextLabel
+              )}
             </div>
           ) : null}
           {c ? (
-            <div key={c.instanceId} className={multiColumnSlotClass}>
-              {renderSlot(section, c, onRemoveWidget, activePlaceholderInstanceId, canvasListL1)}
+            <div key={c.instanceId} className={centerCol(c)}>
+              {renderSlot(
+                section,
+                c,
+                onRemoveWidget,
+                activePlaceholderInstanceId,
+                canvasListL1,
+                'l2',
+                stackMultiColumnLayout,
+                kpiPeriodContextLabel
+              )}
             </div>
           ) : null}
+          {b ? (
+            <div key={b.instanceId} className={smallCol(b)}>
+              {renderSlot(
+                section,
+                b,
+                onRemoveWidget,
+                activePlaceholderInstanceId,
+                canvasListL1,
+                'l1',
+                stackMultiColumnLayout,
+                kpiPeriodContextLabel
+              )}
+            </div>
+          ) : null}
+        </div>
+      );
+    }
+
+    case 'four-small':
+      return shell(
+        <div className={multiColumnRowClass}>
+          {ws.slice(0, 4).map((w) => (
+            <div key={w.instanceId} className={multiColumnSlotClass(w)}>
+              {renderSlot(
+                section,
+                w,
+                onRemoveWidget,
+                activePlaceholderInstanceId,
+                canvasListL1,
+                'l1',
+                stackMultiColumnLayout,
+                kpiPeriodContextLabel
+              )}
+            </div>
+          ))}
         </div>
       );
   }
@@ -288,7 +567,14 @@ function SectionRowActions({
   onRemove: () => void;
 }) {
   const moveBtn =
-    "inline-flex h-8 min-h-8 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-md px-2 text-white transition-colors hover:bg-white/15 disabled:pointer-events-none disabled:opacity-35 font-['Inter',sans-serif] text-xs font-normal leading-none tracking-tight";
+    "flex h-8 min-h-8 shrink-0 cursor-pointer flex-row items-center justify-center gap-1.5 rounded-md px-2 py-0 text-white transition-colors hover:bg-white/15 disabled:pointer-events-none disabled:opacity-35 font-['Inter',sans-serif] text-xs font-normal leading-none tracking-tight";
+
+  /** Centers glyphs in a stable 18×18 box (arrow paths are optically centered in `Icons.tsx`). */
+  const toolbarIconWrap =
+    "grid size-[18px] shrink-0 place-items-center [&>svg]:block [&>svg]:size-[18px]";
+
+  const moveLabel = "flex h-[18px] shrink-0 items-center leading-none";
+  const deleteLabel = "flex shrink-0 items-center leading-none";
 
   return (
     <div
@@ -305,8 +591,10 @@ function SectionRowActions({
           aria-label="Move section up"
           title="Move up"
         >
-          <IconArrowUp className="block size-[18px] shrink-0" aria-hidden />
-          <span className="leading-none">Up</span>
+          <span className={toolbarIconWrap} aria-hidden>
+            <IconArrowUp />
+          </span>
+          <span className={moveLabel}>Up</span>
         </button>
         <button
           type="button"
@@ -316,20 +604,24 @@ function SectionRowActions({
           aria-label="Move section down"
           title="Move down"
         >
-          <IconArrowDown className="block size-[18px] shrink-0" aria-hidden />
-          <span className="leading-none">Down</span>
+          <span className={toolbarIconWrap} aria-hidden>
+            <IconArrowDown />
+          </span>
+          <span className={moveLabel}>Down</span>
         </button>
       </div>
       <span className="mx-0.5 h-5 w-px shrink-0 self-center bg-white/25" aria-hidden />
       <button
         type="button"
-        className="inline-flex h-8 min-h-8 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-md px-2 text-white transition-colors hover:bg-white/15 font-['Inter',sans-serif] text-xs font-normal leading-none tracking-tight"
+        className="flex h-8 min-h-8 shrink-0 cursor-pointer flex-row items-center justify-center gap-1.5 rounded-md px-2 py-0 text-white transition-colors hover:bg-white/15 font-['Inter',sans-serif] text-xs font-normal leading-none tracking-tight"
         onClick={onRemove}
         aria-label="Delete row"
         title="Delete row"
       >
-        <IconTrash className="block size-[18px] shrink-0" aria-hidden />
-        <span className="leading-none">Delete Row</span>
+        <span className={toolbarIconWrap} aria-hidden>
+          <IconTrash />
+        </span>
+        <span className={deleteLabel}>Delete Row</span>
       </button>
     </div>
   );
@@ -345,6 +637,7 @@ function SectionCard({
   activePlaceholderInstanceId,
   stackMultiColumnLayout,
   canvasListL1,
+  kpiPeriodContextLabel,
 }: {
   section: DashboardSection;
   sectionIndex: number;
@@ -355,6 +648,7 @@ function SectionCard({
   activePlaceholderInstanceId: string | null;
   stackMultiColumnLayout: boolean;
   canvasListL1: boolean;
+  kpiPeriodContextLabel: string;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: `section:${section.id}`,
@@ -407,12 +701,22 @@ function SectionCard({
                 activePlaceholderInstanceId={activePlaceholderInstanceId}
                 stackMultiColumnLayout={stackMultiColumnLayout}
                 canvasListL1={canvasListL1}
+                kpiPeriodContextLabel={kpiPeriodContextLabel}
               />
             ) : (
               <div ref={setNodeRef} className={`flex min-w-0 w-full flex-col gap-2 ${overRing}`}>
                 {section.widgets.map((w) => (
-                  <div key={w.instanceId} className={slotSurfaceClass()}>
-                    {renderSlot(section, w, onRemoveWidget, activePlaceholderInstanceId, canvasListL1)}
+                  <div key={w.instanceId} className={canvasSlotShellClass(w)}>
+                    {renderSlot(
+                      section,
+                      w,
+                      onRemoveWidget,
+                      activePlaceholderInstanceId,
+                      canvasListL1,
+                      'l1',
+                      stackMultiColumnLayout,
+                      kpiPeriodContextLabel
+                    )}
                   </div>
                 ))}
               </div>
@@ -441,6 +745,8 @@ type DashboardCanvasProps = {
   activePlaceholderInstanceId?: string | null;
   /** Window or preview rail width — matches header; below 640px stacks multi-column section layouts. */
   effectiveLayoutWidth: number;
+  /** Toolbar timeline value (custom range drives KPI period caption). */
+  timelineValue?: string;
 };
 
 export function DashboardCanvas({
@@ -451,10 +757,12 @@ export function DashboardCanvas({
   onMoveSection,
   activePlaceholderInstanceId = null,
   effectiveLayoutWidth,
+  timelineValue = '',
 }: DashboardCanvasProps) {
   const narrowCanvas = effectiveLayoutWidth < NAV_BURGER_MIN_LAYOUT_WIDTH_PX;
   const stackMultiColumnLayout = narrowCanvas;
   const canvasListL1 = narrowCanvas;
+  const kpiPeriodContextLabel = formatKpiCanvasPeriodLabel(timelineValue);
 
   return (
     <div className="flex min-w-0 w-full max-w-full flex-1 flex-col gap-[5px]">
@@ -471,8 +779,8 @@ export function DashboardCanvas({
           }}
           className="group box-border flex w-full shrink-0 cursor-pointer items-center justify-center gap-2.5 rounded-[var(--radius-canvas)] bg-white p-3.5 shadow-[var(--shadow-card)] hover:bg-[#fafafa]"
         >
-          <IconPlusSoft className="block size-4 shrink-0 text-black/35 transition-colors group-hover:text-[#E20074]" aria-hidden />
-          <span className="max-w-full text-balance text-center font-['Inter',sans-serif] text-[13px] font-normal leading-snug tracking-tight text-black/30 transition-colors duration-200 group-hover:text-[#000]">
+          <IconPlusSoft className="block size-4 shrink-0 text-[var(--color-grey-darkest)]/35 transition-colors group-hover:text-[var(--color-brand-primary)]" aria-hidden />
+          <span className="max-w-full text-balance text-center font-['Inter',sans-serif] text-[13px] font-normal leading-snug tracking-tight text-[var(--color-grey-darkest)]/30 transition-colors duration-200 group-hover:text-[var(--color-grey-darkest)]">
             Add Section
           </span>
         </button>
@@ -490,6 +798,7 @@ export function DashboardCanvas({
               activePlaceholderInstanceId={activePlaceholderInstanceId}
               stackMultiColumnLayout={stackMultiColumnLayout}
               canvasListL1={canvasListL1}
+              kpiPeriodContextLabel={kpiPeriodContextLabel}
             />
           ))}
           <button
@@ -498,8 +807,8 @@ export function DashboardCanvas({
             style={{ minHeight: 60, flexShrink: 0, ...addSectionCtaViewTransition }}
             className="group mt-6 box-border flex w-full shrink-0 cursor-pointer items-center justify-center gap-2.5 rounded-[var(--radius-canvas)] bg-white px-3.5 py-3 shadow-[var(--shadow-card)] hover:bg-[#fafafa]"
           >
-            <IconPlusSoft className="block size-4 shrink-0 text-black/35 transition-colors group-hover:text-[#E20074]" aria-hidden />
-            <span className="max-w-full text-balance text-center font-['Inter',sans-serif] text-[13px] font-normal leading-snug tracking-tight text-black/30 transition-colors duration-200 group-hover:text-[#000]">
+            <IconPlusSoft className="block size-4 shrink-0 text-[var(--color-grey-darkest)]/35 transition-colors group-hover:text-[var(--color-brand-primary)]" aria-hidden />
+            <span className="max-w-full text-balance text-center font-['Inter',sans-serif] text-[13px] font-normal leading-snug tracking-tight text-[var(--color-grey-darkest)]/30 transition-colors duration-200 group-hover:text-[var(--color-grey-darkest)]">
               Add Section
             </span>
           </button>

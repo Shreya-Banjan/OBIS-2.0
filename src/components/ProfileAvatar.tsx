@@ -35,14 +35,14 @@ export function ProfileAvatar({ sharedBy, size = 'md' }: ProfileAvatarProps) {
         alt=""
         loading="lazy"
         decoding="async"
-        className={`${sizeClasses[size]} shrink-0 rounded-full object-cover ring-1 ring-black/5`}
+        className={`${sizeClasses[size]} shrink-0 rounded-full object-cover ring-1 ring-[var(--color-grey-darkest)]/10`}
       />
     );
   }
 
   return (
     <span
-      className={`inline-flex ${sizeClasses[size]} shrink-0 items-center justify-center rounded-full font-['Inter',sans-serif] font-semibold text-[#1e1e1f]/85 ring-1 ring-black/5`}
+      className={`inline-flex ${sizeClasses[size]} shrink-0 items-center justify-center rounded-full font-['Inter',sans-serif] font-semibold text-[#1e1e1f]/85 ring-1 ring-[var(--color-grey-darkest)]/10`}
       style={{ backgroundColor: bg }}
       aria-hidden
     >

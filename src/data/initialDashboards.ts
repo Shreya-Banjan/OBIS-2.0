@@ -16,19 +16,29 @@ export function mergeInitialDashboards(stored: SavedDashboard[] | null): SavedDa
   if (stored == null || stored.length === 0) {
     return INITIAL_DASHBOARDS.map(cloneDashboard);
   }
+  const seedById = new Map(INITIAL_DASHBOARDS.map((s) => [s.id, s]));
   const ids = new Set(stored.map((d) => d.id));
-  const merged: SavedDashboard[] = stored.map(cloneDashboard);
+  /** Keep demo seed `domain` in sync with code (localStorage would otherwise freeze old chip labels). */
+  const merged: SavedDashboard[] = stored.map((d) => {
+    const cloned = cloneDashboard(d);
+    const seed = seedById.get(d.id);
+    if (seed?.domain !== undefined) {
+      return { ...cloned, domain: seed.domain };
+    }
+    return cloned;
+  });
   for (const seed of INITIAL_DASHBOARDS) {
     if (!ids.has(seed.id)) merged.push(cloneDashboard(seed));
   }
   return merged;
 }
 
-/** Demo seed data — matches sample names from product nav. */
+/** Demo seed data — domains are mostly Quality with a few alternates for visual variety. */
 export const INITIAL_DASHBOARDS: SavedDashboard[] = [
   {
     id: 'seed-np',
     title: 'Network Performance',
+    domain: 'Quality',
     sections: [],
     updatedAt: Date.now() - 86400000 * 2,
     status: 'published',
@@ -44,6 +54,7 @@ export const INITIAL_DASHBOARDS: SavedDashboard[] = [
   {
     id: 'seed-nh',
     title: 'Network Health Summary',
+    domain: 'Research',
     sections: [],
     updatedAt: Date.now() - 86400000 * 5,
     status: 'published',
@@ -58,6 +69,7 @@ export const INITIAL_DASHBOARDS: SavedDashboard[] = [
   {
     id: 'seed-facts',
     title: 'Network Facts',
+    domain: 'Quality',
     sections: [],
     updatedAt: Date.now() - 3600000,
     status: 'draft',
@@ -70,14 +82,15 @@ export const INITIAL_DASHBOARDS: SavedDashboard[] = [
   {
     id: 'seed-d2',
     title: 'Dashboard 2',
+    domain: 'Quality',
     sections: [],
     updatedAt: Date.now() - 86400000,
     status: 'draft',
   },
-  // Extra home-page rows (tile grid ≈3 rows at xl / 4 columns)
   {
     id: 'seed-capacity',
     title: 'Capacity Planning',
+    domain: 'Capacity',
     sections: [],
     updatedAt: Date.now() - 86400000 * 3,
     status: 'published',
@@ -86,6 +99,7 @@ export const INITIAL_DASHBOARDS: SavedDashboard[] = [
   {
     id: 'seed-qoe',
     title: 'QoE Scorecard',
+    domain: 'Quality',
     sections: [],
     updatedAt: Date.now() - 7200000,
     status: 'draft',
@@ -93,6 +107,7 @@ export const INITIAL_DASHBOARDS: SavedDashboard[] = [
   {
     id: 'seed-sla',
     title: 'SLA Compliance',
+    domain: 'Timeliness',
     sections: [],
     updatedAt: Date.now() - 86400000 * 7,
     status: 'published',
@@ -102,6 +117,7 @@ export const INITIAL_DASHBOARDS: SavedDashboard[] = [
   {
     id: 'seed-ran',
     title: 'RAN Diagnostics',
+    domain: 'Research',
     sections: [],
     updatedAt: Date.now() - 1800000,
     status: 'draft',
@@ -109,6 +125,7 @@ export const INITIAL_DASHBOARDS: SavedDashboard[] = [
   {
     id: 'seed-backhaul',
     title: 'Backhaul Utilization',
+    domain: 'Utilization',
     sections: [],
     updatedAt: Date.now() - 86400000 * 4,
     status: 'published',
@@ -116,6 +133,7 @@ export const INITIAL_DASHBOARDS: SavedDashboard[] = [
   {
     id: 'seed-voice',
     title: 'Voice Quality Trends',
+    domain: 'Quality',
     sections: [],
     updatedAt: Date.now() - 43200000,
     status: 'draft',
@@ -124,6 +142,7 @@ export const INITIAL_DASHBOARDS: SavedDashboard[] = [
   {
     id: 'seed-incidents',
     title: 'Incident Summary',
+    domain: 'Quality',
     sections: [],
     updatedAt: Date.now() - 86400000 * 10,
     status: 'published',
@@ -132,6 +151,7 @@ export const INITIAL_DASHBOARDS: SavedDashboard[] = [
   {
     id: 'seed-spectrum',
     title: 'Spectrum Overview',
+    domain: 'Quality',
     sections: [],
     updatedAt: Date.now() - 5400000,
     status: 'draft',
@@ -139,6 +159,7 @@ export const INITIAL_DASHBOARDS: SavedDashboard[] = [
   {
     id: 'seed-mobility',
     title: 'Mobility Handover KPIs',
+    domain: 'Quality',
     sections: [],
     updatedAt: Date.now() - 86400000 * 6,
     status: 'published',
@@ -151,6 +172,7 @@ export const INITIAL_DASHBOARDS: SavedDashboard[] = [
   {
     id: 'seed-energy',
     title: 'Energy & Power',
+    domain: 'Quality',
     sections: [],
     updatedAt: Date.now() - 86400000 * 14,
     status: 'draft',
@@ -158,6 +180,7 @@ export const INITIAL_DASHBOARDS: SavedDashboard[] = [
   {
     id: 'seed-security',
     title: 'Security Posture',
+    domain: 'Research',
     sections: [],
     updatedAt: Date.now() - 900000,
     status: 'published',
@@ -166,6 +189,7 @@ export const INITIAL_DASHBOARDS: SavedDashboard[] = [
   {
     id: 'seed-5g',
     title: '5G Rollout Status',
+    domain: 'Quality',
     sections: [],
     updatedAt: Date.now() - 86400000 * 8,
     status: 'draft',

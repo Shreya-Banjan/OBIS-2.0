@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useId, useRef, useState, type FormEvent } from 'react';
-import { MONTH_OPTIONS, SCOPE_OPTIONS } from '../data/headerSelectOptions';
-import { CoverThumbnailPicker, type CoverThumbnailPickerHandle } from './CoverThumbnailPicker';
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type FormEvent } from 'react';
+import { createPortal } from 'react-dom';
+import { DEFAULT_REPORT_DOMAIN, REPORT_DOMAIN_OPTIONS, type ReportDomain } from '../data/reportDomains';
+import { MONTH_OPTIONS } from '../data/headerSelectOptions';
 import { HeaderSelect } from './HeaderSelect';
-import { IconCalendar, IconClose, IconLocation } from './Icons';
+import { PartnerScopePickerField } from './PartnerScopePickerField';
+import { IconChevronDown, IconClose } from './Icons';
 import { PrimaryButton } from './PrimaryButton';
 import { SecondaryButton } from './SecondaryButton';
 
@@ -14,13 +16,15 @@ export type PublishFormValues = {
   /** Optional message for recipients / internal note */
   comment?: string;
   coverImageDataUrl?: string | null;
+  /** New report flow only */
+  domain?: ReportDomain;
 };
 
 type PublishDashboardModalProps = {
   onClose: () => void;
   onConfirm: (values: PublishFormValues) => void;
   initialTitle: string;
-  /** New report: title only; primary action is Create report. */
+  /** New report: title only; primary action is Create Report. */
   variant?: 'publish' | 'newReport';
 };
 
@@ -38,16 +42,70 @@ export function PublishDashboardModal({
   const isNewReport = variant === 'newReport';
   const headingId = useId();
   const titleFieldId = useId();
+  const domainFieldId = useId();
+  const domainMenuListId = useId();
   const emailId = useId();
   const commentFieldId = useId();
-  const coverPickerRef = useRef<CoverThumbnailPickerHandle>(null);
+  const domainFieldRef = useRef<HTMLDivElement>(null);
+  const domainMenuPanelRef = useRef<HTMLDivElement>(null);
+  const domainMenuOpenRef = useRef(false);
+  const [domainMenuBox, setDomainMenuBox] = useState<{
+    top: number;
+    left: number;
+    width: number;
+  } | null>(null);
 
   const [draftTitle, setDraftTitle] = useState(initialTitle);
-  const [scope, setScope] = useState<string>('National');
+  const [domain, setDomain] = useState<ReportDomain>(DEFAULT_REPORT_DOMAIN);
+  const [domainMenuOpen, setDomainMenuOpen] = useState(false);
+  const [selectedPartners, setSelectedPartners] = useState<string[]>([]);
   const [month, setMonth] = useState<string>(MONTH_OPTIONS[0]);
   const [shareEmails, setShareEmails] = useState<string[]>([]);
   const [emailInput, setEmailInput] = useState('');
   const [comment, setComment] = useState('');
+
+  domainMenuOpenRef.current = domainMenuOpen;
+
+  /** Escape closes domain menu first (capture) so the modal does not dismiss. */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      if (!domainMenuOpenRef.current) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      setDomainMenuOpen(false);
+    };
+    document.addEventListener('keydown', onKey, true);
+    return () => document.removeEventListener('keydown', onKey, true);
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!domainMenuOpen) {
+      setDomainMenuBox(null);
+      return;
+    }
+    const measure = () => {
+      const btn = domainFieldRef.current?.querySelector('button');
+      if (!btn) return;
+      const r = btn.getBoundingClientRect();
+      setDomainMenuBox({ top: r.bottom + 6, left: r.left, width: r.width });
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [domainMenuOpen]);
+
+  useEffect(() => {
+    if (!domainMenuOpen) return;
+    const onDoc = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (domainFieldRef.current?.contains(t)) return;
+      if (domainMenuPanelRef.current?.contains(t)) return;
+      setDomainMenuOpen(false);
+    };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [domainMenuOpen]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -78,41 +136,85 @@ export function PublishDashboardModal({
   }, []);
 
   const handleSubmit = useCallback(
-    async (e: FormEvent) => {
+    (e: FormEvent) => {
       e.preventDefault();
       const title = draftTitle.trim() || initialTitle;
       if (isNewReport) {
-        const coverImageDataUrl = await coverPickerRef.current?.getCroppedDataUrl();
         onConfirm({
           title,
-          scope: 'National',
+          scope: '',
           month: MONTH_OPTIONS[0],
           shareEmails: [],
-          coverImageDataUrl: coverImageDataUrl ?? undefined,
+          domain,
         });
         return;
       }
       const trimmedComment = comment.trim();
       onConfirm({
         title,
-        scope,
+        scope: selectedPartners.join(', '),
         month,
         shareEmails,
         comment: trimmedComment || undefined,
       });
     },
-    [draftTitle, initialTitle, isNewReport, scope, month, shareEmails, comment, onConfirm]
+    [draftTitle, initialTitle, isNewReport, domain, selectedPartners, month, shareEmails, comment, onConfirm]
   );
 
+  const domainMenuPortal =
+    domainMenuOpen &&
+    domainMenuBox &&
+    typeof document !== 'undefined' &&
+    isNewReport ? (
+      createPortal(
+        <div
+          ref={domainMenuPanelRef}
+          id={domainMenuListId}
+          role="menu"
+          style={{
+            position: 'fixed',
+            top: domainMenuBox.top,
+            left: domainMenuBox.left,
+            width: domainMenuBox.width,
+            zIndex: 90,
+          }}
+          className="flex max-h-[min(280px,45vh)] flex-col gap-1 overflow-y-auto overflow-x-hidden rounded-xl border border-[#e8e8e8] bg-white p-1.5 shadow-[var(--shadow-elevated)]"
+          onMouseDown={(e) => e.preventDefault()}
+        >
+          {REPORT_DOMAIN_OPTIONS.map((opt) => (
+            <button
+              key={opt}
+              type="button"
+              role="menuitem"
+              className={`flex w-full items-center rounded-xl px-3 py-2.5 text-left font-['Inter',sans-serif] text-sm transition-colors ${
+                opt === domain
+                  ? 'bg-[#f5f5f5] font-medium text-[#333333]'
+                  : 'font-normal text-[#333333] hover:bg-[#f2f2f2]'
+              }`}
+              onClick={() => {
+                setDomain(opt);
+                setDomainMenuOpen(false);
+              }}
+            >
+              {opt}
+            </button>
+          ))}
+        </div>,
+        document.body
+      )
+    ) : null;
+
   return (
-    <div
-      className="fixed inset-0 z-[75] flex items-end justify-center p-3 sm:items-center sm:p-6"
-      role="presentation"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div className="absolute inset-0 bg-black/45" aria-hidden />
+    <>
+      {domainMenuPortal}
+      <div
+        className="fixed inset-0 z-[75] flex items-end justify-center p-3 sm:items-center sm:p-6"
+        role="presentation"
+        onMouseDown={(e) => {
+          if (e.target === e.currentTarget) onClose();
+        }}
+      >
+      <div className="absolute inset-0 bg-[var(--color-ink)]/50" aria-hidden />
       <div
         role="dialog"
         aria-modal="true"
@@ -122,7 +224,11 @@ export function PublishDashboardModal({
         }`}
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <div className="flex items-start justify-between gap-3 border-b border-[#ebebeb] px-5 py-4 sm:px-6">
+        <div
+          className={`flex items-start justify-between gap-3 px-5 py-4 sm:px-6 ${
+            isNewReport ? '' : 'border-b border-[#ebebeb]'
+          }`.trim()}
+        >
           <h2 id={headingId} className="font-['Poppins',sans-serif] text-lg font-semibold text-[#1e1e1f] sm:text-xl">
             {isNewReport ? 'New Report' : 'Publish dashboard'}
           </h2>
@@ -132,12 +238,12 @@ export function PublishDashboardModal({
             className="shrink-0 rounded-lg p-1 text-[#1e1e1f] hover:bg-[#f0f0f0]"
             aria-label="Close"
           >
-            <IconClose className="size-6" />
+            <IconClose className={isNewReport ? 'size-5' : 'size-6'} />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
-          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-5 py-4 sm:px-6">
+          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-5 pt-4 pb-6 sm:px-6 sm:pb-6">
               <div>
                 <label
                   htmlFor={titleFieldId}
@@ -150,33 +256,57 @@ export function PublishDashboardModal({
                   type="text"
                   value={draftTitle}
                   onChange={(e) => setDraftTitle(e.target.value)}
-                  className="h-12 w-full rounded-xl border border-[#e4e4e4] bg-[#FFF] px-4 font-['Poppins',sans-serif] text-sm font-normal text-[#1e1e1f] outline-none ring-[#b6bec8] transition-[border-color,box-shadow] duration-150 placeholder:text-[#707070]/60 focus-visible:border-[#c4c4c4] focus-visible:ring-2"
+                  className="h-12 w-full rounded-xl border border-[#e4e4e4] bg-[#FFF] px-4 font-['Poppins',sans-serif] text-sm font-normal text-[#1e1e1f] outline-none ring-[var(--color-brand-primary)] transition-[border-color,box-shadow] duration-150 placeholder:text-[#707070]/60 hover:border-[var(--color-brand-primary)] hover:ring-2 hover:ring-[var(--ring-input-focus)] focus-visible:border-[var(--color-brand-primary)] focus-visible:ring-2 focus-visible:ring-[var(--ring-input-focus)] active:border-[var(--color-brand-primary)] active:ring-2 active:ring-[var(--ring-input-focus)]"
                   placeholder={isNewReport ? 'Report title' : 'Dashboard title'}
                   autoComplete="off"
                   autoFocus={isNewReport}
                 />
               </div>
 
-              {isNewReport ? <CoverThumbnailPicker ref={coverPickerRef} /> : null}
+              {isNewReport ? (
+                <div className="w-full min-w-0 shrink-0">
+                  <label
+                    htmlFor={domainFieldId}
+                    className="mb-1.5 block font-['Inter',sans-serif] text-xs font-medium text-[#1e1e1f]"
+                  >
+                    Domain
+                  </label>
+                  <div ref={domainFieldRef} className="relative">
+                    <button
+                      id={domainFieldId}
+                      type="button"
+                      aria-haspopup="menu"
+                      aria-expanded={domainMenuOpen}
+                      aria-controls={domainMenuOpen ? domainMenuListId : undefined}
+                      onClick={() => setDomainMenuOpen((o) => !o)}
+                      className="flex h-12 w-full min-w-0 items-center justify-between gap-2 rounded-xl border border-[#e4e4e4] bg-[#FFF] px-4 text-left font-['Poppins',sans-serif] text-sm font-normal text-[#1e1e1f] outline-none ring-[var(--color-brand-primary)] transition-[background-color,border-color,box-shadow] duration-150 hover:border-[var(--color-brand-primary)] hover:bg-[#FFF] hover:ring-2 hover:ring-[var(--ring-input-focus)] focus-visible:border-[var(--color-brand-primary)] focus-visible:ring-2 focus-visible:ring-[var(--ring-input-focus)] active:border-[var(--color-brand-primary)] active:ring-2 active:ring-[var(--ring-input-focus)]"
+                    >
+                      <span className="min-w-0 truncate">{domain}</span>
+                      <IconChevronDown
+                        className={`size-7 shrink-0 text-[#999999] transition-transform duration-150 ${
+                          domainMenuOpen ? 'rotate-180' : ''
+                        }`}
+                        aria-hidden
+                      />
+                    </button>
+                  </div>
+                </div>
+              ) : null}
 
               {!isNewReport ? (
                 <>
                   <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-                    <HeaderSelect
+                    <PartnerScopePickerField
                       label="Report scope"
-                      icon={IconLocation}
-                      value={scope}
-                      onChange={setScope}
-                      options={SCOPE_OPTIONS}
-                      textClass="text-[#333]"
+                      selectedPartners={selectedPartners}
+                      onPartnersChange={setSelectedPartners}
                     />
                     <HeaderSelect
                       label="Month"
-                      icon={IconCalendar}
                       value={month}
                       onChange={setMonth}
                       options={MONTH_OPTIONS}
-                      textClass="text-[#1e1e1f]"
+                      textClass="font-semibold text-[#1e1e1f]"
                     />
                   </div>
 
@@ -196,7 +326,7 @@ export function PublishDashboardModal({
                             addEmail();
                           }
                         }}
-                        className="h-12 min-w-0 flex-1 rounded-xl border border-[#e4e4e4] bg-[#FFF] px-4 font-['Inter',sans-serif] text-sm text-[#1e1e1f] outline-none ring-[#b6bec8] transition-[border-color,box-shadow] duration-150 placeholder:text-[#707070]/60 focus-visible:border-[#c4c4c4] focus-visible:ring-2"
+                        className="h-12 min-w-0 flex-1 rounded-xl border border-[#e4e4e4] bg-[#FFF] px-4 font-['Inter',sans-serif] text-sm text-[#1e1e1f] outline-none ring-[var(--color-brand-primary)] transition-[border-color,box-shadow] duration-150 placeholder:text-[#707070]/60 hover:border-[var(--color-brand-primary)] hover:ring-2 hover:ring-[var(--ring-input-focus)] focus-visible:border-[var(--color-brand-primary)] focus-visible:ring-2 focus-visible:ring-[var(--ring-input-focus)] active:border-[var(--color-brand-primary)] active:ring-2 active:ring-[var(--ring-input-focus)]"
                         placeholder="name@company.com"
                         autoComplete="email"
                       />
@@ -238,7 +368,7 @@ export function PublishDashboardModal({
                       value={comment}
                       onChange={(e) => setComment(e.target.value)}
                       rows={4}
-                      className="min-h-[5.5rem] w-full resize-y rounded-xl border border-[#e4e4e4] bg-[#FFF] px-4 py-3 font-['Inter',sans-serif] text-sm text-[#1e1e1f] outline-none ring-[#b6bec8] transition-[border-color,box-shadow] duration-150 placeholder:text-[#707070]/60 focus-visible:border-[#c4c4c4] focus-visible:ring-2"
+                      className="min-h-[5.5rem] w-full resize-y rounded-xl border border-[#e4e4e4] bg-[#FFF] px-4 py-3 font-['Inter',sans-serif] text-sm text-[#1e1e1f] outline-none ring-[var(--color-brand-primary)] transition-[border-color,box-shadow] duration-150 placeholder:text-[#707070]/60 hover:border-[var(--color-brand-primary)] hover:ring-2 hover:ring-[var(--ring-input-focus)] focus-visible:border-[var(--color-brand-primary)] focus-visible:ring-2 focus-visible:ring-[var(--ring-input-focus)] active:border-[var(--color-brand-primary)] active:ring-2 active:ring-[var(--ring-input-focus)]"
                       placeholder="Add a note for recipients or your team…"
                       autoComplete="off"
                     />
@@ -252,11 +382,12 @@ export function PublishDashboardModal({
               Cancel
             </SecondaryButton>
             <PrimaryButton type="submit" className="w-full sm:w-auto">
-              {isNewReport ? 'Create report' : 'Publish'}
+              {isNewReport ? 'Create Report' : 'Publish'}
             </PrimaryButton>
           </div>
         </form>
       </div>
     </div>
+    </>
   );
 }

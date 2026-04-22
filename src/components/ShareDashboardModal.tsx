@@ -102,7 +102,7 @@ export function ShareDashboardModal({
         if (e.target === e.currentTarget) handleClose();
       }}
     >
-      <div className="absolute inset-0 bg-black/45" aria-hidden />
+      <div className="absolute inset-0 bg-[var(--color-ink)]/50" aria-hidden />
       <div
         role="dialog"
         aria-modal="true"
@@ -142,13 +142,13 @@ export function ShareDashboardModal({
                 type="text"
                 readOnly
                 value={shareUrl}
-                className="h-12 min-w-0 flex-1 rounded-xl border border-[#e4e4e4] bg-[#fafafa] px-4 font-['Inter',sans-serif] text-sm text-[#1e1e1f] outline-none"
+                className="h-12 min-w-0 flex-1 rounded-xl border border-[#e4e4e4] bg-[#fafafa] px-4 font-['Inter',sans-serif] text-sm text-[#1e1e1f] outline-none ring-[var(--color-brand-primary)] transition-[border-color,box-shadow] duration-150 hover:border-[var(--color-brand-primary)] hover:ring-2 hover:ring-[var(--ring-input-focus)] focus-visible:border-[var(--color-brand-primary)] focus-visible:ring-2 focus-visible:ring-[var(--ring-input-focus)] active:border-[var(--color-brand-primary)] active:ring-2 active:ring-[var(--ring-input-focus)]"
                 onFocus={(e) => e.target.select()}
               />
               <button
                 type="button"
                 onClick={() => void copyLink()}
-                className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-[#e4e4e4] bg-[#fafafa] text-[#1e1e1f] outline-none transition-[border-color,background-color] hover:border-[#c4c4c4] hover:bg-[#f0f0f0] focus-visible:border-[#c4c4c4] focus-visible:ring-2 focus-visible:ring-[#b6bec8]"
+                className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-[#e4e4e4] bg-[#fafafa] text-[#1e1e1f] outline-none ring-[var(--color-brand-primary)] transition-[border-color,background-color,box-shadow] duration-150 hover:border-[var(--color-brand-primary)] hover:bg-[#f0f0f0] hover:ring-2 hover:ring-[var(--ring-input-focus)] focus-visible:border-[var(--color-brand-primary)] focus-visible:ring-2 focus-visible:ring-[var(--ring-input-focus)] active:border-[var(--color-brand-primary)] active:ring-2 active:ring-[var(--ring-input-focus)]"
                 aria-label="Copy link"
                 title="Copy link"
               >
@@ -170,7 +170,7 @@ export function ShareDashboardModal({
               onChange={(e) => setEmailText(e.target.value)}
               onBlur={() => flushRecipients()}
               rows={5}
-              className="min-h-[7.5rem] w-full resize-y rounded-xl border border-[#e4e4e4] bg-[#FFF] px-4 py-3 font-['Inter',sans-serif] text-sm text-[#1e1e1f] outline-none ring-[#b6bec8] transition-[border-color,box-shadow] duration-150 placeholder:text-[#707070]/60 focus-visible:border-[#c4c4c4] focus-visible:ring-2"
+              className="min-h-[7.5rem] w-full resize-y rounded-xl border border-[#e4e4e4] bg-[#FFF] px-4 py-3 font-['Inter',sans-serif] text-sm text-[#1e1e1f] outline-none ring-[var(--color-brand-primary)] transition-[border-color,box-shadow] duration-150 placeholder:text-[#707070]/60 hover:border-[var(--color-brand-primary)] hover:ring-2 hover:ring-[var(--ring-input-focus)] focus-visible:border-[var(--color-brand-primary)] focus-visible:ring-2 focus-visible:ring-[var(--ring-input-focus)] active:border-[var(--color-brand-primary)] active:ring-2 active:ring-[var(--ring-input-focus)]"
               placeholder={'One address per line, or paste many separated by commas or newlines.\nname@company.com\nother@company.com'}
               autoComplete="off"
             />
