@@ -116,6 +116,14 @@ function newSection(layout?: SectionLayoutPreset): DashboardSection {
       bannerBackgroundDataUrl: null,
     };
   }
+  if (layout === 'section-header') {
+    return {
+      id,
+      layout: 'section-header',
+      widgets: [],
+      bannerText: '',
+    };
+  }
   return { id, layout, widgets: placeholderWidgetsForLayout(layout) };
 }
 
@@ -136,7 +144,7 @@ function insertWidget(
   };
   return sections.map((s) => {
     if (s.id !== sectionId) return s;
-    if (s.layout === 'banner-top') return s;
+    if (s.layout === 'banner-top' || s.layout === 'section-header') return s;
     const next = [...s.widgets];
     if (index === undefined || index > next.length) {
       next.push(placed);
@@ -154,6 +162,7 @@ function removePlacedWidget(
 ): DashboardSection[] {
   return sections.map((s) => {
     if (s.id !== sectionId) return s;
+    if (s.layout === 'banner-top' || s.layout === 'section-header') return s;
     const w = s.widgets.find((x) => x.instanceId === instanceId);
     if (!w || w.placeholder) return s;
     if (s.layout) {
@@ -234,7 +243,7 @@ function moveToSectionEnd(
   if (!moving) return sections;
   return without.map((s) => {
     if (s.id !== toSectionId) return s;
-    if (s.layout === 'banner-top') return s;
+    if (s.layout === 'banner-top' || s.layout === 'section-header') return s;
     return { ...s, widgets: [...s.widgets, moving!] };
   });
 }
@@ -260,7 +269,7 @@ function moveToSectionAtIndex(
 
   return without.map((s) => {
     if (s.id !== toSectionId) return s;
-    if (s.layout === 'banner-top') return s;
+    if (s.layout === 'banner-top' || s.layout === 'section-header') return s;
     const next = [...s.widgets];
     const clamped = Math.max(0, Math.min(toIndex, next.length));
     next.splice(clamped, 0, moving!);
@@ -882,7 +891,13 @@ export default function App() {
 
   const handleBannerSectionChange = useCallback((sectionId: string, updates: BannerSectionUpdates) => {
     setSections((prev) =>
-      prev.map((s) => (s.id === sectionId && s.layout === 'banner-top' ? { ...s, ...updates } : s))
+      prev.map((s) => {
+        if (s.id !== sectionId) return s;
+        if (s.layout === 'banner-top' || s.layout === 'section-header') {
+          return { ...s, ...updates };
+        }
+        return s;
+      })
     );
   }, []);
 

@@ -92,7 +92,7 @@ function splitKpiValueAndUnit(valueDemo: string, valueUnit?: string): { value: s
 /** KPI title: full label when the widget is wide enough and viewport is `sm+`; compact on small screens or narrow slots. */
 function KpiTileHeading({ displayLabel, displayLabelCompact }: { displayLabel: string; displayLabelCompact?: string }) {
   const h2Class =
-    "line-clamp-2 font-['Inter',sans-serif] text-[18px] font-semibold leading-snug text-[var(--color-grey-darkest)]";
+    "line-clamp-1 font-['Inter',sans-serif] text-[18px] font-semibold leading-snug text-[var(--color-grey-darkest)]";
   if (!displayLabelCompact) {
     return <h2 className={h2Class}>{displayLabel}</h2>;
   }
@@ -113,7 +113,7 @@ type MetricColumnProps = {
   valueUnit?: string;
   /** Shown after `valueUnit` when both unit and headline row are used (Figma 716:4262). */
   metricDeltaChip?: string;
-  /** Trend sparkline to the right of metric value + period line (Figma 716:4264). */
+  /** Trend sparkline to the right of metric value + period line (Figma 716:4264); canvas enables this for L1 only. */
   metricSparkline?: boolean;
   periodContextLabel: string;
   /** Extra classes on the outer column wrapper (padding, flex growth). */
@@ -148,20 +148,25 @@ export function CanvasWidgetKpiMetricColumn({
       <div className={['relative z-0 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden', className].filter(Boolean).join(' ')}>
         <div className="shrink-0">
           {titleRowEnd != null ? (
-            <div className="flex min-w-0 flex-row flex-nowrap items-center justify-between gap-3">
-              <div className="min-w-0 flex-1">
+            <div className="flex min-w-0 flex-row flex-nowrap items-start justify-between gap-3">
+              <div className="flex min-w-0 flex-1 flex-col">
                 <KpiTileHeading displayLabel={displayLabel} displayLabelCompact={displayLabelCompact} />
+                <p className="mt-1 line-clamp-1 font-['Inter',sans-serif] text-[13px] font-normal leading-snug text-[#707070]">
+                  {catalogEyebrow}
+                </p>
               </div>
               <div className="shrink-0" data-kpi-title-toggle>
                 {titleRowEnd}
               </div>
             </div>
           ) : (
-            <KpiTileHeading displayLabel={displayLabel} displayLabelCompact={displayLabelCompact} />
+            <>
+              <KpiTileHeading displayLabel={displayLabel} displayLabelCompact={displayLabelCompact} />
+              <p className="mt-1 line-clamp-1 font-['Inter',sans-serif] text-[13px] font-normal leading-snug text-[#707070]">
+                {catalogEyebrow}
+              </p>
+            </>
           )}
-          <p className="mt-1 line-clamp-2 font-['Inter',sans-serif] text-[13px] font-normal leading-snug text-[#707070]">
-            {catalogEyebrow}
-          </p>
         </div>
       </div>
     );
@@ -240,15 +245,17 @@ export function CanvasWidgetKpiMetricColumn({
       <div
         className={
           railTop
-            ? 'flex min-h-0 min-w-0 w-full max-w-full flex-col justify-start gap-0 pt-0'
+            ? 'flex min-h-0 min-w-0 w-full max-w-full flex-col justify-start pt-0'
             : 'flex min-h-0 min-w-0 flex-1 flex-col justify-end pt-4'
         }
       >
-        {metricRow}
-        <div className="mt-px flex min-w-0 flex-row flex-nowrap items-end justify-between gap-2">
-          <p className="min-w-0 flex-1 font-['Inter',sans-serif] text-xs font-normal leading-snug text-[#707070]">
-            {periodContextLabel}
-          </p>
+        <div className="flex min-h-0 w-full min-w-0 flex-row flex-nowrap items-end justify-between gap-2">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1">
+            {metricRow}
+            <p className="min-w-0 font-['Inter',sans-serif] text-xs font-normal leading-snug text-[#707070]">
+              {periodContextLabel}
+            </p>
+          </div>
           <div className="shrink-0 pb-px">
             <KpiMetricSparkline />
           </div>
@@ -258,12 +265,12 @@ export function CanvasWidgetKpiMetricColumn({
       <div
         className={
           railTop
-            ? 'flex min-h-0 w-full max-w-full flex-col justify-start gap-0 pt-0'
-            : 'flex min-h-0 flex-1 flex-col justify-end pt-4'
+            ? 'flex min-h-0 w-full max-w-full flex-col justify-start gap-1 pt-0'
+            : 'flex min-h-0 flex-1 flex-col justify-end gap-1 pt-4'
         }
       >
         {metricRow}
-        <p className="mt-px font-['Inter',sans-serif] text-xs font-normal leading-snug text-[#707070]">{periodContextLabel}</p>
+        <p className="font-['Inter',sans-serif] text-xs font-normal leading-snug text-[#707070]">{periodContextLabel}</p>
       </div>
     );
 
@@ -281,20 +288,25 @@ export function CanvasWidgetKpiMetricColumn({
     <div className={['relative z-0 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden', className].filter(Boolean).join(' ')}>
       <div className="shrink-0">
         {titleRowEnd != null ? (
-          <div className="flex min-w-0 flex-row flex-nowrap items-center justify-between gap-3">
-            <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 flex-row flex-nowrap items-start justify-between gap-3">
+            <div className="flex min-w-0 flex-1 flex-col">
               <KpiTileHeading displayLabel={displayLabel} displayLabelCompact={displayLabelCompact} />
+              <p className="mt-1 line-clamp-1 font-['Inter',sans-serif] text-[13px] font-normal leading-snug text-[#707070]">
+                {catalogEyebrow}
+              </p>
             </div>
             <div className="shrink-0" data-kpi-title-toggle>
               {titleRowEnd}
             </div>
           </div>
         ) : (
-          <KpiTileHeading displayLabel={displayLabel} displayLabelCompact={displayLabelCompact} />
+          <>
+            <KpiTileHeading displayLabel={displayLabel} displayLabelCompact={displayLabelCompact} />
+            <p className="mt-1 line-clamp-1 font-['Inter',sans-serif] text-[13px] font-normal leading-snug text-[#707070]">
+              {catalogEyebrow}
+            </p>
+          </>
         )}
-        <p className="mt-1 line-clamp-2 font-['Inter',sans-serif] text-[13px] font-normal leading-snug text-[#707070]">
-          {catalogEyebrow}
-        </p>
       </div>
       {valueStack}
     </div>

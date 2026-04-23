@@ -124,7 +124,7 @@ export function AddSectionLayoutModal({
                     </span>
                   </div>
                 ) : id === 'section-header' ? (
-                  <div className="flex h-16 w-full min-w-0 shrink-0 items-center justify-center rounded-[10px] bg-[#e2e4e5] px-2">
+                  <div className="flex h-8 w-full min-w-0 shrink-0 items-center justify-center rounded-[10px] bg-[#e2e4e5] px-2">
                     <span
                       className="truncate font-['Inter',sans-serif] text-[11px] font-medium leading-none text-[#bfbfbf]"
                       aria-hidden

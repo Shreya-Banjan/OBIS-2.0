@@ -23,16 +23,16 @@ export type SectionLayoutPreset =
   | 'four-small'
   /** Standalone full-width rich banner (text + optional background image; not a widget slot). */
   | 'banner-top'
-  /** Standalone full-width section title strip (single widget slot). */
+  /** Standalone full-width section title strip (headline only; same `bannerText` field as dashboard banner). */
   | 'section-header';
 
 export type DashboardSection = {
   id: string;
   widgets: PlacedWidget[];
   layout?: SectionLayoutPreset;
-  /** When `layout === 'banner-top'`: headline / body copy for the banner (draft editor). */
+  /** When `layout === 'banner-top'` or `section-header`: headline (same editor field as dashboard banner). */
   bannerText?: string;
-  /** When `layout === 'banner-top'`: optional background image (typically a data URL from upload). */
+  /** When `layout === 'banner-top'` or `section-header`: optional background image (typically a data URL from upload). */
   bannerBackgroundDataUrl?: string | null;
 };
 

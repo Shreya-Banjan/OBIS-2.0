@@ -2,11 +2,7 @@ import type { CSSProperties, ReactNode } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, useSortable, rectSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import {
-  CANVAS_WIDGET_SLOT_HEIGHT_PX,
-  SECTION_HEADER_SLOT_HEIGHT_PX,
-  canvasWidgetSlotFrameStyle,
-} from '../canvasWidgetSlot';
+import { CANVAS_WIDGET_SLOT_HEIGHT_PX, canvasWidgetSlotFrameStyle } from '../canvasWidgetSlot';
 import {
   getWidgetDisplayLabel,
   widgetCatalogEyebrow,
@@ -53,13 +49,11 @@ function canvasSlotShellClass(w: PlacedWidget): string {
 
 function SortablePlaceholderSlot({
   sectionId,
-  sectionLayout,
   widget,
   isLibraryTarget,
   canvasListL1,
 }: {
   sectionId: string;
-  sectionLayout?: SectionLayoutPreset;
   widget: PlacedWidget;
   isLibraryTarget: boolean;
   canvasListL1: boolean;
@@ -81,9 +75,6 @@ function SortablePlaceholderSlot({
     opacity: isDragging ? 0.55 : 1,
   };
 
-  const stripSlotHeightPx =
-    sectionLayout === 'section-header' ? SECTION_HEADER_SLOT_HEIGHT_PX : undefined;
-
   return (
     <EditorAddWidgetCta
       ref={setNodeRef}
@@ -91,7 +82,6 @@ function SortablePlaceholderSlot({
       placeholderInstanceId={widget.instanceId}
       isLibraryTarget={isLibraryTarget}
       canvasListL1={canvasListL1}
-      slotHeightPx={stripSlotHeightPx}
       style={style}
       className="min-h-0 min-w-0 h-full"
       {...attributes}
@@ -161,7 +151,8 @@ function SortablePlacedWidget({
           valueDemo={kpiDemo.value}
           valueUnit={kpiDemo.unit}
           metricDeltaChip={kpiDemo.metricDeltaChip}
-          metricSparkline={kpiDemo.metricSparkline}
+          /** NOTE: Demo sparkline only in L1 (narrow) slots — L2 wide rail omits it (see `CanvasWidgetKpiMetricColumn`). */
+          metricSparkline={kpiWidgetTier === 'l1'}
           periodContextLabel={kpiPeriodContextLabel}
           attributes={attributes}
           listeners={listeners as Record<string, unknown> | undefined}
@@ -259,7 +250,6 @@ function renderSlot(
   return w.placeholder ? (
     <SortablePlaceholderSlot
       sectionId={section.id}
-      sectionLayout={section.layout}
       widget={w}
       isLibraryTarget={activePlaceholderInstanceId === w.instanceId}
       canvasListL1={canvasListL1}
@@ -309,13 +299,7 @@ function SectionLayoutFrame({
   const ws = section.widgets;
   const [a, b, c] = ws;
 
-  const slotFrameStyleForWidget = (w: PlacedWidget): { minHeight: number; maxHeight?: number } | undefined => {
-    if (layout === 'section-header' && w.placeholder) {
-      return {
-        minHeight: SECTION_HEADER_SLOT_HEIGHT_PX,
-        maxHeight: SECTION_HEADER_SLOT_HEIGHT_PX,
-      };
-    }
+  const slotFrameStyleForWidget = (_w: PlacedWidget): { minHeight: number; maxHeight?: number } | undefined => {
     if (stackMultiColumnLayout) return undefined;
     return { minHeight: CANVAS_WIDGET_SLOT_HEIGHT_PX };
   };
@@ -337,7 +321,6 @@ function SectionLayoutFrame({
       style={slotFrameStyleForWidget(w)}
       className={[
         'flex min-h-0 min-w-0 flex-col self-stretch',
-        layout === 'section-header' && w.placeholder ? 'overflow-hidden' : '',
         stackMultiColumnLayout ? 'w-full' : wideSpan,
         canvasSlotShellClass(w),
       ]
@@ -671,34 +654,18 @@ function SectionLayoutFrame({
         />
       );
 
-    case 'section-header': {
-      const banner = ws[0];
+    case 'section-header':
       return shell(
-        <div className={stackMultiColumnLayout ? stackCol : wideRow}>
-          {banner
-            ? slotWrap(
-                banner,
-                'col-span-12',
-                banner.instanceId,
-                renderSlot(
-                  section,
-                  banner,
-                  onRemoveWidget,
-                  activePlaceholderInstanceId,
-                  canvasListL1,
-                  'l2',
-                  stackMultiColumnLayout,
-                  kpiPeriodContextLabel
-                )
-              )
-            : null}
-        </div>
+        <EditorDashboardBanner
+          variant="section-strip"
+          section={section}
+          onChange={(updates) => onBannerSectionChange?.(section.id, updates)}
+        />
       );
-    }
   }
 }
 
-/** Overlays the section card; list `gap-1` controls space between section rows. */
+/** Below the section card (`top-full`). Top padding bridges the gap so `group-hover` is not lost moving from the card to the toolbar (margin would sit outside the hit box). */
 function SectionRowActions({
   canMoveUp,
   canMoveDown,
@@ -724,10 +691,11 @@ function SectionRowActions({
 
   return (
     <div
-      className="pointer-events-none absolute bottom-2 left-2 z-10 flex w-max items-center rounded-[var(--radius-canvas)] border border-white/20 bg-[rgb(0_0_0/0.9)] p-1 opacity-0 shadow-[var(--shadow-elevated)] transition-opacity duration-200 ease-out group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100"
+      className="pointer-events-none absolute left-2 top-full z-10 flex w-max flex-col pt-2 opacity-0 transition-opacity duration-200 ease-out group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100"
       role="toolbar"
       aria-label="Section row actions"
     >
+      <div className="flex w-max items-center rounded-[var(--radius-canvas)] border border-white/20 bg-[rgb(0_0_0/0.9)] p-1 shadow-[var(--shadow-elevated)]">
       <div className="flex items-center gap-0.5">
         <button
           type="button"
@@ -769,6 +737,7 @@ function SectionRowActions({
         </span>
         <span className={deleteLabel}>Delete Row</span>
       </button>
+      </div>
     </div>
   );
 }
@@ -803,10 +772,11 @@ function SectionCard({
   const { setNodeRef, isOver } = useDroppable({
     id: `section:${section.id}`,
     data: { type: 'section', sectionId: section.id },
-    disabled: section.layout === 'banner-top',
+    disabled: section.layout === 'banner-top' || section.layout === 'section-header',
   });
 
-  const isBannerSection = section.layout === 'banner-top';
+  const headlineOnlySection =
+    section.layout === 'banner-top' || section.layout === 'section-header';
   const empty = section.widgets.length === 0;
   const overRing = isOver
     ? 'rounded-[var(--radius-canvas)] ring-2 ring-[#b6bec8] ring-offset-2 ring-offset-[#ebebeb] transition-shadow'
@@ -832,6 +802,13 @@ function SectionCard({
       style={sectionTransitionStyle}
     >
       <div className="relative min-w-0">
+        <SectionRowActions
+          canMoveUp={canMoveUp}
+          canMoveDown={canMoveDown}
+          onMoveUp={() => onMoveSection(section.id, 'up')}
+          onMoveDown={() => onMoveSection(section.id, 'down')}
+          onRemove={() => onRemoveSection(section.id)}
+        />
         <div
           className={[
             'relative min-w-0 overflow-visible rounded-[var(--radius-canvas)] border-[1.25px] border-solid p-2 box-border transition-[background-color,border-color] duration-500 ease-in-out motion-reduce:transition-none',
@@ -840,9 +817,9 @@ function SectionCard({
               : 'border-transparent bg-transparent group-hover:border-[#999999] group-hover:bg-[rgb(153_153_153/0.26)]',
           ].join(' ')}
         >
-          {isBannerSection ? (
+          {headlineOnlySection && layout ? (
             <SectionLayoutFrame
-              layout="banner-top"
+              layout={layout}
               section={section}
               setNodeRef={setNodeRef}
               overRing={overRing}
@@ -894,13 +871,6 @@ function SectionCard({
               )}
             </SortableContext>
           )}
-          <SectionRowActions
-            canMoveUp={canMoveUp}
-            canMoveDown={canMoveDown}
-            onMoveUp={() => onMoveSection(section.id, 'up')}
-            onMoveDown={() => onMoveSection(section.id, 'down')}
-            onRemove={() => onRemoveSection(section.id)}
-          />
         </div>
       </div>
     </article>

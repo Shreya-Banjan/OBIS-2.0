@@ -4,6 +4,7 @@ import { CanvasWidgetKpiMetricColumn, CanvasWidgetKpiOverlayChrome, KPI_DEFINITI
 /**
  * KPI canvas tile for **L1** (narrow) slots: equal columns, sidebar halves, four-up cells, stacked mobile.
  * Definition sits in a full-width footer under the metric stack.
+ * NOTE: Demo sparkline is enabled only for L1 in `DashboardCanvas` (wide L2 slots omit it).
  */
 export function CanvasWidgetKpiTileL1({
   displayLabel,
@@ -32,7 +33,7 @@ export function CanvasWidgetKpiTileL1({
         metricDeltaChip={metricDeltaChip}
         metricSparkline={metricSparkline}
         periodContextLabel={periodContextLabel}
-        className="px-5 pb-3 pt-4"
+        className="px-6 pb-3 pt-4"
       />
 
       {definitionTrimmed ? (

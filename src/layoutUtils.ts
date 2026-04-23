@@ -18,7 +18,7 @@ export function reportsContentMaxWidthPx(effectiveLayoutWidthPx: number): number
 export function layoutColumnCount(layout: SectionLayoutPreset): number {
   if (layout === 'full') return 1;
   if (layout === 'banner-top') return 0;
-  if (layout === 'section-header') return 1;
+  if (layout === 'section-header') return 0;
   if (layout === 'three-column' || layout === 'three-column-right' || layout === 'three-column-middle') return 3;
   if (layout === 'four-small') return 4;
   return 2;

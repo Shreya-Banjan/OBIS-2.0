@@ -12,6 +12,7 @@ export type CanvasWidgetKpiTileBaseProps = {
   /** Trend / delta chip after the unit (Figma 716:4262). */
   metricDeltaChip?: string;
   /** Six-point trend sparkline to the right of metric + period (Figma 716:4264). */
+  /** When true, `CanvasWidgetKpiMetricColumn` shows the demo trend sparkline; canvas passes this only for L1 slots. */
   metricSparkline?: boolean;
   /** Month + year under the metric (from timeline custom range end, or “now”). */
   periodContextLabel: string;

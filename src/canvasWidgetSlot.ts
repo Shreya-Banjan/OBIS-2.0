@@ -7,6 +7,9 @@ export const CANVAS_WIDGET_SLOT_HEIGHT_L1_PX = 280;
 /** PATH-style dashboard banner min height (`--path-banner-height` in `index.css`, 216px). */
 export const DASHBOARD_BANNER_SLOT_HEIGHT_PX = 216;
 
+/** Static asset shown when `bannerBackgroundDataUrl` is unset (`public/`). */
+export const DASHBOARD_BANNER_DEFAULT_BACKGROUND_PATH = '/banner-default-background.png';
+
 /** Standalone section header strip (full-width `section-header` section). */
 export const SECTION_HEADER_SLOT_HEIGHT_PX = 64;
 

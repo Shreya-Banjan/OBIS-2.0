@@ -1,3 +1,4 @@
+import { DASHBOARD_BANNER_DEFAULT_BACKGROUND_PATH } from '../canvasWidgetSlot';
 import type { DashboardSection, PlacedWidget, SectionLayoutPreset } from '../types';
 
 type DashboardThumbnailProps = {
@@ -37,7 +38,7 @@ function ThumbnailSectionSlots({
 
   const preset = layout ?? 'full';
 
-  if (widgets.length === 0 && preset !== 'banner-top') {
+  if (widgets.length === 0 && preset !== 'banner-top' && preset !== 'section-header') {
     return (
       <span className={`font-['Inter',sans-serif] text-[#707070]/80 ${compact ? 'text-[7px]' : 'text-[9px]'}`}>
         Empty
@@ -116,27 +117,26 @@ function ThumbnailSectionSlots({
       );
     case 'banner-top': {
       const text = (bannerText ?? '').trim();
-      const bg = bannerBackgroundDataUrl?.trim();
+      const customBg = bannerBackgroundDataUrl?.trim();
+      const thumbBgUrl = customBg || DASHBOARD_BANNER_DEFAULT_BACKGROUND_PATH;
       return (
         <div
-          className={`relative flex min-h-0 w-full shrink-0 flex-row overflow-hidden rounded border border-[#c5c9ce] ${compact ? 'min-h-[14px]' : 'min-h-[18px]'}`}
+          className={`relative flex min-h-0 w-full shrink-0 flex-row overflow-hidden rounded border border-[#c5c9ce] ${compact ? 'min-h-[14px]' : 'min-h-[18px]'} ${customBg ? '' : 'bg-white'}`}
         >
-          {bg ? (
-            <>
-              <div
-                className="pointer-events-none absolute inset-0 z-0 bg-cover bg-center bg-no-repeat"
-                style={{ backgroundImage: `url(${bannerBackgroundDataUrl})` }}
-                aria-hidden
-              />
-              <div
-                className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-t from-black/55 via-black/20 to-transparent"
-                aria-hidden
-              />
-            </>
+          <div
+            className={`pointer-events-none absolute inset-0 z-0 bg-cover bg-center bg-no-repeat ${customBg ? '' : 'opacity-70'}`}
+            style={{ backgroundImage: `url(${thumbBgUrl})` }}
+            aria-hidden
+          />
+          {customBg ? (
+            <div
+              className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-t from-black/55 via-black/20 to-transparent"
+              aria-hidden
+            />
           ) : null}
           <div
             className={`relative z-[2] flex min-h-0 min-w-0 shrink-0 flex-col justify-center border-r border-white/10 px-1 py-px ${compact ? 'w-[42%]' : 'w-[44%]'}`}
-            style={{ background: bg ? 'rgb(0 0 0 / 0.48)' : 'var(--path-banner-navy)' }}
+            style={{ background: 'rgb(0 0 0 / 0.48)' }}
           >
             <span
               className={`truncate font-[family-name:var(--font-poppins)] font-semibold leading-tight text-white ${compact ? 'text-[6px]' : 'text-[7px]'}`}
@@ -144,22 +144,37 @@ function ThumbnailSectionSlots({
               {text || 'Banner'}
             </span>
           </div>
-          <div className="relative z-[2] min-h-0 min-w-0 flex-1 bg-transparent">
-            {bg ? null : (
-              <div
-                className="absolute inset-0 bg-gradient-to-br from-[var(--path-banner-visual-from)] to-[var(--path-banner-visual-to)]"
-                aria-hidden
-              />
-            )}
-          </div>
+          <div className="relative z-[2] min-h-0 min-w-0 flex-1 bg-transparent" />
         </div>
       );
     }
     case 'section-header': {
-      const bn = widgets[0];
+      const text = (bannerText ?? '').trim();
+      const customBg = bannerBackgroundDataUrl?.trim();
       return (
-        <div className={`flex min-h-0 flex-col gap-0.5 overflow-hidden ${compact ? 'max-h-full' : ''}`}>
-          <div className="min-h-0 w-full shrink-0 overflow-hidden">{bn ? cell(bn) : null}</div>
+        <div
+          className={`relative flex min-h-0 w-full shrink-0 items-center overflow-hidden rounded border border-[#c5c9ce] px-1 ${compact ? 'min-h-[10px]' : 'min-h-[12px]'}`}
+        >
+          <div
+            className={
+              customBg
+                ? 'pointer-events-none absolute inset-0 z-0 bg-cover bg-center bg-no-repeat'
+                : 'pointer-events-none absolute inset-0 z-0 bg-gradient-to-br from-[#fafbfc] via-[#f0f1f3] to-[#e3e4e7]'
+            }
+            style={customBg ? { backgroundImage: `url(${customBg})` } : undefined}
+            aria-hidden
+          />
+          {customBg ? (
+            <div
+              className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-r from-black/35 to-transparent"
+              aria-hidden
+            />
+          ) : null}
+          <span
+            className={`relative z-[2] min-w-0 flex-1 truncate font-[family-name:var(--font-poppins)] font-semibold leading-tight ${customBg ? 'text-white [text-shadow:0_1px_1px_rgb(0_0_0/0.35)]' : 'text-[#333333]'} ${compact ? 'text-[6px]' : 'text-[8px]'}`}
+          >
+            {text || 'Section'}
+          </span>
         </div>
       );
     }

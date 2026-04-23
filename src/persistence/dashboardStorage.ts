@@ -50,7 +50,7 @@ function isSharedBy(x: unknown): x is SharedByInfo {
   return true;
 }
 
-/** Legacy strip layouts: `banner-top` is rich text + image (no widgets); `section-header` keeps one slot. */
+/** Strip layouts: `banner-top` (hero + image); `section-header` (title row, headline in `bannerText`, no widgets). */
 function normalizeStandaloneStripSections(sections: DashboardSection[]): DashboardSection[] {
   return sections.map((s) => {
     if (s.layout === 'banner-top') {
@@ -62,8 +62,14 @@ function normalizeStandaloneStripSections(sections: DashboardSection[]): Dashboa
           s.bannerBackgroundDataUrl === undefined ? null : (s.bannerBackgroundDataUrl as string | null),
       };
     }
-    if (s.layout !== 'section-header' || s.widgets.length <= 1) return s;
-    return { ...s, widgets: s.widgets.slice(0, 1) };
+    if (s.layout === 'section-header') {
+      return {
+        ...s,
+        widgets: [],
+        bannerText: typeof s.bannerText === 'string' ? s.bannerText : '',
+      };
+    }
+    return s;
   });
 }
 

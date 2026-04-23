@@ -20,8 +20,9 @@ const L2_TITLE_TOGGLE_SEGMENTS = [
 ] as const;
 
 /**
- * KPI canvas tile for **L2** (wide) slots: title + eyebrow in the main column (~⅔); value, “As of”, sparkline
+ * KPI canvas tile for **L2** (wide) slots: title + eyebrow in the main column (~⅔); value, “As of”,
  * and definition copy in a right rail **one-third** of the widget width, definition **bottom-aligned**.
+ * NOTE: Demo sparkline is shown only in L1 slots (`DashboardCanvas`); L2 tiles omit it.
  */
 export function CanvasWidgetKpiTileL2({
   displayLabel,

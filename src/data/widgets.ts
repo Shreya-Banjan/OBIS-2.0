@@ -29,8 +29,6 @@ export type WidgetTemplate = {
   kpiDemoUnit?: string;
   /** Optional delta chip after the unit (Figma 716:4262). */
   kpiDemoDeltaChip?: string;
-  /** Canvas KPI trend sparkline beside metric + period (Figma 716:4264). */
-  kpiDemoSparkline?: boolean;
 };
 
 /** Program / registry under a clinical section (e.g. NSQIP, CQM) — OBIS2.0 widget picker (Figma node 401:7723). */
@@ -67,7 +65,6 @@ const QUALITY_NSQIP: WidgetTemplate[] = [
     kpiDemoValue: '2.9',
     kpiDemoUnit: 'days',
     kpiDemoDeltaChip: '+0.2↑',
-    kpiDemoSparkline: true,
     kpiDefinition:
       'Average NSQIP hospital days from admission through discharge, compared with expected length for matched severity. Highlights efficient, safe care using standard cohort rules.',
     kpiDefinitionL1:
@@ -215,20 +212,17 @@ export function widgetKpiDemoMetric(templateId: string): {
   value: string;
   unit?: string;
   metricDeltaChip?: string;
-  metricSparkline?: boolean;
 } {
   const t = getWidgetTemplateById(templateId);
   const value = t?.kpiDemoValue?.trim();
   if (!value) return { value: '2.1', unit: '%', metricDeltaChip: '+0.2↑' };
   const unit = t?.kpiDemoUnit?.trim();
   const metricDeltaChip = t?.kpiDemoDeltaChip?.trim() || undefined;
-  const metricSparkline = Boolean(t?.kpiDemoSparkline);
   if (!unit) return { value };
   return {
     value,
     unit,
     ...(metricDeltaChip ? { metricDeltaChip } : {}),
-    ...(metricSparkline ? { metricSparkline: true } : {}),
   };
 }
 
