@@ -18,6 +18,23 @@ function fileLooksLikeImage(file: File): boolean {
   return IMAGE_EXT.test(file.name);
 }
 
+function countTextareaLines(value: string): number {
+  if (value === '') return 1;
+  return value.split(/\r\n|\n|\r/).length;
+}
+
+/** Hero headline: at most two lines (one line break). Paste is truncated. */
+function clampBannerHeadlineToTwoLines(raw: string): string {
+  const parts = raw.split(/\r\n|\n|\r/);
+  if (parts.length <= 2) return parts.join('\n');
+  return parts.slice(0, 2).join('\n');
+}
+
+function heroHeadlineEnterWouldExceedTwoLines(value: string, selectionStart: number, selectionEnd: number): boolean {
+  const next = `${value.slice(0, selectionStart)}\n${value.slice(selectionEnd)}`;
+  return countTextareaLines(next) > 2;
+}
+
 function readWholeFileAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -245,10 +262,15 @@ export function EditorDashboardBanner({
               ref={headlineRef}
               id={`${fileInputId}-section-headline`}
               value={text}
-              onChange={(e) => onChange({ bannerText: e.target.value })}
+              onChange={(e) => onChange({ bannerText: e.target.value.replace(/\r\n|\n|\r/g, '') })}
+              onKeyDown={(e) => {
+                if (e.key !== 'Enter' || e.nativeEvent.isComposing) return;
+                e.preventDefault();
+                e.currentTarget.blur();
+              }}
               rows={1}
               className={[
-                'min-h-0 max-h-full w-full shrink-0 cursor-text resize-none overflow-y-auto border-0 bg-transparent px-2 py-1 text-left font-[family-name:var(--font-inter)] text-[20px] font-semibold leading-snug outline-none ring-0 transition-colors duration-200 ease-out focus-visible:outline-none rounded-lg',
+                'min-h-0 max-h-full w-full shrink-0 cursor-text resize-none overflow-hidden border-0 bg-transparent px-2 py-1 text-left font-[family-name:var(--font-inter)] text-[20px] font-semibold leading-snug outline-none ring-0 transition-colors duration-200 ease-out focus-visible:outline-none rounded-lg',
                 headlineLight
                   ? 'text-[var(--color-grey-darkest)] placeholder:text-[var(--color-grey-darkest)]/45 hover:bg-black/[0.04] focus-visible:bg-black/[0.05]'
                   : 'text-white placeholder:text-white/35 [text-shadow:0_1px_2px_rgb(0_0_0/0.45)] hover:bg-white/12 focus-visible:bg-white/15',
@@ -320,8 +342,8 @@ export function EditorDashboardBanner({
         />
       ) : null}
 
-      {/* Left: headline over banner (default or custom image full-bleed behind) */}
-      <div className="relative z-[2] flex min-h-0 w-full min-w-0 flex-1 flex-shrink-0 flex-col justify-end items-stretch self-stretch px-[24px] pb-[24px] pt-[24px] sm:w-[min(52%,26rem)] sm:flex-none">
+      {/* Left: headline over banner (default or custom image full-bleed behind) — ~¾ banner width for typing */}
+      <div className="relative z-[2] flex min-h-0 w-[75%] max-w-full min-w-0 flex-1 flex-shrink-0 flex-col justify-end items-stretch self-start px-[24px] pb-[24px] pt-[24px] sm:w-3/4 sm:flex-none sm:self-stretch">
         <label className="sr-only" htmlFor={`${fileInputId}-headline`}>
           Banner headline
         </label>
@@ -329,7 +351,14 @@ export function EditorDashboardBanner({
           ref={headlineRef}
           id={`${fileInputId}-headline`}
           value={text}
-          onChange={(e) => onChange({ bannerText: e.target.value })}
+          onChange={(e) => onChange({ bannerText: clampBannerHeadlineToTwoLines(e.target.value) })}
+          onKeyDown={(e) => {
+            if (e.key !== 'Enter' || e.nativeEvent.isComposing) return;
+            const el = e.currentTarget;
+            if (heroHeadlineEnterWouldExceedTwoLines(el.value, el.selectionStart, el.selectionEnd)) {
+              e.preventDefault();
+            }
+          }}
           rows={1}
           className={[
             'min-h-0 w-full shrink-0 cursor-text resize-none overflow-hidden border-0 bg-transparent px-2 py-1 text-left font-[family-name:var(--font-poppins)] text-[clamp(1.375rem,2.6vw,1.875rem)] font-semibold leading-[1.2] tracking-[-0.02em] outline-none ring-0 transition-colors duration-200 ease-out focus-visible:outline-none rounded-lg',

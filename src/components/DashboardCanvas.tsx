@@ -97,6 +97,7 @@ function SortablePlacedWidget({
   canvasListL1,
   kpiWidgetTier,
   kpiPeriodContextLabel,
+  kpiTimelineValue,
 }: {
   sectionId: string;
   widget: PlacedWidget;
@@ -105,6 +106,7 @@ function SortablePlacedWidget({
   canvasListL1: boolean;
   kpiWidgetTier: CanvasKpiWidgetTier;
   kpiPeriodContextLabel: string;
+  kpiTimelineValue: string;
 }) {
   const openWidgetLibrary = useWidgetLibraryOpen();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -154,6 +156,7 @@ function SortablePlacedWidget({
           /** NOTE: Demo sparkline only in L1 (narrow) slots — L2 wide rail omits it (see `CanvasWidgetKpiMetricColumn`). */
           metricSparkline={kpiWidgetTier === 'l1'}
           periodContextLabel={kpiPeriodContextLabel}
+          kpiTimelineValue={kpiTimelineValue}
           attributes={attributes}
           listeners={listeners as Record<string, unknown> | undefined}
           onChangeClick={(e) => {
@@ -244,7 +247,8 @@ function renderSlot(
   canvasListL1: boolean,
   kpiWidgetTier: CanvasKpiWidgetTier,
   stackMultiColumnLayout: boolean,
-  kpiPeriodContextLabel: string
+  kpiPeriodContextLabel: string,
+  kpiTimelineValue: string
 ) {
   const kpiTierEffective: CanvasKpiWidgetTier = stackMultiColumnLayout ? 'l1' : kpiWidgetTier;
   return w.placeholder ? (
@@ -263,6 +267,7 @@ function renderSlot(
       canvasListL1={canvasListL1}
       kpiWidgetTier={kpiTierEffective}
       kpiPeriodContextLabel={kpiPeriodContextLabel}
+      kpiTimelineValue={kpiTimelineValue}
     />
   );
 }
@@ -281,6 +286,7 @@ function SectionLayoutFrame({
   stackMultiColumnLayout,
   canvasListL1,
   kpiPeriodContextLabel,
+  kpiTimelineValue,
   onBannerSectionChange,
 }: {
   layout: SectionLayoutPreset;
@@ -294,6 +300,7 @@ function SectionLayoutFrame({
   /** Narrow viewport: shorter KPI tile / placeholder height (`canvasWidgetSlotHeightPx`); not the same as widget tier L1/L2. */
   canvasListL1: boolean;
   kpiPeriodContextLabel: string;
+  kpiTimelineValue: string;
   onBannerSectionChange?: (sectionId: string, updates: BannerSectionUpdates) => void;
 }) {
   const ws = section.widgets;
@@ -348,7 +355,8 @@ function SectionLayoutFrame({
                 canvasListL1,
                 'l2',
                 stackMultiColumnLayout,
-                kpiPeriodContextLabel
+                kpiPeriodContextLabel,
+                kpiTimelineValue
               )
             )
           )}
@@ -371,7 +379,8 @@ function SectionLayoutFrame({
                   canvasListL1,
                   'l1',
                   stackMultiColumnLayout,
-                  kpiPeriodContextLabel
+                  kpiPeriodContextLabel,
+                  kpiTimelineValue
                 )
               )
             : null}
@@ -388,7 +397,8 @@ function SectionLayoutFrame({
                   canvasListL1,
                   'l1',
                   stackMultiColumnLayout,
-                  kpiPeriodContextLabel
+                  kpiPeriodContextLabel,
+                  kpiTimelineValue
                 )
               )
             : null}
@@ -411,7 +421,8 @@ function SectionLayoutFrame({
                   canvasListL1,
                   'l1',
                   stackMultiColumnLayout,
-                  kpiPeriodContextLabel
+                  kpiPeriodContextLabel,
+                  kpiTimelineValue
                 )
               )
             : null}
@@ -428,7 +439,8 @@ function SectionLayoutFrame({
                   canvasListL1,
                   'l1',
                   stackMultiColumnLayout,
-                  kpiPeriodContextLabel
+                  kpiPeriodContextLabel,
+                  kpiTimelineValue
                 )
               )
             : null}
@@ -465,7 +477,8 @@ function SectionLayoutFrame({
                 canvasListL1,
                 'l1',
                 stackMultiColumnLayout,
-                kpiPeriodContextLabel
+                kpiPeriodContextLabel,
+                kpiTimelineValue
               )}
             </div>
           ) : null}
@@ -489,7 +502,8 @@ function SectionLayoutFrame({
                 canvasListL1,
                 'l1',
                 stackMultiColumnLayout,
-                kpiPeriodContextLabel
+                kpiPeriodContextLabel,
+                kpiTimelineValue
               )}
             </div>
           ) : null}
@@ -508,7 +522,8 @@ function SectionLayoutFrame({
               canvasListL1,
               'l2',
               stackMultiColumnLayout,
-              kpiPeriodContextLabel
+              kpiPeriodContextLabel,
+              kpiTimelineValue
             )
           )
         : null;
@@ -538,7 +553,8 @@ function SectionLayoutFrame({
                   canvasListL1,
                   'l1',
                   stackMultiColumnLayout,
-                  kpiPeriodContextLabel
+                  kpiPeriodContextLabel,
+                  kpiTimelineValue
                 )
               )
             : null}
@@ -555,7 +571,8 @@ function SectionLayoutFrame({
                   canvasListL1,
                   'l2',
                   stackMultiColumnLayout,
-                  kpiPeriodContextLabel
+                  kpiPeriodContextLabel,
+                  kpiTimelineValue
                 )
               )
             : null}
@@ -572,7 +589,8 @@ function SectionLayoutFrame({
                   canvasListL1,
                   'l1',
                   stackMultiColumnLayout,
-                  kpiPeriodContextLabel
+                  kpiPeriodContextLabel,
+                  kpiTimelineValue
                 )
               )
             : null}
@@ -598,7 +616,8 @@ function SectionLayoutFrame({
                   canvasListL1,
                   'l2',
                   stackMultiColumnLayout,
-                  kpiPeriodContextLabel
+                  kpiPeriodContextLabel,
+                  kpiTimelineValue
                 )
               )
             : null}
@@ -615,7 +634,8 @@ function SectionLayoutFrame({
                   canvasListL1,
                   'l2',
                   stackMultiColumnLayout,
-                  kpiPeriodContextLabel
+                  kpiPeriodContextLabel,
+                  kpiTimelineValue
                 )
               )
             : null}
@@ -639,7 +659,8 @@ function SectionLayoutFrame({
                 canvasListL1,
                 'l1',
                 stackMultiColumnLayout,
-                kpiPeriodContextLabel
+                kpiPeriodContextLabel,
+                kpiTimelineValue
               )
             )
           )}
@@ -754,6 +775,7 @@ function SectionCard({
   stackMultiColumnLayout,
   canvasListL1,
   kpiPeriodContextLabel,
+  kpiTimelineValue,
   onBannerSectionChange,
 }: {
   sections: DashboardSection[];
@@ -767,6 +789,7 @@ function SectionCard({
   stackMultiColumnLayout: boolean;
   canvasListL1: boolean;
   kpiPeriodContextLabel: string;
+  kpiTimelineValue: string;
   onBannerSectionChange?: (sectionId: string, updates: BannerSectionUpdates) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({
@@ -828,6 +851,7 @@ function SectionCard({
               stackMultiColumnLayout={stackMultiColumnLayout}
               canvasListL1={canvasListL1}
               kpiPeriodContextLabel={kpiPeriodContextLabel}
+              kpiTimelineValue={kpiTimelineValue}
               onBannerSectionChange={onBannerSectionChange}
             />
           ) : (
@@ -849,6 +873,7 @@ function SectionCard({
                   stackMultiColumnLayout={stackMultiColumnLayout}
                   canvasListL1={canvasListL1}
                   kpiPeriodContextLabel={kpiPeriodContextLabel}
+                  kpiTimelineValue={kpiTimelineValue}
                   onBannerSectionChange={onBannerSectionChange}
                 />
               ) : (
@@ -863,7 +888,8 @@ function SectionCard({
                         canvasListL1,
                         'l1',
                         stackMultiColumnLayout,
-                        kpiPeriodContextLabel
+                        kpiPeriodContextLabel,
+                        kpiTimelineValue
                       )}
                     </div>
                   ))}
@@ -945,6 +971,7 @@ export function DashboardCanvas({
               stackMultiColumnLayout={stackMultiColumnLayout}
               canvasListL1={canvasListL1}
               kpiPeriodContextLabel={kpiPeriodContextLabel}
+              kpiTimelineValue={timelineValue}
             />
           ))}
           <button

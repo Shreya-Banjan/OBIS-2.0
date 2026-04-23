@@ -1,6 +1,9 @@
 import type { DraggableAttributes } from '@dnd-kit/core';
 import type { ReactNode } from 'react';
+import { useMemo } from 'react';
+import { getKpiTrendSeriesFromTimeline } from '../../data/kpiTrendSeriesFromTimeline';
 import { IconClose, IconDrag, IconEdit } from '../Icons';
+import { KpiTitleTrendChart } from './KpiTitleTrendChart';
 
 /** Opacity only on the shell — pointer events stay on the toolbar row so the L2 title toggle stays clickable. */
 export const CANVAS_WIDGET_OVERLAY_STRIP =
@@ -124,6 +127,8 @@ type MetricColumnProps = {
   valuesOnly?: boolean;
   /** L2: trailing control on the title row (e.g. layout toggle). */
   titleRowEnd?: ReactNode;
+  kpiTimelineValue?: string;
+  titleRailChartVariant?: 'line' | 'bar';
 };
 
 export function CanvasWidgetKpiMetricColumn({
@@ -139,34 +144,55 @@ export function CanvasWidgetKpiMetricColumn({
   titlesOnly,
   valuesOnly,
   titleRowEnd,
+  kpiTimelineValue = '',
+  titleRailChartVariant = 'line',
 }: MetricColumnProps) {
   const { value: valueDisplay, unit: unitDisplay } = splitKpiValueAndUnit(valueDemo, valueUnit);
   const hasUnit = unitDisplay != null && unitDisplay !== '';
 
+  const anchorParsed = parseFloat(String(valueDisplay).replace(/,/g, ''));
+  const anchorRate = Number.isFinite(anchorParsed) ? anchorParsed : 2.1;
+  const valueIsPercent = unitDisplay === '%' || valueDemo.trim().endsWith('%');
+  const titleRailTrendSeries = useMemo(() => {
+    if (!titlesOnly) return null;
+    return getKpiTrendSeriesFromTimeline(kpiTimelineValue, { anchorRate, valueIsPercent });
+  }, [titlesOnly, kpiTimelineValue, anchorRate, valueIsPercent]);
+
   if (titlesOnly) {
     return (
       <div className={['relative z-0 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden', className].filter(Boolean).join(' ')}>
-        <div className="shrink-0">
-          {titleRowEnd != null ? (
-            <div className="flex min-w-0 flex-row flex-nowrap items-start justify-between gap-3">
-              <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex min-h-0 min-w-0 w-full flex-1 basis-0 flex-col gap-4">
+          <div className="w-full min-w-0 shrink-0">
+            {titleRowEnd != null ? (
+              <div className="flex min-w-0 flex-row flex-nowrap items-start justify-between gap-3">
+                <div className="flex min-w-0 flex-1 flex-col">
+                  <KpiTileHeading displayLabel={displayLabel} displayLabelCompact={displayLabelCompact} />
+                  <p className="mt-1 line-clamp-1 font-['Inter',sans-serif] text-[13px] font-normal leading-snug text-[#707070]">
+                    {catalogEyebrow}
+                  </p>
+                </div>
+                <div className="shrink-0" data-kpi-title-toggle>
+                  {titleRowEnd}
+                </div>
+              </div>
+            ) : (
+              <>
                 <KpiTileHeading displayLabel={displayLabel} displayLabelCompact={displayLabelCompact} />
                 <p className="mt-1 line-clamp-1 font-['Inter',sans-serif] text-[13px] font-normal leading-snug text-[#707070]">
                   {catalogEyebrow}
                 </p>
-              </div>
-              <div className="shrink-0" data-kpi-title-toggle>
-                {titleRowEnd}
-              </div>
-            </div>
-          ) : (
-            <>
-              <KpiTileHeading displayLabel={displayLabel} displayLabelCompact={displayLabelCompact} />
-              <p className="mt-1 line-clamp-1 font-['Inter',sans-serif] text-[13px] font-normal leading-snug text-[#707070]">
-                {catalogEyebrow}
-              </p>
-            </>
-          )}
+              </>
+            )}
+          </div>
+          <div className="flex min-h-0 min-w-0 w-full flex-1 basis-0 flex-col pt-0.5">
+            {titleRailTrendSeries ? (
+              <KpiTitleTrendChart
+                series={titleRailTrendSeries}
+                variant={titleRailChartVariant}
+                className="min-h-0 min-w-0 w-full flex-1 basis-0"
+              />
+            ) : null}
+          </div>
         </div>
       </div>
     );

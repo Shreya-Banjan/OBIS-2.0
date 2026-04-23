@@ -16,6 +16,10 @@ export type CanvasWidgetKpiTileBaseProps = {
   metricSparkline?: boolean;
   /** Month + year under the metric (from timeline custom range end, or “now”). */
   periodContextLabel: string;
+  /** Toolbar timeline string — drives L2 title-rail trend X axis (MoM / YoY / YTD / custom). */
+  kpiTimelineValue?: string;
+  /** L2 title column: line vs bar demo chart (toggle in tile chrome). */
+  titleRailChartVariant?: 'line' | 'bar';
   attributes: DraggableAttributes;
   listeners: Record<string, unknown> | undefined;
   onChangeClick: (e: React.MouseEvent) => void;
