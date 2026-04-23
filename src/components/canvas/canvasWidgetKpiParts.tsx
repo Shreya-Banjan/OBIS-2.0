@@ -1,8 +1,14 @@
 import type { DraggableAttributes } from '@dnd-kit/core';
+import type { ReactNode } from 'react';
 import { IconClose, IconDrag, IconEdit } from '../Icons';
 
+/** Opacity only on the shell — pointer events stay on the toolbar row so the L2 title toggle stays clickable. */
 export const CANVAS_WIDGET_OVERLAY_STRIP =
-  'pointer-events-none absolute left-0 right-0 top-0 z-20 opacity-0 transition-opacity duration-200 ease-out motion-reduce:transition-none max-sm:pointer-events-auto max-sm:opacity-100 sm:group-hover/widget:pointer-events-auto sm:group-hover/widget:opacity-100 sm:group-focus-within/widget:pointer-events-auto sm:group-focus-within/widget:opacity-100';
+  'pointer-events-none absolute left-0 right-0 top-0 z-20 opacity-0 transition-opacity duration-200 ease-out motion-reduce:transition-none max-sm:opacity-100 sm:group-hover/widget:opacity-100 sm:group-focus-within/widget:opacity-100 group-has-[[data-kpi-title-toggle]:hover]/widget:opacity-0 group-has-[[data-kpi-title-toggle]:hover]/widget:pointer-events-none';
+
+/** Drag / edit / remove — only this row captures hovers (not the full strip width), so the chart toggle is not blocked. */
+const CANVAS_WIDGET_OVERLAY_TOOLBAR =
+  'relative z-[1] flex flex-row items-center justify-between gap-2 pointer-events-auto max-sm:pointer-events-auto sm:group-hover/widget:pointer-events-auto sm:group-focus-within/widget:pointer-events-auto group-has-[[data-kpi-title-toggle]:hover]/widget:pointer-events-none';
 
 const OVERLAY_TOOL_BTN =
   'inline-flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-md bg-white text-[#4a4a4c] active:cursor-grabbing';
@@ -116,6 +122,8 @@ type MetricColumnProps = {
   titlesOnly?: boolean;
   /** L2 wide: only value row + period/sparkline (top of definition rail). */
   valuesOnly?: boolean;
+  /** L2: trailing control on the title row (e.g. layout toggle). */
+  titleRowEnd?: ReactNode;
 };
 
 export function CanvasWidgetKpiMetricColumn({
@@ -130,6 +138,7 @@ export function CanvasWidgetKpiMetricColumn({
   className,
   titlesOnly,
   valuesOnly,
+  titleRowEnd,
 }: MetricColumnProps) {
   const { value: valueDisplay, unit: unitDisplay } = splitKpiValueAndUnit(valueDemo, valueUnit);
   const hasUnit = unitDisplay != null && unitDisplay !== '';
@@ -138,7 +147,18 @@ export function CanvasWidgetKpiMetricColumn({
     return (
       <div className={['relative z-0 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden', className].filter(Boolean).join(' ')}>
         <div className="shrink-0">
-          <KpiTileHeading displayLabel={displayLabel} displayLabelCompact={displayLabelCompact} />
+          {titleRowEnd != null ? (
+            <div className="flex min-w-0 flex-row flex-nowrap items-center justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <KpiTileHeading displayLabel={displayLabel} displayLabelCompact={displayLabelCompact} />
+              </div>
+              <div className="shrink-0" data-kpi-title-toggle>
+                {titleRowEnd}
+              </div>
+            </div>
+          ) : (
+            <KpiTileHeading displayLabel={displayLabel} displayLabelCompact={displayLabelCompact} />
+          )}
           <p className="mt-1 line-clamp-2 font-['Inter',sans-serif] text-[13px] font-normal leading-snug text-[#707070]">
             {catalogEyebrow}
           </p>
@@ -260,7 +280,18 @@ export function CanvasWidgetKpiMetricColumn({
   return (
     <div className={['relative z-0 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden', className].filter(Boolean).join(' ')}>
       <div className="shrink-0">
-        <KpiTileHeading displayLabel={displayLabel} displayLabelCompact={displayLabelCompact} />
+        {titleRowEnd != null ? (
+          <div className="flex min-w-0 flex-row flex-nowrap items-center justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <KpiTileHeading displayLabel={displayLabel} displayLabelCompact={displayLabelCompact} />
+            </div>
+            <div className="shrink-0" data-kpi-title-toggle>
+              {titleRowEnd}
+            </div>
+          </div>
+        ) : (
+          <KpiTileHeading displayLabel={displayLabel} displayLabelCompact={displayLabelCompact} />
+        )}
         <p className="mt-1 line-clamp-2 font-['Inter',sans-serif] text-[13px] font-normal leading-snug text-[#707070]">
           {catalogEyebrow}
         </p>
@@ -292,7 +323,7 @@ export function CanvasWidgetKpiOverlayChrome({
           className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white to-white/70"
           aria-hidden
         />
-        <div className="relative z-[1] flex flex-row items-center justify-between gap-2">
+        <div className={CANVAS_WIDGET_OVERLAY_TOOLBAR}>
           <button
             type="button"
             className={[OVERLAY_TOOL_BTN, 'touch-none text-[#1e1e1f]/45'].join(' ')}

@@ -1,9 +1,12 @@
+import { normalizeDashboardBannerSections } from '../layoutUtils';
 import type { SavedDashboard } from '../types';
 
 function cloneDashboard(d: SavedDashboard): SavedDashboard {
   return {
     ...d,
-    sections: d.sections.map((s) => ({ ...s, widgets: [...s.widgets] })),
+    sections: normalizeDashboardBannerSections(
+      d.sections.map((s) => ({ ...s, widgets: [...s.widgets] }))
+    ),
   };
 }
 

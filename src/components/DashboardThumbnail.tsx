@@ -18,10 +18,14 @@ function ThumbnailSectionSlots({
   layout,
   widgets,
   compact,
+  bannerText,
+  bannerBackgroundDataUrl,
 }: {
   layout?: SectionLayoutPreset;
   widgets: PlacedWidget[];
   compact: boolean;
+  bannerText?: string;
+  bannerBackgroundDataUrl?: string | null;
 }) {
   const sc = slotClass(compact);
   const cell = (w: PlacedWidget) => (
@@ -31,15 +35,15 @@ function ThumbnailSectionSlots({
   );
   const [a, b, c] = widgets;
 
-  if (widgets.length === 0) {
+  const preset = layout ?? 'full';
+
+  if (widgets.length === 0 && preset !== 'banner-top') {
     return (
       <span className={`font-['Inter',sans-serif] text-[#707070]/80 ${compact ? 'text-[7px]' : 'text-[9px]'}`}>
         Empty
       </span>
     );
   }
-
-  const preset = layout ?? 'full';
 
   switch (preset) {
     case 'full':
@@ -91,6 +95,15 @@ function ThumbnailSectionSlots({
           <div className="min-h-0 min-w-0 flex-[1_1_0%] overflow-hidden">{b ? cell(b) : null}</div>
         </div>
       );
+    case 'two-large': {
+      const [l, r] = widgets;
+      return (
+        <div className={`flex min-h-0 flex-row gap-0.5 overflow-hidden ${compact ? 'max-h-full' : ''}`}>
+          <div className="min-h-0 min-w-0 flex-[2_1_0%] overflow-hidden">{l ? cell(l) : null}</div>
+          <div className="min-h-0 min-w-0 flex-[2_1_0%] overflow-hidden">{r ? cell(r) : null}</div>
+        </div>
+      );
+    }
     case 'four-small':
       return (
         <div className={`flex min-h-0 flex-row gap-0.5 overflow-hidden ${compact ? 'max-h-full' : ''}`}>
@@ -101,6 +114,55 @@ function ThumbnailSectionSlots({
           ))}
         </div>
       );
+    case 'banner-top': {
+      const text = (bannerText ?? '').trim();
+      const bg = bannerBackgroundDataUrl?.trim();
+      return (
+        <div
+          className={`relative flex min-h-0 w-full shrink-0 flex-row overflow-hidden rounded border border-[#c5c9ce] ${compact ? 'min-h-[14px]' : 'min-h-[18px]'}`}
+        >
+          {bg ? (
+            <>
+              <div
+                className="pointer-events-none absolute inset-0 z-0 bg-cover bg-center bg-no-repeat"
+                style={{ backgroundImage: `url(${bannerBackgroundDataUrl})` }}
+                aria-hidden
+              />
+              <div
+                className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-t from-black/55 via-black/20 to-transparent"
+                aria-hidden
+              />
+            </>
+          ) : null}
+          <div
+            className={`relative z-[2] flex min-h-0 min-w-0 shrink-0 flex-col justify-center border-r border-white/10 px-1 py-px ${compact ? 'w-[42%]' : 'w-[44%]'}`}
+            style={{ background: bg ? 'rgb(0 0 0 / 0.48)' : 'var(--path-banner-navy)' }}
+          >
+            <span
+              className={`truncate font-[family-name:var(--font-poppins)] font-semibold leading-tight text-white ${compact ? 'text-[6px]' : 'text-[7px]'}`}
+            >
+              {text || 'Banner'}
+            </span>
+          </div>
+          <div className="relative z-[2] min-h-0 min-w-0 flex-1 bg-transparent">
+            {bg ? null : (
+              <div
+                className="absolute inset-0 bg-gradient-to-br from-[var(--path-banner-visual-from)] to-[var(--path-banner-visual-to)]"
+                aria-hidden
+              />
+            )}
+          </div>
+        </div>
+      );
+    }
+    case 'section-header': {
+      const bn = widgets[0];
+      return (
+        <div className={`flex min-h-0 flex-col gap-0.5 overflow-hidden ${compact ? 'max-h-full' : ''}`}>
+          <div className="min-h-0 w-full shrink-0 overflow-hidden">{bn ? cell(bn) : null}</div>
+        </div>
+      );
+    }
   }
 }
 
@@ -151,7 +213,13 @@ export function DashboardThumbnail({ sections, title, compact }: DashboardThumbn
                 aria-hidden
               />
               <div className="min-h-0 flex-1 overflow-hidden">
-                <ThumbnailSectionSlots layout={section.layout} widgets={section.widgets} compact={Boolean(compact)} />
+                <ThumbnailSectionSlots
+                  layout={section.layout}
+                  widgets={section.widgets}
+                  compact={Boolean(compact)}
+                  bannerText={section.bannerText}
+                  bannerBackgroundDataUrl={section.bannerBackgroundDataUrl}
+                />
               </div>
             </div>
           ))}

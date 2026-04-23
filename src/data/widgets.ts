@@ -17,7 +17,7 @@ export type WidgetTemplate = {
   nsqipSpecialties?: readonly string[];
   /** Canvas: `kpi` uses OBIS KPI card (Figma 716-4250) in the fixed slot. */
   canvasPresentation?: WidgetCanvasPresentation;
-  /** KPI definition copy for canvas tiles; L2 rail clips to `KPI_DEFINITION_CANVAS_L2_MAX_CHARS`. */
+  /** KPI definition copy for canvas tiles; L2 rail shows full text (author within `KPI_DEFINITION_CANVAS_L2_MAX_CHARS`). */
   kpiDefinition?: string;
   /**
    * L1 (narrow) KPI footer copy (≤ `KPI_DEFINITION_CANVAS_L1_MAX_CHARS`), full text with no ellipsis.
@@ -69,7 +69,7 @@ const QUALITY_NSQIP: WidgetTemplate[] = [
     kpiDemoDeltaChip: '+0.2↑',
     kpiDemoSparkline: true,
     kpiDefinition:
-      'Average hospital days from admission through discharge for NSQIP-eligible surgical patients. Compared with expected length of stay for matched severity to highlight efficient care without compromising safety, using standard NSQIP cohort rules.',
+      'Average NSQIP hospital days from admission through discharge, compared with expected length for matched severity. Highlights efficient, safe care using standard cohort rules.',
     kpiDefinitionL1:
       'Average days in hospital for NSQIP surgeries, admission to discharge.',
   },
@@ -80,7 +80,7 @@ const QUALITY_NSQIP: WidgetTemplate[] = [
     nsqipSpecialties: ['general-surgery', 'gynecology'],
     canvasPresentation: 'kpi',
     kpiDefinition:
-      'Return to the operating room for a related procedure within the NSQIP post-operative window. Captures unplanned reoperations tied to the index surgery for peer comparison, trending, and quality improvement reviews across specialties and sites.',
+      'Return to the operating room for an unplanned related procedure during NSQIP follow-up after the index surgery. For peer comparison, trending, and quality improvement across sites and specialties.',
     kpiDefinitionL1:
       'Return to OR for related procedures during NSQIP post-operative follow-up.',
   },
@@ -90,7 +90,7 @@ const QUALITY_NSQIP: WidgetTemplate[] = [
     nsqipSpecialties: ['gynecology', 'neurosurgery'],
     canvasPresentation: 'kpi',
     kpiDefinition:
-      'Unplanned readmission within 30 days of index discharge for the same principal problem. Helps identify transitions-of-care gaps, post-discharge complications, and opportunities to strengthen discharge planning across cohorts and facilities.',
+      'Unplanned readmission within 30 days of discharge for the same principal problem. Surfaces gaps in transitions of care, complications, and discharge planning across cohorts and facilities.',
     kpiDefinitionL1:
       'Unplanned readmit within 30 days for the same problem after discharge.',
   },
@@ -100,7 +100,7 @@ const QUALITY_NSQIP: WidgetTemplate[] = [
     nsqipSpecialties: ['gynecology', 'neurosurgery', 'otolaryngology'],
     canvasPresentation: 'kpi',
     kpiDefinition:
-      'All-cause mortality during the index admission or in NSQIP-captured post-discharge follow-up. Risk-adjusted views compare observed deaths to expected mortality for similar severity, procedure mix, and comorbidity burden across reporting hospitals.',
+      'All-cause mortality during the index admission or NSQIP post-discharge follow-up. Risk-adjusted metrics compare observed deaths to expected levels for matched severity, procedures, and comorbidities.',
     kpiDefinitionL1:
       'Mortality in hospital or NSQIP follow-up, risk-adjusted vs matched peers.',
   },
@@ -110,7 +110,7 @@ const QUALITY_NSQIP: WidgetTemplate[] = [
     nsqipSpecialties: ['neurosurgery', 'otolaryngology'],
     canvasPresentation: 'kpi',
     kpiDefinition:
-      'Surgical site infections and other tracked infectious complications per NSQIP specifications for the index procedure. Supports prevention bundles, antimicrobial stewardship review, and benchmarking of infection rates against national expectations.',
+      'SSI and other NSQIP-tracked infections after the index procedure. Supports prevention bundles, stewardship review, and benchmarking against national expectations.',
     kpiDefinitionL1:
       'Tracked infections after the index surgery vs NSQIP national benchmarks.',
   },
@@ -120,7 +120,7 @@ const QUALITY_NSQIP: WidgetTemplate[] = [
     nsqipSpecialties: ['neurosurgery', 'orthopedics'],
     canvasPresentation: 'kpi',
     kpiDefinition:
-      'Observed versus expected resource use for risk-matched peers, anchored on length-of-stay signals. Highlights outliers that may warrant clinical documentation review, care pathway refinement, or operational follow-up without implying causality alone.',
+      'Observed versus expected resource use among risk-matched peers, using length-of-stay as a key signal. Flags cases for documentation review or pathway refinement without implying causality.',
     kpiDefinitionL1:
       'Observed vs expected resource use among NSQIP risk-matched peer hospitals.',
   },
@@ -130,7 +130,7 @@ const QUALITY_NSQIP: WidgetTemplate[] = [
     nsqipSpecialties: ['orthopedics', 'general-surgery'],
     canvasPresentation: 'kpi',
     kpiDefinition:
-      'Expected outcomes adjusted for NSQIP-logged comorbidities, acuity, and procedure mix. Enables fair comparison across hospitals and specialties with different case complexity while staying interpretable for surgical quality teams.',
+      'Expected outcomes adjusted for NSQIP-logged comorbidities, acuity, and procedure mix, enabling fair hospital and specialty comparisons with different case complexity.',
     kpiDefinitionL1:
       'Expected outcomes adjusted for NSQIP case mix to compare hospitals fairly.',
   },
@@ -245,7 +245,7 @@ export function widgetCatalogEyebrow(templateId: string): string {
 export const KPI_DEFINITION_CANVAS_L1_MAX_CHARS = 75;
 
 /** L2 (wide) KPI definition rail. */
-export const KPI_DEFINITION_CANVAS_L2_MAX_CHARS = 250;
+export const KPI_DEFINITION_CANVAS_L2_MAX_CHARS = 200;
 
 /** @deprecated Use `KPI_DEFINITION_CANVAS_L1_MAX_CHARS`. */
 export const KPI_DEFINITION_CANVAS_COMPACT_MAX_CHARS = KPI_DEFINITION_CANVAS_L1_MAX_CHARS;
@@ -255,11 +255,6 @@ export const KPI_DEFINITION_CANVAS_WIDE_MAX_CHARS = KPI_DEFINITION_CANVAS_L2_MAX
 
 /** @deprecated Use `KPI_DEFINITION_CANVAS_L1_MAX_CHARS`. */
 export const KPI_DEFINITION_CANVAS_MAX_CHARS = KPI_DEFINITION_CANVAS_L1_MAX_CHARS;
-
-function clipKpiDefinitionWithEllipsis(raw: string, maxChars: number): string {
-  if (raw.length <= maxChars) return raw;
-  return `${raw.slice(0, maxChars - 1).trimEnd()}…`;
-}
 
 function kpiDefinitionForCanvasL1(template: WidgetTemplate | undefined): string {
   if (!template) return '';
@@ -283,8 +278,7 @@ export function widgetKpiDefinitionForCanvas(templateId: string, tier: CanvasKpi
     return kpiDefinitionForCanvasL1(template);
   }
   const raw = template?.kpiDefinition?.trim() ?? '';
-  if (!raw) return '';
-  return clipKpiDefinitionWithEllipsis(raw, KPI_DEFINITION_CANVAS_L2_MAX_CHARS);
+  return raw;
 }
 
 function assertKpiDefinitionL1LengthInDev(): void {
@@ -301,4 +295,19 @@ function assertKpiDefinitionL1LengthInDev(): void {
   }
 }
 
+function assertKpiDefinitionL2LengthInDev(): void {
+  if (!import.meta.env.DEV) return;
+  for (const w of widgetById.values()) {
+    const c = w.kpiDefinition?.trim();
+    if (!c) continue;
+    if (c.length > KPI_DEFINITION_CANVAS_L2_MAX_CHARS) {
+      // eslint-disable-next-line no-console -- authoring guard
+      console.warn(
+        `[widgets] kpiDefinition is ${c.length} chars (max ${KPI_DEFINITION_CANVAS_L2_MAX_CHARS}): ${w.id}`,
+      );
+    }
+  }
+}
+
 assertKpiDefinitionL1LengthInDev();
+assertKpiDefinitionL2LengthInDev();

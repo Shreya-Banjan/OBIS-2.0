@@ -1,4 +1,5 @@
 import { REPORT_DOMAIN_OPTIONS } from '../data/reportDomains';
+import { normalizeDashboardBannerSections } from '../layoutUtils';
 import type { DashboardSection, PlacedWidget, SavedDashboard, SharedByInfo } from '../types';
 
 const STORAGE_KEY = 'neuron-builder-dashboards-v1';
@@ -18,7 +19,10 @@ const LAYOUTS = new Set([
   'three-column',
   'three-column-right',
   'three-column-middle',
+  'two-large',
   'four-small',
+  'banner-top',
+  'section-header',
 ]);
 
 function isDashboardSection(x: unknown): x is DashboardSection {
@@ -27,6 +31,14 @@ function isDashboardSection(x: unknown): x is DashboardSection {
   if (typeof s.id !== 'string' || !Array.isArray(s.widgets)) return false;
   if (!s.widgets.every(isPlacedWidget)) return false;
   if (s.layout !== undefined && (typeof s.layout !== 'string' || !LAYOUTS.has(s.layout))) return false;
+  if (s.bannerText !== undefined && typeof s.bannerText !== 'string') return false;
+  if (
+    s.bannerBackgroundDataUrl !== undefined &&
+    s.bannerBackgroundDataUrl !== null &&
+    typeof s.bannerBackgroundDataUrl !== 'string'
+  ) {
+    return false;
+  }
   return true;
 }
 
@@ -36,6 +48,30 @@ function isSharedBy(x: unknown): x is SharedByInfo {
   if (typeof o.displayName !== 'string' || o.displayName.trim() === '') return false;
   if (o.avatarUrl !== undefined && o.avatarUrl !== null && typeof o.avatarUrl !== 'string') return false;
   return true;
+}
+
+/** Legacy strip layouts: `banner-top` is rich text + image (no widgets); `section-header` keeps one slot. */
+function normalizeStandaloneStripSections(sections: DashboardSection[]): DashboardSection[] {
+  return sections.map((s) => {
+    if (s.layout === 'banner-top') {
+      return {
+        ...s,
+        widgets: [],
+        bannerText: typeof s.bannerText === 'string' ? s.bannerText : '',
+        bannerBackgroundDataUrl:
+          s.bannerBackgroundDataUrl === undefined ? null : (s.bannerBackgroundDataUrl as string | null),
+      };
+    }
+    if (s.layout !== 'section-header' || s.widgets.length <= 1) return s;
+    return { ...s, widgets: s.widgets.slice(0, 1) };
+  });
+}
+
+function normalizeLoadedDashboard(d: SavedDashboard): SavedDashboard {
+  return {
+    ...d,
+    sections: normalizeDashboardBannerSections(normalizeStandaloneStripSections(d.sections)),
+  };
 }
 
 function isSavedDashboard(x: unknown): x is SavedDashboard {
@@ -65,7 +101,7 @@ export function loadDashboardsFromStorage(): SavedDashboard[] | null {
     if (!Array.isArray(parsed)) return null;
     if (parsed.length === 0) return [];
     if (!parsed.every(isSavedDashboard)) return null;
-    return parsed as SavedDashboard[];
+    return (parsed as SavedDashboard[]).map(normalizeLoadedDashboard);
   } catch {
     return null;
   }

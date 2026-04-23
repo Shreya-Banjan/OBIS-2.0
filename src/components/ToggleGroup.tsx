@@ -9,29 +9,35 @@ export type ToggleSegment<T extends string> = {
 
 const toggleSizeStyles = {
   large: {
-    root: 'h-11 w-20 rounded-xl p-1',
-    row: 'h-9',
-    pill: 'rounded-[10px]',
-    segment: 'rounded-[10px]',
-    iconWrap: 'size-[18px] [&_svg]:size-[18px]',
+    root: 'h-11 w-20 shrink-0 overflow-hidden rounded-[12px] p-0',
+    row: 'relative flex h-full min-h-0 w-full min-w-0',
+    pill: 'rounded-[12px]',
+    segment: 'rounded-[12px]',
+    iconWrap: 'size-5 [&_svg]:size-5',
   },
   medium: {
-    root: 'h-9 w-16 rounded-lg p-1',
-    row: 'h-7',
-    pill: 'rounded-md',
-    segment: 'rounded-md',
-    iconWrap: 'size-3.5 [&_svg]:size-3.5',
+    root: 'h-8 w-16 shrink-0 overflow-hidden rounded-[12px] p-0',
+    row: 'relative flex h-full min-h-0 w-full min-w-0',
+    pill: 'rounded-[12px]',
+    segment: 'rounded-[12px]',
+    iconWrap: 'size-4 [&_svg]:size-4',
   },
   small: {
-    root: 'h-[30px] w-[52px] rounded-md p-1',
-    row: 'h-[22px]',
-    pill: 'rounded-[5px]',
-    segment: 'rounded-[5px]',
-    iconWrap: 'size-2.5 [&_svg]:size-2.5',
+    root: 'h-[30px] w-[52px] shrink-0 overflow-hidden rounded-[12px] p-0',
+    row: 'relative flex h-full min-h-0 w-full min-w-0',
+    pill: 'rounded-[12px]',
+    segment: 'rounded-[12px]',
+    iconWrap: 'size-3 [&_svg]:size-3',
   },
 } as const;
 
 export type ToggleGroupSize = keyof typeof toggleSizeStyles;
+
+/**
+ * - **`default`** — white field + `#e8e8e8` shell stroke (toolbar / design-system preview).
+ * - **`kpiTitle`** — in-card OBIS2.0 KPI header ([Figma `209-1393`](https://www.figma.com/design/2Z3gqwUnoKnsm6U5aQ1Xp2/OBIS2.0?node-id=209-1393&m=dev)): `#f5f5f5` track, `#e8e8e8` stroke; icons **#333333** selected, **#999999** inactive.
+ */
+export type ToggleGroupVariant = 'default' | 'kpiTitle';
 
 export type ToggleGroupProps<T extends string> = {
   value: T;
@@ -39,8 +45,10 @@ export type ToggleGroupProps<T extends string> = {
   /** Exactly two segments — layout matches OBIS 2.0 icon toggle. */
   segments: readonly [ToggleSegment<T>, ToggleSegment<T>];
   'aria-label': string;
-  /** Default `medium`: inner track matches 28×56 Figma frame (outer includes 4px padding). */
+  /** Default `medium`: 32×64 outer frame (`h-8`), 12px corners, no inner gutter (thumb flush to the shell). */
   size?: ToggleGroupSize;
+  /** Surface treatment; use `kpiTitle` on L2 KPI title row to match OBIS2.0 card chrome. */
+  variant?: ToggleGroupVariant;
   className?: string;
 };
 
@@ -53,33 +61,41 @@ export function ToggleGroup<T extends string>({
   segments,
   'aria-label': ariaLabel,
   size = 'medium',
+  variant = 'default',
   className,
 }: ToggleGroupProps<T>) {
   const [a, b] = segments;
   const secondSelected = value === b.value;
   const sz = toggleSizeStyles[size];
+  const rootSurface =
+    variant === 'kpiTitle' ? 'border-[#e8e8e8] bg-[#f5f5f5]' : 'border-[#e8e8e8] bg-white';
+  const unselectedSegment = 'text-[#999999] hover:bg-[rgb(30_30_31/0.06)]';
 
   return (
     <div
       role="radiogroup"
       aria-label={ariaLabel}
       className={[
-        'inline-flex shrink-0 items-center border border-solid border-[#DFDFDF] bg-white',
+        'inline-flex shrink-0 border border-solid',
+        rootSurface,
         sz.root,
         className,
       ]
         .filter(Boolean)
         .join(' ')}
     >
-      <div className={['relative flex w-full min-w-0', sz.row].join(' ')}>
+      <div className={sz.row}>
         <div
           aria-hidden
           className={[
-            'pointer-events-none absolute inset-y-0 left-0 w-1/2 bg-[var(--color-grey-darkest)]',
+            /* Bleed 1px past the shell so the thumb stroke aligns with the outer border — no double line. */
+            'pointer-events-none absolute top-[-1px] h-[calc(100%+2px)] bg-white',
+            'border border-solid border-[#e8e8e8]',
             sz.pill,
-            'transform-gpu transition-transform duration-300 ease-[cubic-bezier(0.34,1.02,0.64,1)] will-change-transform',
+            /* Right segment: +2px width so the thumb meets the inner right edge (50%+1 can leave a 1px gap). */
+            secondSelected ? 'left-[calc(50%-1px)] w-[calc(50%+2px)]' : 'left-[-1px] w-[calc(50%+1px)]',
+            'transition-[left,width] duration-300 ease-[cubic-bezier(0.34,1.02,0.64,1)] will-change-[left,width]',
             'motion-reduce:transition-none motion-reduce:duration-0',
-            secondSelected ? 'translate-x-full' : 'translate-x-0',
           ].join(' ')}
         />
         {[a, b].map((seg) => {
@@ -97,9 +113,7 @@ export function ToggleGroup<T extends string>({
                 sz.segment,
                 'transition-colors duration-300 ease-[cubic-bezier(0.34,1.02,0.64,1)]',
                 'motion-reduce:transition-none motion-reduce:duration-0',
-                selected
-                  ? 'text-white hover:bg-white/10'
-                  : 'text-[var(--color-grey-darkest)] hover:bg-[#333333]/10',
+                selected ? 'text-[#333333] hover:bg-[rgb(30_30_31/0.04)]' : unselectedSegment,
                 'focus-visible:shadow-[var(--shadow-focus)]',
               ].join(' ')}
             >

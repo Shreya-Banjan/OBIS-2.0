@@ -2,7 +2,11 @@ import type { CSSProperties, ReactNode } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, useSortable, rectSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { canvasWidgetSlotFrameStyle } from '../canvasWidgetSlot';
+import {
+  CANVAS_WIDGET_SLOT_HEIGHT_PX,
+  SECTION_HEADER_SLOT_HEIGHT_PX,
+  canvasWidgetSlotFrameStyle,
+} from '../canvasWidgetSlot';
 import {
   getWidgetDisplayLabel,
   widgetCatalogEyebrow,
@@ -18,6 +22,7 @@ import { useWidgetLibraryOpen } from '../context/WidgetLibraryContext';
 import { IconArrowDown, IconArrowUp, IconClose, IconDrag, IconEdit, IconPlusSoft, IconTrash } from './Icons';
 import { CanvasWidgetKpiTile } from './canvas/CanvasWidgetKpiTile';
 import { EditorAddWidgetCta } from './EditorAddWidgetCta';
+import { EditorDashboardBanner, type BannerSectionUpdates } from './EditorDashboardBanner';
 
 /** Shared view-transition name so the add-section CTA animates when rows are deleted or reordered. */
 const addSectionCtaViewTransition: CSSProperties = {
@@ -48,11 +53,13 @@ function canvasSlotShellClass(w: PlacedWidget): string {
 
 function SortablePlaceholderSlot({
   sectionId,
+  sectionLayout,
   widget,
   isLibraryTarget,
   canvasListL1,
 }: {
   sectionId: string;
+  sectionLayout?: SectionLayoutPreset;
   widget: PlacedWidget;
   isLibraryTarget: boolean;
   canvasListL1: boolean;
@@ -74,6 +81,9 @@ function SortablePlaceholderSlot({
     opacity: isDragging ? 0.55 : 1,
   };
 
+  const stripSlotHeightPx =
+    sectionLayout === 'section-header' ? SECTION_HEADER_SLOT_HEIGHT_PX : undefined;
+
   return (
     <EditorAddWidgetCta
       ref={setNodeRef}
@@ -81,8 +91,9 @@ function SortablePlaceholderSlot({
       placeholderInstanceId={widget.instanceId}
       isLibraryTarget={isLibraryTarget}
       canvasListL1={canvasListL1}
+      slotHeightPx={stripSlotHeightPx}
       style={style}
-      className="min-w-0"
+      className="min-h-0 min-w-0 h-full"
       {...attributes}
     />
   );
@@ -127,7 +138,7 @@ function SortablePlacedWidget({
       ...canvasWidgetSlotFrameStyle(canvasListL1),
     };
     const shellClass = [
-      'group/widget @container/kpi flex w-full min-h-0 min-w-0 flex-col overflow-hidden rounded-[var(--radius-canvas)] bg-white shadow-[var(--shadow-subtle)]',
+      'group/widget @container/kpi flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden rounded-[var(--radius-canvas)] bg-white shadow-[var(--shadow-subtle)]',
       isLibraryTarget
         ? 'border-2 border-solid border-[var(--color-brand-primary)] shadow-[0_0_0_3px_rgba(249,108,80,0.25)]'
         : 'border border-solid border-[#e6e6e6]',
@@ -248,6 +259,7 @@ function renderSlot(
   return w.placeholder ? (
     <SortablePlaceholderSlot
       sectionId={section.id}
+      sectionLayout={section.layout}
       widget={w}
       isLibraryTarget={activePlaceholderInstanceId === w.instanceId}
       canvasListL1={canvasListL1}
@@ -266,8 +278,8 @@ function renderSlot(
 }
 
 /**
- * Each layout is a **different DOM shape** (flex rows / columns with fixed Tailwind classes).
- * No shared “one grid, dynamic template” — that was easy to break and hard to reason about.
+ * Wide layouts use a shared **12-column grid** so L1 / L2 / placeholders get stable 1∶2∶1 (etc.) tracks and
+ * top edges line up. Narrow viewports keep stacked `flex` rows.
  */
 function SectionLayoutFrame({
   layout,
@@ -279,6 +291,7 @@ function SectionLayoutFrame({
   stackMultiColumnLayout,
   canvasListL1,
   kpiPeriodContextLabel,
+  onBannerSectionChange,
 }: {
   layout: SectionLayoutPreset;
   section: DashboardSection;
@@ -291,9 +304,23 @@ function SectionLayoutFrame({
   /** Narrow viewport: shorter KPI tile / placeholder height (`canvasWidgetSlotHeightPx`); not the same as widget tier L1/L2. */
   canvasListL1: boolean;
   kpiPeriodContextLabel: string;
+  onBannerSectionChange?: (sectionId: string, updates: BannerSectionUpdates) => void;
 }) {
   const ws = section.widgets;
   const [a, b, c] = ws;
+
+  const slotFrameStyleForWidget = (w: PlacedWidget): { minHeight: number; maxHeight?: number } | undefined => {
+    if (layout === 'section-header' && w.placeholder) {
+      return {
+        minHeight: SECTION_HEADER_SLOT_HEIGHT_PX,
+        maxHeight: SECTION_HEADER_SLOT_HEIGHT_PX,
+      };
+    }
+    if (stackMultiColumnLayout) return undefined;
+    return { minHeight: CANVAS_WIDGET_SLOT_HEIGHT_PX };
+  };
+
+  const rowMin = stackMultiColumnLayout ? undefined : { minHeight: CANVAS_WIDGET_SLOT_HEIGHT_PX };
 
   const shell = (inner: ReactNode) => (
     <div ref={setNodeRef} className={`min-w-0 w-full ${overRing}`}>
@@ -301,21 +328,36 @@ function SectionLayoutFrame({
     </div>
   );
 
-  const multiColumnRowClass = stackMultiColumnLayout
-    ? 'flex w-full flex-col gap-[20px]'
-    : 'flex w-full flex-row items-stretch gap-[20px]';
-  const multiColumnSlotClass = (w: PlacedWidget) =>
-    stackMultiColumnLayout
-      ? `min-h-0 min-w-0 w-full ${canvasSlotShellClass(w)}`
-      : `min-h-0 min-w-0 flex-1 basis-0 ${canvasSlotShellClass(w)}`;
+  const wideRow = 'grid w-full min-w-0 grid-cols-12 gap-4';
+  const stackCol = 'flex w-full flex-col gap-4';
+
+  const slotWrap = (w: PlacedWidget, wideSpan: string, slotKey: string, children: ReactNode) => (
+    <div
+      key={slotKey}
+      style={slotFrameStyleForWidget(w)}
+      className={[
+        'flex min-h-0 min-w-0 flex-col self-stretch',
+        layout === 'section-header' && w.placeholder ? 'overflow-hidden' : '',
+        stackMultiColumnLayout ? 'w-full' : wideSpan,
+        canvasSlotShellClass(w),
+      ]
+        .filter(Boolean)
+        .join(' ')}
+    >
+      {children}
+    </div>
+  );
 
   switch (layout) {
     case 'full':
       return shell(
-        <div className="flex w-full flex-col gap-[20px]">
-          {ws.map((w) => (
-            <div key={w.instanceId} className={canvasSlotShellClass(w)}>
-              {renderSlot(
+        <div className={stackMultiColumnLayout ? stackCol : wideRow}>
+          {ws.map((w) =>
+            slotWrap(
+              w,
+              'col-span-12',
+              w.instanceId,
+              renderSlot(
                 section,
                 w,
                 onRemoveWidget,
@@ -324,100 +366,114 @@ function SectionLayoutFrame({
                 'l2',
                 stackMultiColumnLayout,
                 kpiPeriodContextLabel
-              )}
-            </div>
-          ))}
+              )
+            )
+          )}
         </div>
       );
 
     case 'sidebar-left':
       return shell(
-        <div className={multiColumnRowClass}>
-          {a ? (
-            <div key={a.instanceId} className={multiColumnSlotClass(a)}>
-              {renderSlot(
-                section,
+        <div className={stackMultiColumnLayout ? stackCol : wideRow}>
+          {a
+            ? slotWrap(
                 a,
-                onRemoveWidget,
-                activePlaceholderInstanceId,
-                canvasListL1,
-                'l1',
-                stackMultiColumnLayout,
-                kpiPeriodContextLabel
-              )}
-            </div>
-          ) : null}
-          {b ? (
-            <div key={b.instanceId} className={multiColumnSlotClass(b)}>
-              {renderSlot(
-                section,
+                'col-span-4',
+                a.instanceId,
+                renderSlot(
+                  section,
+                  a,
+                  onRemoveWidget,
+                  activePlaceholderInstanceId,
+                  canvasListL1,
+                  'l1',
+                  stackMultiColumnLayout,
+                  kpiPeriodContextLabel
+                )
+              )
+            : null}
+          {b
+            ? slotWrap(
                 b,
-                onRemoveWidget,
-                activePlaceholderInstanceId,
-                canvasListL1,
-                'l1',
-                stackMultiColumnLayout,
-                kpiPeriodContextLabel
-              )}
-            </div>
-          ) : null}
+                'col-span-8',
+                b.instanceId,
+                renderSlot(
+                  section,
+                  b,
+                  onRemoveWidget,
+                  activePlaceholderInstanceId,
+                  canvasListL1,
+                  'l1',
+                  stackMultiColumnLayout,
+                  kpiPeriodContextLabel
+                )
+              )
+            : null}
         </div>
       );
 
     case 'sidebar-right':
       return shell(
-        <div className={multiColumnRowClass}>
-          {a ? (
-            <div key={a.instanceId} className={multiColumnSlotClass(a)}>
-              {renderSlot(
-                section,
+        <div className={stackMultiColumnLayout ? stackCol : wideRow}>
+          {a
+            ? slotWrap(
                 a,
-                onRemoveWidget,
-                activePlaceholderInstanceId,
-                canvasListL1,
-                'l1',
-                stackMultiColumnLayout,
-                kpiPeriodContextLabel
-              )}
-            </div>
-          ) : null}
-          {b ? (
-            <div key={b.instanceId} className={multiColumnSlotClass(b)}>
-              {renderSlot(
-                section,
+                'col-span-8',
+                a.instanceId,
+                renderSlot(
+                  section,
+                  a,
+                  onRemoveWidget,
+                  activePlaceholderInstanceId,
+                  canvasListL1,
+                  'l1',
+                  stackMultiColumnLayout,
+                  kpiPeriodContextLabel
+                )
+              )
+            : null}
+          {b
+            ? slotWrap(
                 b,
-                onRemoveWidget,
-                activePlaceholderInstanceId,
-                canvasListL1,
-                'l1',
-                stackMultiColumnLayout,
-                kpiPeriodContextLabel
-              )}
-            </div>
-          ) : null}
+                'col-span-4',
+                b.instanceId,
+                renderSlot(
+                  section,
+                  b,
+                  onRemoveWidget,
+                  activePlaceholderInstanceId,
+                  canvasListL1,
+                  'l1',
+                  stackMultiColumnLayout,
+                  kpiPeriodContextLabel
+                )
+              )
+            : null}
         </div>
       );
 
     case 'three-column':
     case 'three-column-right': {
-      /** Two small (a,b) + inner gap share one flex half; large (c) is the other half — widths match. */
       const pairFirst = layout === 'three-column';
-      const smallInPair = (w: PlacedWidget) => `min-h-0 min-w-0 flex-1 basis-0 ${canvasSlotShellClass(w)}`;
-      const largeSlot = (w: PlacedWidget) =>
-        stackMultiColumnLayout
-          ? `min-h-0 min-w-0 w-full flex-1 basis-0 ${canvasSlotShellClass(w)}`
-          : `min-h-0 min-w-0 flex-1 basis-0 ${canvasSlotShellClass(w)}`;
       const pairRow = stackMultiColumnLayout
-        ? 'flex w-full min-h-0 min-w-0 flex-row items-stretch gap-[20px]'
-        : 'flex min-h-0 min-w-0 flex-1 basis-0 flex-row items-stretch gap-[20px]';
-      const outerRow = stackMultiColumnLayout
-        ? 'flex w-full flex-col items-stretch gap-[20px]'
-        : 'flex w-full flex-row items-stretch gap-[20px]';
+        ? 'flex w-full min-h-0 min-w-0 flex-row items-stretch gap-4'
+        : 'col-span-6 grid min-h-0 min-w-0 grid-cols-2 gap-4';
+      const outerRow = stackMultiColumnLayout ? stackCol : wideRow;
 
-      const pair = (
+      const pairInner = (
         <div className={pairRow}>
           {a ? (
-            <div key={a.instanceId} className={smallInPair(a)}>
+            <div
+              key={a.instanceId}
+              style={rowMin}
+              className={[
+                'flex min-h-0 min-w-0 flex-col self-stretch',
+                stackMultiColumnLayout ? 'min-h-0 min-w-0 flex-1 basis-0' : '',
+                canvasSlotShellClass(a),
+              ]
+                .filter(Boolean)
+                .join(' ')}
+            >
               {renderSlot(
                 section,
                 a,
@@ -431,7 +487,17 @@ function SectionLayoutFrame({
             </div>
           ) : null}
           {b ? (
-            <div key={b.instanceId} className={smallInPair(b)}>
+            <div
+              key={b.instanceId}
+              style={rowMin}
+              className={[
+                'flex min-h-0 min-w-0 flex-col self-stretch',
+                stackMultiColumnLayout ? 'min-h-0 min-w-0 flex-1 basis-0' : '',
+                canvasSlotShellClass(b),
+              ]
+                .filter(Boolean)
+                .join(' ')}
+            >
               {renderSlot(
                 section,
                 b,
@@ -446,96 +512,143 @@ function SectionLayoutFrame({
           ) : null}
         </div>
       );
-      const large = c ? (
-        <div key={c.instanceId} className={largeSlot(c)}>
-          {renderSlot(
-            section,
+      const large = c
+        ? slotWrap(
             c,
-            onRemoveWidget,
-            activePlaceholderInstanceId,
-            canvasListL1,
-            'l2',
-            stackMultiColumnLayout,
-            kpiPeriodContextLabel
-          )}
-        </div>
-      ) : null;
+            'col-span-6',
+            c.instanceId,
+            renderSlot(
+              section,
+              c,
+              onRemoveWidget,
+              activePlaceholderInstanceId,
+              canvasListL1,
+              'l2',
+              stackMultiColumnLayout,
+              kpiPeriodContextLabel
+            )
+          )
+        : null;
 
       return shell(
         <div className={outerRow}>
-          {pairFirst ? pair : large}
-          {pairFirst ? large : pair}
+          {pairFirst ? pairInner : large}
+          {pairFirst ? large : pairInner}
         </div>
       );
     }
 
     case 'three-column-middle': {
-      /** a = left L1, c = center L2, b = right L1; flex grow 1 : 2 : 1. */
-      const smallCol = (w: PlacedWidget) =>
-        stackMultiColumnLayout
-          ? `min-h-0 min-w-0 w-full ${canvasSlotShellClass(w)}`
-          : `min-h-0 min-w-0 flex-[1_1_0%] ${canvasSlotShellClass(w)}`;
-      const centerCol = (w: PlacedWidget) =>
-        stackMultiColumnLayout
-          ? `min-h-0 min-w-0 w-full flex-1 basis-0 ${canvasSlotShellClass(w)}`
-          : `min-h-0 min-w-0 flex-[2_1_0%] ${canvasSlotShellClass(w)}`;
-      const outer = stackMultiColumnLayout
-        ? 'flex w-full flex-col items-stretch gap-[20px]'
-        : 'flex w-full flex-row items-stretch gap-[20px]';
+      const outer = stackMultiColumnLayout ? stackCol : wideRow;
       return shell(
         <div className={outer}>
-          {a ? (
-            <div key={a.instanceId} className={smallCol(a)}>
-              {renderSlot(
-                section,
+          {a
+            ? slotWrap(
                 a,
-                onRemoveWidget,
-                activePlaceholderInstanceId,
-                canvasListL1,
-                'l1',
-                stackMultiColumnLayout,
-                kpiPeriodContextLabel
-              )}
-            </div>
-          ) : null}
-          {c ? (
-            <div key={c.instanceId} className={centerCol(c)}>
-              {renderSlot(
-                section,
+                'col-span-3',
+                a.instanceId,
+                renderSlot(
+                  section,
+                  a,
+                  onRemoveWidget,
+                  activePlaceholderInstanceId,
+                  canvasListL1,
+                  'l1',
+                  stackMultiColumnLayout,
+                  kpiPeriodContextLabel
+                )
+              )
+            : null}
+          {c
+            ? slotWrap(
                 c,
-                onRemoveWidget,
-                activePlaceholderInstanceId,
-                canvasListL1,
-                'l2',
-                stackMultiColumnLayout,
-                kpiPeriodContextLabel
-              )}
-            </div>
-          ) : null}
-          {b ? (
-            <div key={b.instanceId} className={smallCol(b)}>
-              {renderSlot(
-                section,
+                'col-span-6',
+                c.instanceId,
+                renderSlot(
+                  section,
+                  c,
+                  onRemoveWidget,
+                  activePlaceholderInstanceId,
+                  canvasListL1,
+                  'l2',
+                  stackMultiColumnLayout,
+                  kpiPeriodContextLabel
+                )
+              )
+            : null}
+          {b
+            ? slotWrap(
                 b,
-                onRemoveWidget,
-                activePlaceholderInstanceId,
-                canvasListL1,
-                'l1',
-                stackMultiColumnLayout,
-                kpiPeriodContextLabel
-              )}
-            </div>
-          ) : null}
+                'col-span-3',
+                b.instanceId,
+                renderSlot(
+                  section,
+                  b,
+                  onRemoveWidget,
+                  activePlaceholderInstanceId,
+                  canvasListL1,
+                  'l1',
+                  stackMultiColumnLayout,
+                  kpiPeriodContextLabel
+                )
+              )
+            : null}
+        </div>
+      );
+    }
+
+    case 'two-large': {
+      const outer = stackMultiColumnLayout ? stackCol : wideRow;
+      const [left, right] = ws;
+      return shell(
+        <div className={outer}>
+          {left
+            ? slotWrap(
+                left,
+                'col-span-6',
+                left.instanceId,
+                renderSlot(
+                  section,
+                  left,
+                  onRemoveWidget,
+                  activePlaceholderInstanceId,
+                  canvasListL1,
+                  'l2',
+                  stackMultiColumnLayout,
+                  kpiPeriodContextLabel
+                )
+              )
+            : null}
+          {right
+            ? slotWrap(
+                right,
+                'col-span-6',
+                right.instanceId,
+                renderSlot(
+                  section,
+                  right,
+                  onRemoveWidget,
+                  activePlaceholderInstanceId,
+                  canvasListL1,
+                  'l2',
+                  stackMultiColumnLayout,
+                  kpiPeriodContextLabel
+                )
+              )
+            : null}
         </div>
       );
     }
 
     case 'four-small':
       return shell(
-        <div className={multiColumnRowClass}>
-          {ws.slice(0, 4).map((w) => (
-            <div key={w.instanceId} className={multiColumnSlotClass(w)}>
-              {renderSlot(
+        <div className={stackMultiColumnLayout ? stackCol : wideRow}>
+          {ws.slice(0, 4).map((w) =>
+            slotWrap(
+              w,
+              'col-span-3',
+              w.instanceId,
+              renderSlot(
                 section,
                 w,
                 onRemoveWidget,
@@ -544,15 +657,48 @@ function SectionLayoutFrame({
                 'l1',
                 stackMultiColumnLayout,
                 kpiPeriodContextLabel
-              )}
-            </div>
-          ))}
+              )
+            )
+          )}
         </div>
       );
+
+    case 'banner-top':
+      return shell(
+        <EditorDashboardBanner
+          section={section}
+          onChange={(updates) => onBannerSectionChange?.(section.id, updates)}
+        />
+      );
+
+    case 'section-header': {
+      const banner = ws[0];
+      return shell(
+        <div className={stackMultiColumnLayout ? stackCol : wideRow}>
+          {banner
+            ? slotWrap(
+                banner,
+                'col-span-12',
+                banner.instanceId,
+                renderSlot(
+                  section,
+                  banner,
+                  onRemoveWidget,
+                  activePlaceholderInstanceId,
+                  canvasListL1,
+                  'l2',
+                  stackMultiColumnLayout,
+                  kpiPeriodContextLabel
+                )
+              )
+            : null}
+        </div>
+      );
+    }
   }
 }
 
-/** Sits in bottom padding of the section wrapper so hover stays active while moving to the bar; `left-0` matches canvas edge. */
+/** Overlays the section card; list `gap-1` controls space between section rows. */
 function SectionRowActions({
   canMoveUp,
   canMoveDown,
@@ -578,7 +724,7 @@ function SectionRowActions({
 
   return (
     <div
-      className="pointer-events-none absolute bottom-0 left-0 z-10 flex w-max items-center rounded-[var(--radius-canvas)] border border-white/20 bg-[rgb(0_0_0/0.9)] p-1 opacity-0 shadow-[var(--shadow-elevated)] transition-opacity duration-200 ease-out group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100"
+      className="pointer-events-none absolute bottom-2 left-2 z-10 flex w-max items-center rounded-[var(--radius-canvas)] border border-white/20 bg-[rgb(0_0_0/0.9)] p-1 opacity-0 shadow-[var(--shadow-elevated)] transition-opacity duration-200 ease-out group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100"
       role="toolbar"
       aria-label="Section row actions"
     >
@@ -628,6 +774,7 @@ function SectionRowActions({
 }
 
 function SectionCard({
+  sections,
   section,
   sectionIndex,
   totalSections,
@@ -638,7 +785,9 @@ function SectionCard({
   stackMultiColumnLayout,
   canvasListL1,
   kpiPeriodContextLabel,
+  onBannerSectionChange,
 }: {
+  sections: DashboardSection[];
   section: DashboardSection;
   sectionIndex: number;
   totalSections: number;
@@ -649,19 +798,26 @@ function SectionCard({
   stackMultiColumnLayout: boolean;
   canvasListL1: boolean;
   kpiPeriodContextLabel: string;
+  onBannerSectionChange?: (sectionId: string, updates: BannerSectionUpdates) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: `section:${section.id}`,
     data: { type: 'section', sectionId: section.id },
+    disabled: section.layout === 'banner-top',
   });
 
+  const isBannerSection = section.layout === 'banner-top';
   const empty = section.widgets.length === 0;
   const overRing = isOver
     ? 'rounded-[var(--radius-canvas)] ring-2 ring-[#b6bec8] ring-offset-2 ring-offset-[#ebebeb] transition-shadow'
     : '';
   const layout = section.layout;
-  const canMoveUp = sectionIndex > 0;
-  const canMoveDown = sectionIndex < totalSections - 1;
+  const isDashboardBanner = layout === 'banner-top';
+  const prevSection = sectionIndex > 0 ? sections[sectionIndex - 1] : undefined;
+  /** Banner stays row 0; nothing may sit above it. */
+  const canMoveUp =
+    sectionIndex > 0 && !isDashboardBanner && prevSection?.layout !== 'banner-top';
+  const canMoveDown = !isDashboardBanner && sectionIndex < totalSections - 1;
   const sectionHasWidgetPickerTarget =
     activePlaceholderInstanceId != null &&
     section.widgets.some((w) => w.instanceId === activePlaceholderInstanceId);
@@ -672,64 +828,80 @@ function SectionCard({
 
   return (
     <article
-      className="group relative z-0 -mb-11 min-w-0 w-full max-w-full overflow-visible hover:z-[5] focus-within:z-[5]"
+      className="group relative z-0 min-w-0 w-full max-w-full overflow-visible hover:z-[5] focus-within:z-[5]"
       style={sectionTransitionStyle}
     >
-      <div className="relative min-w-0 pb-11">
+      <div className="relative min-w-0">
         <div
           className={[
-            'min-w-0 rounded-[var(--radius-canvas)] border-[1.25px] border-solid p-2 box-border transition-[background-color,border-color] duration-500 ease-in-out motion-reduce:transition-none',
+            'relative min-w-0 overflow-visible rounded-[var(--radius-canvas)] border-[1.25px] border-solid p-2 box-border transition-[background-color,border-color] duration-500 ease-in-out motion-reduce:transition-none',
             sectionHasWidgetPickerTarget
               ? 'border-[#999999] bg-[rgb(153_153_153/0.1)] group-hover:bg-[rgb(153_153_153/0.2)]'
               : 'border-transparent bg-transparent group-hover:border-[#999999] group-hover:bg-[rgb(153_153_153/0.26)]',
           ].join(' ')}
         >
-          <SortableContext id={section.id} items={section.widgets.map((w) => w.instanceId)} strategy={rectSortingStrategy}>
-            {empty ? (
-              <div ref={setNodeRef} className={`min-w-0 ${overRing}`}>
-                <p className="rounded-[var(--radius-canvas)] border border-dashed border-[#d7d7d7] py-8 text-center font-['Inter',sans-serif] text-sm text-[#707070]">
-                  Drop widgets here
-                </p>
-              </div>
-            ) : layout ? (
-              <SectionLayoutFrame
-                layout={layout}
-                section={section}
-                setNodeRef={setNodeRef}
-                overRing={overRing}
-                onRemoveWidget={onRemoveWidget}
-                activePlaceholderInstanceId={activePlaceholderInstanceId}
-                stackMultiColumnLayout={stackMultiColumnLayout}
-                canvasListL1={canvasListL1}
-                kpiPeriodContextLabel={kpiPeriodContextLabel}
-              />
-            ) : (
-              <div ref={setNodeRef} className={`flex min-w-0 w-full flex-col gap-2 ${overRing}`}>
-                {section.widgets.map((w) => (
-                  <div key={w.instanceId} className={canvasSlotShellClass(w)}>
-                    {renderSlot(
-                      section,
-                      w,
-                      onRemoveWidget,
-                      activePlaceholderInstanceId,
-                      canvasListL1,
-                      'l1',
-                      stackMultiColumnLayout,
-                      kpiPeriodContextLabel
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </SortableContext>
+          {isBannerSection ? (
+            <SectionLayoutFrame
+              layout="banner-top"
+              section={section}
+              setNodeRef={setNodeRef}
+              overRing={overRing}
+              onRemoveWidget={onRemoveWidget}
+              activePlaceholderInstanceId={activePlaceholderInstanceId}
+              stackMultiColumnLayout={stackMultiColumnLayout}
+              canvasListL1={canvasListL1}
+              kpiPeriodContextLabel={kpiPeriodContextLabel}
+              onBannerSectionChange={onBannerSectionChange}
+            />
+          ) : (
+            <SortableContext id={section.id} items={section.widgets.map((w) => w.instanceId)} strategy={rectSortingStrategy}>
+              {empty ? (
+                <div ref={setNodeRef} className={`min-w-0 ${overRing}`}>
+                  <p className="rounded-[var(--radius-canvas)] border border-dashed border-[#d7d7d7] py-8 text-center font-['Inter',sans-serif] text-sm text-[#707070]">
+                    Drop widgets here
+                  </p>
+                </div>
+              ) : layout ? (
+                <SectionLayoutFrame
+                  layout={layout}
+                  section={section}
+                  setNodeRef={setNodeRef}
+                  overRing={overRing}
+                  onRemoveWidget={onRemoveWidget}
+                  activePlaceholderInstanceId={activePlaceholderInstanceId}
+                  stackMultiColumnLayout={stackMultiColumnLayout}
+                  canvasListL1={canvasListL1}
+                  kpiPeriodContextLabel={kpiPeriodContextLabel}
+                  onBannerSectionChange={onBannerSectionChange}
+                />
+              ) : (
+                <div ref={setNodeRef} className={`flex min-w-0 w-full flex-col gap-2 ${overRing}`}>
+                  {section.widgets.map((w) => (
+                    <div key={w.instanceId} className={canvasSlotShellClass(w)}>
+                      {renderSlot(
+                        section,
+                        w,
+                        onRemoveWidget,
+                        activePlaceholderInstanceId,
+                        canvasListL1,
+                        'l1',
+                        stackMultiColumnLayout,
+                        kpiPeriodContextLabel
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </SortableContext>
+          )}
+          <SectionRowActions
+            canMoveUp={canMoveUp}
+            canMoveDown={canMoveDown}
+            onMoveUp={() => onMoveSection(section.id, 'up')}
+            onMoveDown={() => onMoveSection(section.id, 'down')}
+            onRemove={() => onRemoveSection(section.id)}
+          />
         </div>
-        <SectionRowActions
-          canMoveUp={canMoveUp}
-          canMoveDown={canMoveDown}
-          onMoveUp={() => onMoveSection(section.id, 'up')}
-          onMoveDown={() => onMoveSection(section.id, 'down')}
-          onRemove={() => onRemoveSection(section.id)}
-        />
       </div>
     </article>
   );
@@ -741,6 +913,7 @@ type DashboardCanvasProps = {
   onRemoveWidget: (sectionId: string, instanceId: string) => void;
   onRemoveSection: (sectionId: string) => void;
   onMoveSection: (sectionId: string, direction: 'up' | 'down') => void;
+  onBannerSectionChange?: (sectionId: string, updates: BannerSectionUpdates) => void;
   /** Widget instance the library is replacing (placeholder “Select Widget” or placed row via Change). */
   activePlaceholderInstanceId?: string | null;
   /** Window or preview rail width — matches header; below 640px stacks multi-column section layouts. */
@@ -755,6 +928,7 @@ export function DashboardCanvas({
   onRemoveWidget,
   onRemoveSection,
   onMoveSection,
+  onBannerSectionChange,
   activePlaceholderInstanceId = null,
   effectiveLayoutWidth,
   timelineValue = '',
@@ -765,7 +939,7 @@ export function DashboardCanvas({
   const kpiPeriodContextLabel = formatKpiCanvasPeriodLabel(timelineValue);
 
   return (
-    <div className="flex min-w-0 w-full max-w-full flex-1 flex-col gap-[5px]">
+    <div className="flex min-w-0 w-full max-w-full flex-1 flex-col gap-1">
       {sections.length === 0 ? (
         <button
           type="button"
@@ -789,12 +963,14 @@ export function DashboardCanvas({
           {sections.map((s, index) => (
             <SectionCard
               key={s.id}
+              sections={sections}
               section={s}
               sectionIndex={index}
               totalSections={sections.length}
               onRemoveWidget={onRemoveWidget}
               onRemoveSection={onRemoveSection}
               onMoveSection={onMoveSection}
+              onBannerSectionChange={onBannerSectionChange}
               activePlaceholderInstanceId={activePlaceholderInstanceId}
               stackMultiColumnLayout={stackMultiColumnLayout}
               canvasListL1={canvasListL1}

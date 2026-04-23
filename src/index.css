@@ -25,6 +25,14 @@
   --shadow-focus: 0 0 0 3px rgb(51 51 51 / 0.12);
   --shadow-focus-brand: 0 0 0 3px rgb(249 108 80 / 0.25);
   --shadow-focus-cta: 0 0 0 3px rgb(249 108 80 / 0.35);
+  /* PATH-style dashboard banner (MD Anderson_PATH hero reference) */
+  --path-banner-height: 216px;
+  --path-banner-navy: #0b2a45;
+  --path-banner-navy-deep: #051a2e;
+  --path-banner-panel: rgb(11 42 69 / 0.97);
+  /* Right column empty-state gradient (lighter than navy-deep wash) */
+  --path-banner-visual-from: #5a9ab8;
+  --path-banner-visual-to: #2a5f7a;
   /* Filled buttons (primary / dark CTA): pressed fill */
   --shadow-button-active-filled: 0 0 0 3px rgb(249 108 80 / 0.32);
   /* Outline / ghost buttons: pressed surface tint */

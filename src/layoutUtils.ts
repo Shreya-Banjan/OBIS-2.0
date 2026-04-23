@@ -1,4 +1,4 @@
-import type { SectionLayoutPreset } from './types';
+import type { DashboardSection, SectionLayoutPreset } from './types';
 
 /** Show nav burger only when effective layout width (window or preview preset) ≥ this — matches Tailwind `sm`. */
 export const NAV_BURGER_MIN_LAYOUT_WIDTH_PX = 640;
@@ -17,8 +17,29 @@ export function reportsContentMaxWidthPx(effectiveLayoutWidthPx: number): number
 
 export function layoutColumnCount(layout: SectionLayoutPreset): number {
   if (layout === 'full') return 1;
+  if (layout === 'banner-top') return 0;
+  if (layout === 'section-header') return 1;
   if (layout === 'three-column' || layout === 'three-column-right' || layout === 'three-column-middle') return 3;
   if (layout === 'four-small') return 4;
   return 2;
+}
+
+/**
+ * At most one `banner-top` section (first in array order wins). That section is always index 0.
+ * Call after loads and any section reorder so the dashboard banner stays the top row.
+ */
+export function normalizeDashboardBannerSections(sections: DashboardSection[]): DashboardSection[] {
+  const bannerIndices = sections
+    .map((s, i) => (s.layout === 'banner-top' ? i : -1))
+    .filter((i) => i >= 0);
+  let list = sections;
+  if (bannerIndices.length > 1) {
+    const keepIdx = bannerIndices[0]!;
+    list = sections.filter((s, i) => s.layout !== 'banner-top' || i === keepIdx);
+  }
+  const bi = list.findIndex((s) => s.layout === 'banner-top');
+  if (bi <= 0) return list;
+  const banner = list[bi]!;
+  return [banner, ...list.filter((_, i) => i !== bi)];
 }
 

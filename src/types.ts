@@ -18,12 +18,22 @@ export type SectionLayoutPreset =
   | 'three-column'
   | 'three-column-right'
   | 'three-column-middle'
-  | 'four-small';
+  /** Two equal wide slots (same proportion as the large center column in `three-column-middle`). */
+  | 'two-large'
+  | 'four-small'
+  /** Standalone full-width rich banner (text + optional background image; not a widget slot). */
+  | 'banner-top'
+  /** Standalone full-width section title strip (single widget slot). */
+  | 'section-header';
 
 export type DashboardSection = {
   id: string;
   widgets: PlacedWidget[];
   layout?: SectionLayoutPreset;
+  /** When `layout === 'banner-top'`: headline / body copy for the banner (draft editor). */
+  bannerText?: string;
+  /** When `layout === 'banner-top'`: optional background image (typically a data URL from upload). */
+  bannerBackgroundDataUrl?: string | null;
 };
 
 /**

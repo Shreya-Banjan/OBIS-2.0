@@ -67,9 +67,9 @@ export function ToggleGroupDocsDetail() {
           Layout (Grid / List)
         </h3>
         <p className="mb-4 max-w-xl font-['Inter',sans-serif] text-sm text-[#707070]">
-          Two-segment icon toggle. Selected segment uses a #333333 pill; the other stays white.{' '}
-          <span className="font-medium text-[#1e1e1f]">Medium</span> keeps a 28×56 inner track (Figma)
-          with 4px padding on the outer box; large and small scale proportionally.
+          Two-segment icon toggle. The selected thumb is white with a 1px #e8e8e8 frame; active icon #333333, inactive #999999.{' '}
+          <span className="font-medium text-[#1e1e1f]">Medium</span> uses a 32×64 outer frame with 12px corners
+          and no inner gutter so the thumb meets the shell; large and small scale proportionally.
         </p>
         <div className="flex flex-col gap-5">
           {SIZE_ROWS.map(({ size, label }) => (

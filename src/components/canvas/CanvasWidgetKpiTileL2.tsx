@@ -1,9 +1,27 @@
+import { useState } from 'react';
+import { IconChartBar, IconChartLine } from '../Icons';
+import { ToggleGroup } from '../ToggleGroup';
 import type { CanvasWidgetKpiTileBaseProps } from './canvasWidgetKpiTypes';
 import { CanvasWidgetKpiMetricColumn, CanvasWidgetKpiOverlayChrome, KPI_DEFINITION_FOOTER_SURFACE } from './canvasWidgetKpiParts';
 
+type L2KpiChartViewMode = 'line' | 'bar';
+
+const L2_TITLE_TOGGLE_SEGMENTS = [
+  {
+    value: 'line' as const,
+    label: 'Line chart',
+    icon: <IconChartLine className="shrink-0" aria-hidden />,
+  },
+  {
+    value: 'bar' as const,
+    label: 'Bar chart',
+    icon: <IconChartBar className="shrink-0" aria-hidden />,
+  },
+] as const;
+
 /**
- * KPI canvas tile for **L2** (wide) slots: title + eyebrow in the main column; value, “As of”, sparkline
- * at the top of the right rail; definition copy **bottom-aligned** in the remaining rail height.
+ * KPI canvas tile for **L2** (wide) slots: title + eyebrow in the main column (~⅔); value, “As of”, sparkline
+ * and definition copy in a right rail **one-third** of the widget width, definition **bottom-aligned**.
  */
 export function CanvasWidgetKpiTileL2({
   displayLabel,
@@ -20,7 +38,17 @@ export function CanvasWidgetKpiTileL2({
   onChangeClick,
   onRemoveClick,
 }: CanvasWidgetKpiTileBaseProps) {
+  const [chartViewMode, setChartViewMode] = useState<L2KpiChartViewMode>('line');
   const definitionTrimmed = definition.trim();
+  const titleToggle = (
+    <ToggleGroup<L2KpiChartViewMode>
+      aria-label="KPI chart view"
+      variant="kpiTitle"
+      value={chartViewMode}
+      onValueChange={setChartViewMode}
+      segments={L2_TITLE_TOGGLE_SEGMENTS}
+    />
+  );
   const metricProps = {
     displayLabel,
     displayLabelCompact,
@@ -40,12 +68,13 @@ export function CanvasWidgetKpiTileL2({
             <CanvasWidgetKpiMetricColumn
               {...metricProps}
               titlesOnly
+              titleRowEnd={titleToggle}
               className="min-w-0 flex-1 px-5 pb-4 pt-4 pr-3"
             />
             <footer
               data-kpi-definition-rail="l2"
               className={[
-                'relative z-0 box-border flex min-h-0 w-[min(48%,18rem)] min-w-[11.5rem] max-w-[18rem] shrink-0 flex-col self-stretch overflow-hidden p-[24px]',
+                'relative z-0 box-border flex min-h-0 min-w-0 w-1/3 shrink-0 flex-col self-stretch overflow-hidden p-[24px]',
                 KPI_DEFINITION_FOOTER_SURFACE,
               ].join(' ')}
             >
@@ -60,7 +89,11 @@ export function CanvasWidgetKpiTileL2({
             </footer>
           </>
         ) : (
-          <CanvasWidgetKpiMetricColumn {...metricProps} className="min-w-0 flex-1 px-5 pb-4 pt-4 pr-3" />
+          <CanvasWidgetKpiMetricColumn
+            {...metricProps}
+            titleRowEnd={titleToggle}
+            className="min-w-0 flex-1 px-5 pb-4 pt-4 pr-3"
+          />
         )}
       </div>
 

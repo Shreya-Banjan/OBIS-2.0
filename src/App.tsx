@@ -19,10 +19,12 @@ import { ViewportSizePresetBar } from './components/ViewportSizePresetBar';
 import { DashboardNavDrawer } from './components/DashboardNavDrawer';
 import { PublishDashboardModal, type PublishFormValues } from './components/PublishDashboardModal';
 import { ShareDashboardModal } from './components/ShareDashboardModal';
+import type { BannerSectionUpdates } from './components/EditorDashboardBanner';
 import { WidgetPickerPanel } from './components/WidgetPickerPanel';
 import {
   layoutColumnCount,
   NAV_BURGER_MIN_LAYOUT_WIDTH_PX,
+  normalizeDashboardBannerSections,
   reportsContentMaxWidthPx,
 } from './layoutUtils';
 import { mergeInitialDashboards } from './data/initialDashboards';
@@ -105,6 +107,15 @@ function replacePlacedWidgetWithTemplate(
 function newSection(layout?: SectionLayoutPreset): DashboardSection {
   const id = crypto.randomUUID();
   if (!layout) return { id, widgets: [] };
+  if (layout === 'banner-top') {
+    return {
+      id,
+      layout: 'banner-top',
+      widgets: [],
+      bannerText: '',
+      bannerBackgroundDataUrl: null,
+    };
+  }
   return { id, layout, widgets: placeholderWidgetsForLayout(layout) };
 }
 
@@ -125,6 +136,7 @@ function insertWidget(
   };
   return sections.map((s) => {
     if (s.id !== sectionId) return s;
+    if (s.layout === 'banner-top') return s;
     const next = [...s.widgets];
     if (index === undefined || index > next.length) {
       next.push(placed);
@@ -220,7 +232,11 @@ function moveToSectionEnd(
     return { ...s, widgets: s.widgets.filter((x) => x.instanceId !== instanceId) };
   });
   if (!moving) return sections;
-  return without.map((s) => (s.id === toSectionId ? { ...s, widgets: [...s.widgets, moving!] } : s));
+  return without.map((s) => {
+    if (s.id !== toSectionId) return s;
+    if (s.layout === 'banner-top') return s;
+    return { ...s, widgets: [...s.widgets, moving!] };
+  });
 }
 
 function moveToSectionAtIndex(
@@ -244,6 +260,7 @@ function moveToSectionAtIndex(
 
   return without.map((s) => {
     if (s.id !== toSectionId) return s;
+    if (s.layout === 'banner-top') return s;
     const next = [...s.widgets];
     const clamped = Math.max(0, Math.min(toIndex, next.length));
     next.splice(clamped, 0, moving!);
@@ -470,7 +487,7 @@ export default function App() {
     setActiveDashboardId(id);
     setReportTitle(d.title);
     setEditorTimeline('');
-    const next = cloneSections(d.sections);
+    const next = normalizeDashboardBannerSections(cloneSections(d.sections));
     setSections(next);
     setView('editor');
     setPublishModalOpen(false);
@@ -835,7 +852,15 @@ export default function App() {
   );
 
   const addSectionWithLayout = useCallback((layout: SectionLayoutPreset) => {
-    setSections((s) => [...s, newSection(layout)]);
+    setSections((s) => {
+      if (layout === 'banner-top') {
+        if (s.some((x) => x.layout === 'banner-top')) {
+          return normalizeDashboardBannerSections(s);
+        }
+        return normalizeDashboardBannerSections([newSection(layout), ...s]);
+      }
+      return normalizeDashboardBannerSections([...s, newSection(layout)]);
+    });
     setAddSectionLayoutOpen(false);
     setWidgetPickTargetSectionId(null);
     setWidgetPickReplaceInstanceId(null);
@@ -853,6 +878,12 @@ export default function App() {
       if (w?.placeholder) return prev;
       return removePlacedWidget(prev, sectionId, instanceId);
     });
+  }, []);
+
+  const handleBannerSectionChange = useCallback((sectionId: string, updates: BannerSectionUpdates) => {
+    setSections((prev) =>
+      prev.map((s) => (s.id === sectionId && s.layout === 'banner-top' ? { ...s, ...updates } : s))
+    );
   }, []);
 
   const handleRemoveTemplateFromPicker = useCallback((template: WidgetTemplate) => {
@@ -887,7 +918,7 @@ export default function App() {
 
   const handleRemoveSection = useCallback((sectionId: string) => {
     const applyRemove = () => {
-      setSections((prev) => prev.filter((s) => s.id !== sectionId));
+      setSections((prev) => normalizeDashboardBannerSections(prev.filter((s) => s.id !== sectionId)));
     };
 
     const doc = document as Document & {
@@ -914,7 +945,7 @@ export default function App() {
         if (i < 0) return prev;
         const j = direction === 'up' ? i - 1 : i + 1;
         if (j < 0 || j >= prev.length) return prev;
-        return arrayMove(prev, i, j);
+        return normalizeDashboardBannerSections(arrayMove(prev, i, j));
       });
     };
 
@@ -1057,6 +1088,7 @@ export default function App() {
           open={addSectionLayoutOpen}
           onClose={() => setAddSectionLayoutOpen(false)}
           onConfirmLayout={addSectionWithLayout}
+          dashboardBannerTaken={sections.some((s) => s.layout === 'banner-top')}
         />
         <div className="relative flex min-h-dvh flex-col overflow-hidden bg-[#ebebeb] font-[family-name:var(--font-inter)]">
           <div className="flex min-h-0 min-w-0 flex-1 flex-col px-3 pt-[max(1rem,env(safe-area-inset-top))] sm:px-4">
@@ -1077,7 +1109,7 @@ export default function App() {
               }
             >
               <div className="w-full shrink-0">
-                <div className="mb-5 flex w-full min-w-0 items-stretch gap-2 sm:gap-3">
+                <div className="mb-2 flex w-full min-w-0 items-stretch gap-2 sm:gap-3">
                   {effectiveLayoutWidth >= NAV_BURGER_MIN_LAYOUT_WIDTH_PX ? (
                     <AppBurgerButton
                       onClick={() => setNavDrawerOpen(true)}
@@ -1114,7 +1146,7 @@ export default function App() {
               </div>
 
               <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
-                <div className="pt-2 pb-6 sm:pt-3">
+                <div className="pt-1 pb-6 sm:pt-2">
                   <div
                     className="mx-auto flex w-full flex-col"
                     style={{ maxWidth: `${reportsContentMaxWidth}px` }}
@@ -1137,6 +1169,7 @@ export default function App() {
                             onRemoveWidget={handleRemoveWidget}
                             onRemoveSection={handleRemoveSection}
                             onMoveSection={handleMoveSection}
+                            onBannerSectionChange={handleBannerSectionChange}
                             activePlaceholderInstanceId={
                               panelOpen ? widgetPickReplaceInstanceId : null
                             }
