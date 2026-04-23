@@ -45,6 +45,8 @@ export type KpiTrendSeries = {
   xLabels: string[];
   rates: number[];
   valueIsPercent: boolean;
+  /** Shown vertically to the left of Y tick labels (optional; chart has its own default). */
+  yAxisTitle?: string;
 };
 
 function monthKeyAxis(d: Date): string {

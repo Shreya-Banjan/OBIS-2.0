@@ -73,7 +73,7 @@ export function CanvasWidgetKpiTileL2({
               {...metricProps}
               titlesOnly
               titleRowEnd={titleToggle}
-              className="min-w-0 flex-1 p-[24px]"
+              className="min-w-0 flex-1 px-[24px] pt-4 pb-[24px]"
             />
             <footer
               data-kpi-definition-rail="l2"
@@ -96,7 +96,7 @@ export function CanvasWidgetKpiTileL2({
           <CanvasWidgetKpiMetricColumn
             {...metricProps}
             titleRowEnd={titleToggle}
-            className="min-w-0 flex-1 p-[24px]"
+            className="min-w-0 flex-1 px-[24px] pt-4 pb-[24px]"
           />
         )}
       </div>
