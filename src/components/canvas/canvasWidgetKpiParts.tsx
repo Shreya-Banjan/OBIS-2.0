@@ -184,7 +184,10 @@ export function CanvasWidgetKpiMetricColumn({
               </>
             )}
           </div>
-          <div className="flex min-h-0 min-w-0 w-full flex-1 basis-0 flex-col pt-0.5">
+          <div
+            className="flex min-h-0 min-w-0 w-full flex-1 basis-0 flex-col pt-0.5"
+            data-kpi-expand-skip-interaction
+          >
             {titleRailTrendSeries ? (
               <KpiTitleTrendChart
                 series={titleRailTrendSeries}

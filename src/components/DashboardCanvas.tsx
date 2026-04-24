@@ -12,6 +12,7 @@ import {
   widgetUsesKpiCanvasPresentation,
 } from '../data/widgets';
 import { formatKpiCanvasPeriodLabel } from './TimelinePickerField';
+import { threeColumnMiddleWideGridTemplate } from '../kpiExpandLayoutSpans';
 import { NAV_BURGER_MIN_LAYOUT_WIDTH_PX } from '../layoutUtils';
 import type { CanvasKpiWidgetTier, DashboardSection, PlacedWidget, SectionLayoutPreset } from '../types';
 import { useWidgetLibraryOpen } from '../context/WidgetLibraryContext';
@@ -45,6 +46,23 @@ function canvasSlotShellClass(w: PlacedWidget): string {
     return `${base} rounded-[var(--radius-canvas)] overflow-hidden`;
   }
   return `${base} rounded-[var(--radius-canvas)] bg-white box-border shadow-[var(--shadow-subtle)]`;
+}
+
+/** Sole L2 chrome per section when `kpiExpandedInstanceId` is set (wide canvas only). */
+function resolveKpiPresentationTier(
+  section: DashboardSection,
+  layoutSlotTier: CanvasKpiWidgetTier,
+  instanceId: string,
+  stackMultiColumnLayout: boolean,
+): CanvasKpiWidgetTier {
+  if (stackMultiColumnLayout) return 'l1';
+  if (section.layout !== 'three-column-middle') return layoutSlotTier;
+  const exp = section.kpiExpandedInstanceId?.trim();
+  if (exp == null || exp === '') return layoutSlotTier;
+  const expandTargetOk = section.widgets.some((w) => !w.placeholder && w.instanceId === exp);
+  if (!expandTargetOk) return layoutSlotTier;
+  if (instanceId === exp) return 'l2';
+  return 'l1';
 }
 
 function SortablePlaceholderSlot({
@@ -98,6 +116,9 @@ function SortablePlacedWidget({
   kpiWidgetTier,
   kpiPeriodContextLabel,
   kpiTimelineValue,
+  onKpiExpandToggle,
+  kpiExpandInteractionEnabled,
+  kpiExpandedByUser,
 }: {
   sectionId: string;
   widget: PlacedWidget;
@@ -107,6 +128,9 @@ function SortablePlacedWidget({
   kpiWidgetTier: CanvasKpiWidgetTier;
   kpiPeriodContextLabel: string;
   kpiTimelineValue: string;
+  onKpiExpandToggle?: (sectionId: string, instanceId: string) => void;
+  kpiExpandInteractionEnabled: boolean;
+  kpiExpandedByUser: boolean;
 }) {
   const openWidgetLibrary = useWidgetLibraryOpen();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -130,7 +154,7 @@ function SortablePlacedWidget({
       ...canvasWidgetSlotFrameStyle(canvasListL1),
     };
     const shellClass = [
-      'group/widget @container/kpi flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden rounded-[var(--radius-canvas)] bg-white shadow-[var(--shadow-subtle)]',
+      'group/widget @container/kpi flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden rounded-[var(--radius-canvas)] bg-white shadow-[var(--shadow-subtle)] transition-[opacity,box-shadow] duration-200 ease-out motion-reduce:transition-none',
       isLibraryTarget
         ? 'border-2 border-solid border-[var(--color-brand-primary)] shadow-[0_0_0_3px_rgba(249,108,80,0.25)]'
         : 'border border-solid border-[#e6e6e6]',
@@ -164,12 +188,19 @@ function SortablePlacedWidget({
             openWidgetLibrary(sectionId, widget.instanceId);
           }}
           onRemoveClick={() => onRemove(widget.instanceId)}
+          onKpiExpandToggle={
+            kpiExpandInteractionEnabled && onKpiExpandToggle
+              ? () => onKpiExpandToggle(sectionId, widget.instanceId)
+              : undefined
+          }
+          kpiExpandToggleEnabled={kpiExpandInteractionEnabled}
+          kpiExpandedByUser={kpiExpandedByUser}
         />
       </div>
     );
   }
 
-  const style = {
+  const styleLegacy = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.55 : 1,
@@ -178,7 +209,7 @@ function SortablePlacedWidget({
   return (
     <div
       ref={setNodeRef}
-      style={style}
+      style={styleLegacy}
       className={[
         'group/widget relative isolate min-h-0 overflow-hidden rounded-[var(--radius-canvas)] bg-white shadow-[var(--shadow-subtle)]',
         isLibraryTarget
@@ -245,12 +276,19 @@ function renderSlot(
   onRemoveWidget: (sectionId: string, instanceId: string) => void,
   activePlaceholderInstanceId: string | null,
   canvasListL1: boolean,
-  kpiWidgetTier: CanvasKpiWidgetTier,
+  layoutSlotTier: CanvasKpiWidgetTier,
   stackMultiColumnLayout: boolean,
   kpiPeriodContextLabel: string,
-  kpiTimelineValue: string
+  kpiTimelineValue: string,
+  onKpiExpandToggle?: (sectionId: string, instanceId: string) => void,
 ) {
-  const kpiTierEffective: CanvasKpiWidgetTier = stackMultiColumnLayout ? 'l1' : kpiWidgetTier;
+  const resolvedTier = resolveKpiPresentationTier(section, layoutSlotTier, w.instanceId, stackMultiColumnLayout);
+  const expandLayout = section.layout === 'three-column-middle';
+  const kpiExpandInteractionEnabled =
+    expandLayout &&
+    !!onKpiExpandToggle &&
+    !stackMultiColumnLayout &&
+    (resolvedTier === 'l1' || section.kpiExpandedInstanceId === w.instanceId);
   return w.placeholder ? (
     <SortablePlaceholderSlot
       sectionId={section.id}
@@ -265,9 +303,12 @@ function renderSlot(
       onRemove={(id) => onRemoveWidget(section.id, id)}
       isLibraryTarget={activePlaceholderInstanceId === w.instanceId}
       canvasListL1={canvasListL1}
-      kpiWidgetTier={kpiTierEffective}
+      kpiWidgetTier={resolvedTier}
       kpiPeriodContextLabel={kpiPeriodContextLabel}
       kpiTimelineValue={kpiTimelineValue}
+      onKpiExpandToggle={onKpiExpandToggle}
+      kpiExpandInteractionEnabled={kpiExpandInteractionEnabled}
+      kpiExpandedByUser={section.kpiExpandedInstanceId === w.instanceId}
     />
   );
 }
@@ -288,6 +329,7 @@ function SectionLayoutFrame({
   kpiPeriodContextLabel,
   kpiTimelineValue,
   onBannerSectionChange,
+  onKpiExpandToggle,
 }: {
   layout: SectionLayoutPreset;
   section: DashboardSection;
@@ -302,11 +344,12 @@ function SectionLayoutFrame({
   kpiPeriodContextLabel: string;
   kpiTimelineValue: string;
   onBannerSectionChange?: (sectionId: string, updates: BannerSectionUpdates) => void;
+  onKpiExpandToggle?: (sectionId: string, instanceId: string) => void;
 }) {
   const ws = section.widgets;
   const [a, b, c] = ws;
 
-  const slotFrameStyleForWidget = (_w: PlacedWidget): { minHeight: number; maxHeight?: number } | undefined => {
+  const slotFrameStyleForWidget = (): { minHeight: number; maxHeight?: number } | undefined => {
     if (stackMultiColumnLayout) return undefined;
     return { minHeight: CANVAS_WIDGET_SLOT_HEIGHT_PX };
   };
@@ -325,7 +368,7 @@ function SectionLayoutFrame({
   const slotWrap = (w: PlacedWidget, wideSpan: string, slotKey: string, children: ReactNode) => (
     <div
       key={slotKey}
-      style={slotFrameStyleForWidget(w)}
+      style={slotFrameStyleForWidget()}
       className={[
         'flex min-h-0 min-w-0 flex-col self-stretch',
         stackMultiColumnLayout ? 'w-full' : wideSpan,
@@ -356,7 +399,8 @@ function SectionLayoutFrame({
                 'l2',
                 stackMultiColumnLayout,
                 kpiPeriodContextLabel,
-                kpiTimelineValue
+                kpiTimelineValue,
+                onKpiExpandToggle
               )
             )
           )}
@@ -380,7 +424,8 @@ function SectionLayoutFrame({
                   'l1',
                   stackMultiColumnLayout,
                   kpiPeriodContextLabel,
-                  kpiTimelineValue
+                  kpiTimelineValue,
+                  onKpiExpandToggle
                 )
               )
             : null}
@@ -398,7 +443,8 @@ function SectionLayoutFrame({
                   'l1',
                   stackMultiColumnLayout,
                   kpiPeriodContextLabel,
-                  kpiTimelineValue
+                  kpiTimelineValue,
+                  onKpiExpandToggle
                 )
               )
             : null}
@@ -422,7 +468,8 @@ function SectionLayoutFrame({
                   'l1',
                   stackMultiColumnLayout,
                   kpiPeriodContextLabel,
-                  kpiTimelineValue
+                  kpiTimelineValue,
+                  onKpiExpandToggle
                 )
               )
             : null}
@@ -440,7 +487,8 @@ function SectionLayoutFrame({
                   'l1',
                   stackMultiColumnLayout,
                   kpiPeriodContextLabel,
-                  kpiTimelineValue
+                  kpiTimelineValue,
+                  onKpiExpandToggle
                 )
               )
             : null}
@@ -478,7 +526,8 @@ function SectionLayoutFrame({
                 'l1',
                 stackMultiColumnLayout,
                 kpiPeriodContextLabel,
-                kpiTimelineValue
+                kpiTimelineValue,
+                onKpiExpandToggle
               )}
             </div>
           ) : null}
@@ -503,7 +552,8 @@ function SectionLayoutFrame({
                 'l1',
                 stackMultiColumnLayout,
                 kpiPeriodContextLabel,
-                kpiTimelineValue
+                kpiTimelineValue,
+                onKpiExpandToggle
               )}
             </div>
           ) : null}
@@ -523,7 +573,8 @@ function SectionLayoutFrame({
               'l2',
               stackMultiColumnLayout,
               kpiPeriodContextLabel,
-              kpiTimelineValue
+              kpiTimelineValue,
+              onKpiExpandToggle
             )
           )
         : null;
@@ -537,13 +588,79 @@ function SectionLayoutFrame({
     }
 
     case 'three-column-middle': {
-      const outer = stackMultiColumnLayout ? stackCol : wideRow;
+      if (stackMultiColumnLayout) {
+        return shell(
+          <div className={stackCol}>
+            {a
+              ? slotWrap(
+                  a,
+                  'w-full',
+                  a.instanceId,
+                  renderSlot(
+                    section,
+                    a,
+                    onRemoveWidget,
+                    activePlaceholderInstanceId,
+                    canvasListL1,
+                    'l1',
+                    stackMultiColumnLayout,
+                    kpiPeriodContextLabel,
+                    kpiTimelineValue,
+                    onKpiExpandToggle
+                  )
+                )
+              : null}
+            {c
+              ? slotWrap(
+                  c,
+                  'w-full',
+                  c.instanceId,
+                  renderSlot(
+                    section,
+                    c,
+                    onRemoveWidget,
+                    activePlaceholderInstanceId,
+                    canvasListL1,
+                    'l2',
+                    stackMultiColumnLayout,
+                    kpiPeriodContextLabel,
+                    kpiTimelineValue,
+                    onKpiExpandToggle
+                  )
+                )
+              : null}
+            {b
+              ? slotWrap(
+                  b,
+                  'w-full',
+                  b.instanceId,
+                  renderSlot(
+                    section,
+                    b,
+                    onRemoveWidget,
+                    activePlaceholderInstanceId,
+                    canvasListL1,
+                    'l1',
+                    stackMultiColumnLayout,
+                    kpiPeriodContextLabel,
+                    kpiTimelineValue,
+                    onKpiExpandToggle
+                  )
+                )
+              : null}
+          </div>
+        );
+      }
+      const gridTemplateColumns = threeColumnMiddleWideGridTemplate(section);
       return shell(
-        <div className={outer}>
+        <div
+          className="grid min-h-0 min-w-0 w-full gap-4 transition-[grid-template-columns] duration-300 ease-in-out motion-reduce:transition-none"
+          style={{ ...rowMin, gridTemplateColumns }}
+        >
           {a
             ? slotWrap(
                 a,
-                'col-span-3',
+                '',
                 a.instanceId,
                 renderSlot(
                   section,
@@ -554,14 +671,15 @@ function SectionLayoutFrame({
                   'l1',
                   stackMultiColumnLayout,
                   kpiPeriodContextLabel,
-                  kpiTimelineValue
+                  kpiTimelineValue,
+                  onKpiExpandToggle
                 )
               )
             : null}
           {c
             ? slotWrap(
                 c,
-                'col-span-6',
+                '',
                 c.instanceId,
                 renderSlot(
                   section,
@@ -572,14 +690,15 @@ function SectionLayoutFrame({
                   'l2',
                   stackMultiColumnLayout,
                   kpiPeriodContextLabel,
-                  kpiTimelineValue
+                  kpiTimelineValue,
+                  onKpiExpandToggle
                 )
               )
             : null}
           {b
             ? slotWrap(
                 b,
-                'col-span-3',
+                '',
                 b.instanceId,
                 renderSlot(
                   section,
@@ -590,7 +709,8 @@ function SectionLayoutFrame({
                   'l1',
                   stackMultiColumnLayout,
                   kpiPeriodContextLabel,
-                  kpiTimelineValue
+                  kpiTimelineValue,
+                  onKpiExpandToggle
                 )
               )
             : null}
@@ -617,7 +737,8 @@ function SectionLayoutFrame({
                   'l2',
                   stackMultiColumnLayout,
                   kpiPeriodContextLabel,
-                  kpiTimelineValue
+                  kpiTimelineValue,
+                  onKpiExpandToggle
                 )
               )
             : null}
@@ -635,7 +756,8 @@ function SectionLayoutFrame({
                   'l2',
                   stackMultiColumnLayout,
                   kpiPeriodContextLabel,
-                  kpiTimelineValue
+                  kpiTimelineValue,
+                  onKpiExpandToggle
                 )
               )
             : null}
@@ -660,7 +782,8 @@ function SectionLayoutFrame({
                 'l1',
                 stackMultiColumnLayout,
                 kpiPeriodContextLabel,
-                kpiTimelineValue
+                kpiTimelineValue,
+                onKpiExpandToggle
               )
             )
           )}
@@ -777,6 +900,7 @@ function SectionCard({
   kpiPeriodContextLabel,
   kpiTimelineValue,
   onBannerSectionChange,
+  onKpiExpandToggle,
 }: {
   sections: DashboardSection[];
   section: DashboardSection;
@@ -791,6 +915,7 @@ function SectionCard({
   kpiPeriodContextLabel: string;
   kpiTimelineValue: string;
   onBannerSectionChange?: (sectionId: string, updates: BannerSectionUpdates) => void;
+  onKpiExpandToggle?: (sectionId: string, instanceId: string) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: `section:${section.id}`,
@@ -853,6 +978,7 @@ function SectionCard({
               kpiPeriodContextLabel={kpiPeriodContextLabel}
               kpiTimelineValue={kpiTimelineValue}
               onBannerSectionChange={onBannerSectionChange}
+              onKpiExpandToggle={onKpiExpandToggle}
             />
           ) : (
             <SortableContext id={section.id} items={section.widgets.map((w) => w.instanceId)} strategy={rectSortingStrategy}>
@@ -875,6 +1001,7 @@ function SectionCard({
                   kpiPeriodContextLabel={kpiPeriodContextLabel}
                   kpiTimelineValue={kpiTimelineValue}
                   onBannerSectionChange={onBannerSectionChange}
+                  onKpiExpandToggle={onKpiExpandToggle}
                 />
               ) : (
                 <div ref={setNodeRef} className={`flex min-w-0 w-full flex-col gap-2 ${overRing}`}>
@@ -889,7 +1016,8 @@ function SectionCard({
                         'l1',
                         stackMultiColumnLayout,
                         kpiPeriodContextLabel,
-                        kpiTimelineValue
+                        kpiTimelineValue,
+                        onKpiExpandToggle
                       )}
                     </div>
                   ))}
@@ -910,6 +1038,7 @@ type DashboardCanvasProps = {
   onRemoveSection: (sectionId: string) => void;
   onMoveSection: (sectionId: string, direction: 'up' | 'down') => void;
   onBannerSectionChange?: (sectionId: string, updates: BannerSectionUpdates) => void;
+  onKpiExpandToggle?: (sectionId: string, instanceId: string) => void;
   /** Widget instance the library is replacing (placeholder “Select Widget” or placed row via Change). */
   activePlaceholderInstanceId?: string | null;
   /** Window or preview rail width — matches header; below 640px stacks multi-column section layouts. */
@@ -925,6 +1054,7 @@ export function DashboardCanvas({
   onRemoveSection,
   onMoveSection,
   onBannerSectionChange,
+  onKpiExpandToggle,
   activePlaceholderInstanceId = null,
   effectiveLayoutWidth,
   timelineValue = '',
@@ -967,6 +1097,7 @@ export function DashboardCanvas({
               onRemoveSection={onRemoveSection}
               onMoveSection={onMoveSection}
               onBannerSectionChange={onBannerSectionChange}
+              onKpiExpandToggle={onKpiExpandToggle}
               activePlaceholderInstanceId={activePlaceholderInstanceId}
               stackMultiColumnLayout={stackMultiColumnLayout}
               canvasListL1={canvasListL1}

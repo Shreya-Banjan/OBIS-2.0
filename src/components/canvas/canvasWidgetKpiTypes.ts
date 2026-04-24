@@ -24,4 +24,10 @@ export type CanvasWidgetKpiTileBaseProps = {
   listeners: Record<string, unknown> | undefined;
   onChangeClick: (e: React.MouseEvent) => void;
   onRemoveClick: () => void;
+  /** Wide canvas: small-movement body click toggles sole L2 expansion for this section. */
+  onKpiExpandToggle?: () => void;
+  /** When false, ignore `onKpiExpandToggle` (e.g. stacked narrow canvas). */
+  kpiExpandToggleEnabled?: boolean;
+  /** This instance is `section.kpiExpandedInstanceId` (user-chosen expanded KPI). */
+  kpiExpandedByUser?: boolean;
 };

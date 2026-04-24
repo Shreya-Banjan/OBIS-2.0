@@ -1,5 +1,5 @@
 import { REPORT_DOMAIN_OPTIONS } from '../data/reportDomains';
-import { normalizeDashboardBannerSections } from '../layoutUtils';
+import { normalizeDashboardBannerSections, normalizeKpiExpandedInstanceIds } from '../layoutUtils';
 import type { DashboardSection, PlacedWidget, SavedDashboard, SharedByInfo } from '../types';
 
 const STORAGE_KEY = 'neuron-builder-dashboards-v1';
@@ -36,6 +36,13 @@ function isDashboardSection(x: unknown): x is DashboardSection {
     s.bannerBackgroundDataUrl !== undefined &&
     s.bannerBackgroundDataUrl !== null &&
     typeof s.bannerBackgroundDataUrl !== 'string'
+  ) {
+    return false;
+  }
+  if (
+    s.kpiExpandedInstanceId !== undefined &&
+    s.kpiExpandedInstanceId !== null &&
+    typeof s.kpiExpandedInstanceId !== 'string'
   ) {
     return false;
   }
@@ -76,7 +83,9 @@ function normalizeStandaloneStripSections(sections: DashboardSection[]): Dashboa
 function normalizeLoadedDashboard(d: SavedDashboard): SavedDashboard {
   return {
     ...d,
-    sections: normalizeDashboardBannerSections(normalizeStandaloneStripSections(d.sections)),
+    sections: normalizeKpiExpandedInstanceIds(
+      normalizeDashboardBannerSections(normalizeStandaloneStripSections(d.sections)),
+    ),
   };
 }
 

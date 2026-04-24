@@ -25,6 +25,7 @@ import {
   layoutColumnCount,
   NAV_BURGER_MIN_LAYOUT_WIDTH_PX,
   normalizeDashboardBannerSections,
+  normalizeKpiExpandedInstanceIds,
   reportsContentMaxWidthPx,
 } from './layoutUtils';
 import { mergeInitialDashboards } from './data/initialDashboards';
@@ -165,8 +166,9 @@ function removePlacedWidget(
     if (s.layout === 'banner-top' || s.layout === 'section-header') return s;
     const w = s.widgets.find((x) => x.instanceId === instanceId);
     if (!w || w.placeholder) return s;
+    const clearKpi = s.kpiExpandedInstanceId === instanceId;
     if (s.layout) {
-      return {
+      const next: DashboardSection = {
         ...s,
         widgets: s.widgets.map((x) =>
           x.instanceId === instanceId
@@ -179,14 +181,26 @@ function removePlacedWidget(
             : x
         ),
       };
+      if (clearKpi) {
+        const { kpiExpandedInstanceId, ...rest } = next;
+        void kpiExpandedInstanceId;
+        return rest as DashboardSection;
+      }
+      return next;
     }
-    return { ...s, widgets: s.widgets.filter((x) => x.instanceId !== instanceId) };
+    const filtered: DashboardSection = { ...s, widgets: s.widgets.filter((x) => x.instanceId !== instanceId) };
+    if (clearKpi) {
+      const { kpiExpandedInstanceId, ...rest } = filtered;
+      void kpiExpandedInstanceId;
+      return rest as DashboardSection;
+    }
+    return filtered;
   });
 }
 
 /** Remove every placed instance of this template (layout sections revert slots to placeholders). */
 function removeAllWidgetsWithTemplate(sections: DashboardSection[], templateId: string): DashboardSection[] {
-  return sections.map((s) => {
+  const next = sections.map((s) => {
     if (!s.widgets.some((w) => !w.placeholder && w.templateId === templateId)) {
       return s;
     }
@@ -210,6 +224,7 @@ function removeAllWidgetsWithTemplate(sections: DashboardSection[], templateId: 
       widgets: s.widgets.filter((w) => w.placeholder || w.templateId !== templateId),
     };
   });
+  return normalizeKpiExpandedInstanceIds(next);
 }
 
 function moveWithinSection(
@@ -901,6 +916,20 @@ export default function App() {
     );
   }, []);
 
+  const handleKpiExpandToggle = useCallback((sectionId: string, instanceId: string) => {
+    setSections((prev) =>
+      prev.map((s) => {
+        if (s.id !== sectionId) return s;
+        if (s.kpiExpandedInstanceId === instanceId) {
+          const { kpiExpandedInstanceId, ...rest } = s;
+          void kpiExpandedInstanceId;
+          return rest as DashboardSection;
+        }
+        return { ...s, kpiExpandedInstanceId: instanceId };
+      })
+    );
+  }, []);
+
   const handleRemoveTemplateFromPicker = useCallback((template: WidgetTemplate) => {
     setSections((prev) => {
       const beforeSlots = collectWidgetSlotsForTemplate(prev, template.id);
@@ -1185,6 +1214,7 @@ export default function App() {
                             onRemoveSection={handleRemoveSection}
                             onMoveSection={handleMoveSection}
                             onBannerSectionChange={handleBannerSectionChange}
+                            onKpiExpandToggle={handleKpiExpandToggle}
                             activePlaceholderInstanceId={
                               panelOpen ? widgetPickReplaceInstanceId : null
                             }

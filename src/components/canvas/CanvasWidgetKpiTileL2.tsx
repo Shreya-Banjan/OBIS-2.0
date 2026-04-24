@@ -3,6 +3,7 @@ import { IconChartBar, IconChartLine } from '../Icons';
 import { ToggleGroup } from '../ToggleGroup';
 import type { CanvasWidgetKpiTileBaseProps } from './canvasWidgetKpiTypes';
 import { CanvasWidgetKpiMetricColumn, CanvasWidgetKpiOverlayChrome, KPI_DEFINITION_FOOTER_SURFACE } from './canvasWidgetKpiParts';
+import { useKpiExpandPointerHandlers } from './useKpiExpandPointerHandlers';
 
 type L2KpiChartViewMode = 'line' | 'bar';
 
@@ -39,9 +40,18 @@ export function CanvasWidgetKpiTileL2({
   onChangeClick,
   onRemoveClick,
   kpiTimelineValue = '',
+  onKpiExpandToggle,
+  kpiExpandToggleEnabled,
+  kpiExpandedByUser,
 }: CanvasWidgetKpiTileBaseProps) {
   const [chartViewMode, setChartViewMode] = useState<L2KpiChartViewMode>('line');
   const definitionTrimmed = definition.trim();
+  const expandBody = Boolean(kpiExpandToggleEnabled && onKpiExpandToggle);
+  const expandPointer = useKpiExpandPointerHandlers(
+    onKpiExpandToggle,
+    expandBody,
+    (t) => Boolean((t as HTMLElement | null)?.closest?.('[data-kpi-title-toggle],[data-kpi-expand-skip-interaction]')),
+  );
   const titleToggle = (
     <ToggleGroup<L2KpiChartViewMode>
       aria-label="KPI chart view"
@@ -66,7 +76,30 @@ export function CanvasWidgetKpiTileL2({
 
   return (
     <div className="relative isolate flex h-full min-h-0 w-full min-w-0 flex-col">
-      <div className="relative z-0 flex min-h-0 min-w-0 flex-1 flex-row overflow-hidden">
+      <div
+        className={
+          expandBody
+            ? 'relative z-0 flex min-h-0 min-w-0 flex-1 cursor-pointer flex-row overflow-hidden'
+            : 'relative z-0 flex min-h-0 min-w-0 flex-1 flex-row overflow-hidden'
+        }
+        role={expandBody ? 'button' : undefined}
+        tabIndex={expandBody ? 0 : undefined}
+        aria-expanded={expandBody ? Boolean(kpiExpandedByUser) : undefined}
+        aria-label={expandBody ? 'Expand or collapse KPI detail' : undefined}
+        onPointerDown={expandPointer.onPointerDown}
+        onPointerUp={expandPointer.onPointerUp}
+        onPointerCancel={expandPointer.onPointerCancel}
+        onKeyDown={
+          expandBody
+            ? (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  onKpiExpandToggle?.();
+                }
+              }
+            : undefined
+        }
+      >
         {definitionTrimmed ? (
           <>
             <CanvasWidgetKpiMetricColumn

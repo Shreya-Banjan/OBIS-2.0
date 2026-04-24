@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react';
+import type { PointerEvent as ReactPointerEvent } from 'react';
 import type { KpiTrendSeries } from '../../data/kpiTrendSeriesFromTimeline';
 
 type KpiTitleTrendChartProps = {
@@ -195,7 +196,7 @@ export function KpiTitleTrendChart({ series, variant = 'line', className, yAxisT
   const plotHitH = Math.max(1, yPlotBottom - plotTop);
   const hoverRxy = Math.min(hoverCornerRv, hoverBandW / 2, plotHitH / 2);
 
-  const updateHoverFromPointer = (e: React.PointerEvent<SVGSVGElement>) => {
+  const updateHoverFromPointer = (e: ReactPointerEvent<Element>) => {
     const svg = svgRef.current;
     const host = hostRef.current;
     if (svg == null || host == null) return;
