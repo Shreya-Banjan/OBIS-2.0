@@ -29,19 +29,29 @@ const FS_X_AXIS = 11;
 const BAR_WIDTH_CSS_PX = 24;
 /** Bar corner radius on screen (px); converted with the same horizontal scale as bar width. */
 const BAR_CORNER_CSS_PX = 4;
+/** Line chart point: outer diameter on screen (px); `r` is derived so fill + non-scaling stroke match this. */
+const LINE_MARKER_OUTER_DIAMETER_CSS_PX = 6;
+const LINE_MARKER_STROKE_CSS_PX = 2;
 /** Max bar width vs. equidistant tick spacing so neighbors do not overlap (`centerStep * frac`). */
 const BAR_MAX_WIDTH_FRAC_OF_STEP = 0.88;
+
+/** Vertical hover band width on screen (px); centers on month labels with line markers and axis text. */
+const HOVER_BAND_CSS_PX = 32;
+/** Hover highlight corner radius on screen (px); converted with `pxPerVbX` like bar corners. */
+const HOVER_CORNER_CSS_PX = 8;
+/** Extra horizontal slack (px) inside the plot so the hover band clears the grid lines. */
+const X_LABEL_HOVER_EXTRA_CSS_PX = 3;
+/**
+ * Max fraction of plot width used to inset the month band from each edge.
+ * Lets us pull months inward (still equidistant on a shorter span) when the 32px hover needs room.
+ */
+const X_LABEL_BAND_MAX_FRAC_OF_PLOT = 0.36;
+/** Vertical hover band fill (plot area). */
+const HOVER_BAND_FILL = 'rgb(249 108 80 / 0.08)';
 
 function formatY(v: number, isPercent: boolean): string {
   const x = Number.isFinite(v) ? v : 0;
   return isPercent ? `${x.toFixed(1)}%` : x.toFixed(1);
-}
-
-/** Half of estimated x tick label width, viewBox units — for aligning markers with `start` / `end` tick text. */
-function approxXTickHalfWidth(label: string): number {
-  if (!label) return 9;
-  const full = Math.min(42, Math.max(14, label.length * FS_X_AXIS * 0.52));
-  return full / 2;
 }
 
 /** Half-width of longest x tick (viewBox) so `text-anchor: middle` labels stay inside `[plotLeft, plotRight]`. */
@@ -51,11 +61,15 @@ function approxXAxisLabelBandPad(labels: readonly string[], n: number, fontSize:
   return Math.min(26, Math.max(8, (maxLen * fontSize * 0.52) / 2));
 }
 
+type ChartHoverState = { i: number; px: number; py: number };
+
 export function KpiTitleTrendChart({ series, variant = 'line', className, yAxisTitle: yAxisTitleProp }: KpiTitleTrendChartProps) {
   const hostRef = useRef<HTMLDivElement>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
   const [vbH, setVbH] = useState(VB_H_FALLBACK);
   /** Horizontal CSS px per 1 unit of `viewBox` width (`meet` scaling). */
   const [pxPerVbX, setPxPerVbX] = useState(1);
+  const [hover, setHover] = useState<ChartHoverState | null>(null);
 
   useLayoutEffect(() => {
     const el = hostRef.current;
@@ -104,34 +118,29 @@ export function KpiTitleTrendChart({ series, variant = 'line', className, yAxisT
   const plotW = plotRight - plotLeft;
   const plotH = vbH - INSET.t - INSET.b;
 
-  const xAt = (i: number) => plotLeft + (n <= 1 ? plotW / 2 : (i / (n - 1)) * plotW);
-  /** Same spacing as `xAt`, inset so month labels (`middle`) fit between grid line endpoints `plotLeft` / `plotRight`. */
-  const xLabelPad = approxXAxisLabelBandPad(xLabels, n, FS_X_AXIS);
-  const xLabelLo = plotLeft + Math.min(xLabelPad, plotW * 0.22);
-  const xLabelHi = plotRight - Math.min(xLabelPad, plotW * 0.22);
+  /** ViewBox width of hover band (same scale as bars / pxPerVbX). */
+  const hoverBandW = HOVER_BAND_CSS_PX / Math.max(pxPerVbX, 1e-6);
+  const hoverHalfVb = hoverBandW / 2;
+  const xLabelPadText = approxXAxisLabelBandPad(xLabels, n, FS_X_AXIS);
+  /** Inset from plot edges: label half-width + half hover + small slack, capped so the band stays usable. */
+  const xLabelPadNeed =
+    xLabelPadText +
+    hoverHalfVb +
+    X_LABEL_HOVER_EXTRA_CSS_PX / Math.max(pxPerVbX, 1e-6);
+  const xLabelAppliedPad = Math.min(
+    xLabelPadNeed,
+    plotW * X_LABEL_BAND_MAX_FRAC_OF_PLOT,
+    Math.max(0, plotW / 2 - 4),
+  );
+  const xLabelLo = plotLeft + xLabelAppliedPad;
+  const xLabelHi = plotRight - xLabelAppliedPad;
   const xLabelSpan = Math.max(xLabelHi - xLabelLo, 1e-3);
   const xLabelAt = (i: number) =>
     xLabelLo + (n <= 1 ? xLabelSpan / 2 : (i / Math.max(n - 1, 1)) * xLabelSpan);
   const yAt = (r: number) => INSET.t + (1 - (r - y0) / ySpan) * plotH;
 
-  /** First tick text stays at `plotLeft` + `start`; nudge first marker to that label’s visual center. */
-  const firstTickCenterX =
-    n <= 1
-      ? xAt(0)
-      : Math.min(plotLeft + approxXTickHalfWidth(xLabels[0] ?? ''), xAt(1) - 10);
-  /** Last tick text stays at `plotRight` + `end`; nudge last marker to that label’s visual center. */
-  const lastTickCenterX =
-    n <= 1
-      ? xAt(0)
-      : Math.max(plotRight - approxXTickHalfWidth(xLabels[n - 1] ?? ''), xAt(n - 2) + 10);
-  const xSeries = (i: number) => {
-    if (n <= 1) return xAt(i);
-    if (i === 0) return firstTickCenterX;
-    if (i === n - 1) return lastTickCenterX;
-    return xAt(i);
-  };
-
-  const linePoints = rates.map((r, i) => `${xSeries(i)},${yAt(r)}`).join(' ');
+  /** Line markers and polyline share x with axis month labels (`xLabelAt`). */
+  const linePoints = rates.map((r, i) => `${xLabelAt(i)},${yAt(r)}`).join(' ');
 
   /** Bottom of value scale — same y as the lowest horizontal grid line (max y in viewBox). */
   const yPlotBottom = Math.max(...yTicks.map((yt) => yAt(yt)));
@@ -152,21 +161,80 @@ export function KpiTitleTrendChart({ series, variant = 'line', className, yAxisT
     return left;
   };
   const barCornerRv = BAR_CORNER_CSS_PX / Math.max(pxPerVbX, 1e-6);
+  const hoverCornerRv = HOVER_CORNER_CSS_PX / Math.max(pxPerVbX, 1e-6);
+  /** Geometric radius (viewBox) so outer edge ≈ `LINE_MARKER_OUTER_DIAMETER_CSS_PX/2` px with centered non-scaling stroke. */
+  const markerRVb =
+    (LINE_MARKER_OUTER_DIAMETER_CSS_PX / 2 - LINE_MARKER_STROKE_CSS_PX / 2) / Math.max(pxPerVbX, 1e-6);
+
+  /** Hit targets: midpoints between adjacent month centers; highlight uses fixed `hoverBandW`. */
+  const hoverHitLeft = (i: number) => {
+    if (n <= 1) return plotLeft;
+    if (i <= 0) return plotLeft;
+    return (xLabelAt(i - 1) + xLabelAt(i)) / 2;
+  };
+  const hoverHitRight = (i: number) => {
+    if (n <= 1) return plotRight;
+    if (i >= n - 1) return plotRight;
+    return (xLabelAt(i) + xLabelAt(i + 1)) / 2;
+  };
+  const hoverIndexFromVbX = (x: number): number | null => {
+    if (x < plotLeft || x > plotRight) return null;
+    for (let i = 0; i < n; i++) {
+      const L = hoverHitLeft(i);
+      const R = hoverHitRight(i);
+      if (i < n - 1) {
+        if (x >= L && x < R) return i;
+      } else if (x >= L && x <= R) {
+        return i;
+      }
+    }
+    return null;
+  };
+
+  const plotTop = INSET.t;
+  const plotHitH = Math.max(1, yPlotBottom - plotTop);
+  const hoverRxy = Math.min(hoverCornerRv, hoverBandW / 2, plotHitH / 2);
+
+  const updateHoverFromPointer = (e: React.PointerEvent<SVGSVGElement>) => {
+    const svg = svgRef.current;
+    const host = hostRef.current;
+    if (svg == null || host == null) return;
+    const ctm = svg.getScreenCTM();
+    if (ctm == null) return;
+    const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(ctm.inverse());
+    const idx = hoverIndexFromVbX(p.x);
+    if (idx == null) {
+      setHover(null);
+      return;
+    }
+    const hr = host.getBoundingClientRect();
+    setHover({ i: idx, px: e.clientX - hr.left, py: e.clientY - hr.top });
+  };
+
+  const clearHover = () => setHover(null);
+
+  const tooltipLeft = (() => {
+    if (hover == null || hostRef.current == null) return 0;
+    const w = hostRef.current.clientWidth;
+    const half = 72;
+    return Math.min(Math.max(hover.px, half), Math.max(half, w - half));
+  })();
 
   return (
     <div
       ref={hostRef}
-      className={['flex min-h-0 min-w-0 w-full max-w-none flex-1 basis-0 flex-col', className].filter(Boolean).join(' ')}
+      className={['relative flex min-h-0 min-w-0 w-full max-w-none flex-1 basis-0 flex-col', className].filter(Boolean).join(' ')}
     >
       <svg
+        ref={svgRef}
         className="block h-full min-h-0 w-full max-w-full flex-1 overflow-visible"
         viewBox={`0 0 ${VB_W} ${vbH}`}
         preserveAspectRatio="xMidYMid meet"
         overflow="visible"
         role="img"
-        aria-label="KPI rate trend (demo data)"
+        aria-label="KPI trend chart"
+        onPointerLeave={clearHover}
       >
-        <title>KPI rate trend</title>
         <text
           x={yTitleMidX}
           y={INSET.t + plotH / 2}
@@ -206,6 +274,18 @@ export function KpiTitleTrendChart({ series, variant = 'line', className, yAxisT
             </g>
           );
         })}
+        {hover != null ? (
+          <rect
+            x={xLabelAt(hover.i) - hoverBandW / 2}
+            y={plotTop}
+            width={hoverBandW}
+            height={plotHitH}
+            rx={hoverRxy}
+            ry={hoverRxy}
+            fill={HOVER_BAND_FILL}
+            pointerEvents="none"
+          />
+        ) : null}
         {variant === 'bar'
           ? rates.map((r, i) => {
               const yTop = yAt(r);
@@ -241,7 +321,16 @@ export function KpiTitleTrendChart({ series, variant = 'line', className, yAxisT
         ) : null}
         {variant === 'line'
           ? rates.map((r, i) => (
-              <circle key={i} cx={xSeries(i)} cy={yAt(r)} r={3.25} fill="#fff" stroke="#f96c50" strokeWidth={2} />
+              <circle
+                key={i}
+                cx={xLabelAt(i)}
+                cy={yAt(r)}
+                r={Math.max(1, markerRVb)}
+                fill="#fff"
+                stroke="#f96c50"
+                strokeWidth={LINE_MARKER_STROKE_CSS_PX}
+                vectorEffect="non-scaling-stroke"
+              />
             ))
           : null}
         {xLabels.map((lab, i) => {
@@ -264,7 +353,36 @@ export function KpiTitleTrendChart({ series, variant = 'line', className, yAxisT
             </text>
           );
         })}
+        <rect
+          x={plotLeft}
+          y={plotTop}
+          width={Math.max(0, plotRight - plotLeft)}
+          height={plotHitH}
+          fill="transparent"
+          className="cursor-crosshair"
+          pointerEvents="all"
+          onPointerMove={updateHoverFromPointer}
+          onPointerDown={updateHoverFromPointer}
+          onPointerCancel={clearHover}
+        />
       </svg>
+      {hover != null && xLabels[hover.i] != null ? (
+        <div
+          className="pointer-events-none absolute z-20 min-w-[5.5rem] rounded-lg border border-solid border-[#e6e6e6] bg-white px-3 py-2 shadow-[var(--shadow-subtle)]"
+          style={{
+            left: tooltipLeft,
+            top: hover.py,
+            transform: hover.py < 56 ? 'translate(-50%, 10px)' : 'translate(-50%, calc(-100% - 10px))',
+          }}
+        >
+          <p className="font-['Inter',sans-serif] text-[11px] font-normal leading-tight text-[#707070]">
+            {xLabels[hover.i]}
+          </p>
+          <p className="mt-0.5 font-['Inter',sans-serif] text-[14px] font-semibold leading-tight tabular-nums text-[var(--color-grey-darkest)]">
+            {formatY(rates[hover.i] ?? 0, valueIsPercent)}
+          </p>
+        </div>
+      ) : null}
     </div>
   );
 }

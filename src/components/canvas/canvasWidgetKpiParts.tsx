@@ -190,6 +190,7 @@ export function CanvasWidgetKpiMetricColumn({
                 series={titleRailTrendSeries}
                 variant={titleRailChartVariant}
                 className="min-h-0 min-w-0 w-full flex-1 basis-0"
+                yAxisTitle={valueIsPercent ? `${displayLabel} Rate (%)` : `${displayLabel} Value`}
               />
             ) : null}
           </div>
