@@ -30,7 +30,7 @@ export type DashboardSection = {
   id: string;
   widgets: PlacedWidget[];
   layout?: SectionLayoutPreset;
-  /** Wide canvas: KPI instance forced to L2 chrome; `three-column-middle` widens this slot (see `threeColumnMiddleWideGridTemplate`). */
+  /** Wide canvas: KPI instance forced to L2 chrome; siblings demote to L1; fr grid templates trade width per layout (see `kpiExpandLayoutSpans`). */
   kpiExpandedInstanceId?: string | null;
   /** When `layout === 'banner-top'` or `section-header`: headline (same editor field as dashboard banner). */
   bannerText?: string;

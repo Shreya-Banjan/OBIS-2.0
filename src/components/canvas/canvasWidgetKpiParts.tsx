@@ -1,8 +1,8 @@
 import type { DraggableAttributes } from '@dnd-kit/core';
 import type { ReactNode } from 'react';
 import { useMemo } from 'react';
-import { getKpiTrendSeriesFromTimeline } from '../../data/kpiTrendSeriesFromTimeline';
-import { IconClose, IconDrag, IconEdit } from '../Icons';
+import { getKpiTrendSeriesFromTimeline, sliceKpiTrendSeriesEnd } from '../../data/kpiTrendSeriesFromTimeline';
+import { IconClose, IconDrag, IconEdit, IconExpandRow } from '../Icons';
 import { KpiTitleTrendChart } from './KpiTitleTrendChart';
 
 /** Opacity only on the shell — pointer events stay on the toolbar row so the L2 title toggle stays clickable. */
@@ -80,7 +80,7 @@ function isKpiUnitWordOnly(unit: string | undefined): boolean {
  * When no explicit `kpiDemoUnit`, treat a trailing `%` as the unit so the glyph sits in the secondary column
  * instead of the large metric type.
  */
-function splitKpiValueAndUnit(valueDemo: string, valueUnit?: string): { value: string; unit?: string } {
+export function splitKpiValueAndUnit(valueDemo: string, valueUnit?: string): { value: string; unit?: string } {
   const explicit = valueUnit?.trim();
   if (explicit) return { value: valueDemo, unit: explicit };
 
@@ -127,8 +127,14 @@ type MetricColumnProps = {
   valuesOnly?: boolean;
   /** L2: trailing control on the title row (e.g. layout toggle). */
   titleRowEnd?: ReactNode;
+  /** When `titlesOnly`, extra classes on the title + eyebrow block (e.g. `px-[24px]` when the chart is full-bleed). */
+  titlesOnlyTitleClassName?: string;
   kpiTimelineValue?: string;
   titleRailChartVariant?: 'line' | 'bar';
+  /** When set with `titlesOnly`, title-rail trend is trimmed to this many trailing points (L2 = 6 months). */
+  titleTrendMaxPoints?: number;
+  /** L3: hide the chart’s bottom grid stroke so it doesn’t read as a divider above the detail table. */
+  titleRailChartOmitBottomGridLine?: boolean;
 };
 
 export function CanvasWidgetKpiMetricColumn({
@@ -144,8 +150,11 @@ export function CanvasWidgetKpiMetricColumn({
   titlesOnly,
   valuesOnly,
   titleRowEnd,
+  titlesOnlyTitleClassName,
   kpiTimelineValue = '',
   titleRailChartVariant = 'line',
+  titleTrendMaxPoints,
+  titleRailChartOmitBottomGridLine = false,
 }: MetricColumnProps) {
   const { value: valueDisplay, unit: unitDisplay } = splitKpiValueAndUnit(valueDemo, valueUnit);
   const hasUnit = unitDisplay != null && unitDisplay !== '';
@@ -155,14 +164,18 @@ export function CanvasWidgetKpiMetricColumn({
   const valueIsPercent = unitDisplay === '%' || valueDemo.trim().endsWith('%');
   const titleRailTrendSeries = useMemo(() => {
     if (!titlesOnly) return null;
-    return getKpiTrendSeriesFromTimeline(kpiTimelineValue, { anchorRate, valueIsPercent });
-  }, [titlesOnly, kpiTimelineValue, anchorRate, valueIsPercent]);
+    const full = getKpiTrendSeriesFromTimeline(kpiTimelineValue, { anchorRate, valueIsPercent });
+    if (titleTrendMaxPoints != null && titleTrendMaxPoints > 0) {
+      return sliceKpiTrendSeriesEnd(full, titleTrendMaxPoints);
+    }
+    return full;
+  }, [titlesOnly, kpiTimelineValue, anchorRate, valueIsPercent, titleTrendMaxPoints]);
 
   if (titlesOnly) {
     return (
       <div className={['relative z-0 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden', className].filter(Boolean).join(' ')}>
         <div className="flex min-h-0 min-w-0 w-full flex-1 basis-0 flex-col gap-4">
-          <div className="w-full min-w-0 shrink-0">
+          <div className={['w-full min-w-0 shrink-0', titlesOnlyTitleClassName].filter(Boolean).join(' ')}>
             {titleRowEnd != null ? (
               <div className="flex min-w-0 flex-row flex-nowrap items-start justify-between gap-3">
                 <div className="flex min-w-0 flex-1 flex-col">
@@ -194,6 +207,7 @@ export function CanvasWidgetKpiMetricColumn({
                 variant={titleRailChartVariant}
                 className="min-h-0 min-w-0 w-full flex-1 basis-0"
                 yAxisTitle={valueIsPercent ? `${displayLabel} Rate (%)` : `${displayLabel} Value`}
+                omitBottomGridLine={titleRailChartOmitBottomGridLine}
               />
             ) : null}
           </div>
@@ -349,6 +363,12 @@ type OverlayProps = {
   listeners: Record<string, unknown> | undefined;
   onChangeClick: (e: React.MouseEvent) => void;
   onRemoveClick: () => void;
+  /** L2 only: row width expand/collapse (moved off tile body when L3 opens from body). */
+  kpiRowExpand?: {
+    visible: boolean;
+    expanded: boolean;
+    onClick: () => void;
+  };
 };
 
 export function CanvasWidgetKpiOverlayChrome({
@@ -357,6 +377,7 @@ export function CanvasWidgetKpiOverlayChrome({
   listeners,
   onChangeClick,
   onRemoveClick,
+  kpiRowExpand,
 }: OverlayProps) {
   return (
     <div className={CANVAS_WIDGET_OVERLAY_STRIP}>
@@ -376,6 +397,22 @@ export function CanvasWidgetKpiOverlayChrome({
             <IconDrag className="block size-[18px] shrink-0" aria-hidden />
           </button>
           <div className="flex shrink-0 items-center gap-1">
+            {kpiRowExpand?.visible ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  kpiRowExpand.onClick();
+                }}
+                className={OVERLAY_TOOL_BTN}
+                data-kpi-expand-skip-interaction
+                aria-pressed={kpiRowExpand.expanded}
+                aria-label={kpiRowExpand.expanded ? `Collapse ${displayLabel} in row` : `Expand ${displayLabel} in row`}
+                title={kpiRowExpand.expanded ? 'Collapse in row' : 'Expand in row'}
+              >
+                <IconExpandRow className="block size-[18px] shrink-0" aria-hidden />
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={onChangeClick}

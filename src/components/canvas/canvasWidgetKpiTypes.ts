@@ -30,4 +30,8 @@ export type CanvasWidgetKpiTileBaseProps = {
   kpiExpandToggleEnabled?: boolean;
   /** This instance is `section.kpiExpandedInstanceId` (user-chosen expanded KPI). */
   kpiExpandedByUser?: boolean;
+  /** Wide L2: opens KPI L3 detail modal (body tap); optional when editor does not wire L3. */
+  onOpenKpiL3Detail?: () => void;
+  /** When true with `onOpenKpiL3Detail`, L2 body opens the L3 modal instead of toggling row expand. */
+  kpiL3DetailOpenEnabled?: boolean;
 };

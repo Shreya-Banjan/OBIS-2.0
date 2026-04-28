@@ -24,6 +24,8 @@ export function CanvasWidgetKpiTileL1({
   onKpiExpandToggle,
   kpiExpandToggleEnabled,
   kpiExpandedByUser,
+  onOpenKpiL3Detail: _onOpenKpiL3Detail,
+  kpiL3DetailOpenEnabled: _kpiL3DetailOpenEnabled,
 }: CanvasWidgetKpiTileBaseProps) {
   const definitionTrimmed = definition.trim();
   const expandBody = Boolean(kpiExpandToggleEnabled && onKpiExpandToggle);

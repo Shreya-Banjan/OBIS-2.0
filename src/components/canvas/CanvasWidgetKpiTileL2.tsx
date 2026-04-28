@@ -7,6 +7,9 @@ import { useKpiExpandPointerHandlers } from './useKpiExpandPointerHandlers';
 
 type L2KpiChartViewMode = 'line' | 'bar';
 
+/** L2 title-rail chart width vs readability — full timeline stays in L3. */
+const L2_TITLE_TREND_MAX_POINTS = 6;
+
 const L2_TITLE_TOGGLE_SEGMENTS = [
   {
     value: 'line' as const,
@@ -23,7 +26,7 @@ const L2_TITLE_TOGGLE_SEGMENTS = [
 /**
  * KPI canvas tile for **L2** (wide) slots: title + eyebrow in the main column (~⅔); value, “As of”,
  * and definition copy in a right rail **one-third** of the widget width, definition **bottom-aligned**.
- * NOTE: Demo sparkline is shown only in L1 slots (`DashboardCanvas`); L2 tiles omit it.
+ * Row expand/collapse is on overlay chrome; tile body opens **L3** detail modal when wired.
  */
 export function CanvasWidgetKpiTileL2({
   displayLabel,
@@ -43,15 +46,22 @@ export function CanvasWidgetKpiTileL2({
   onKpiExpandToggle,
   kpiExpandToggleEnabled,
   kpiExpandedByUser,
+  onOpenKpiL3Detail,
+  kpiL3DetailOpenEnabled = false,
 }: CanvasWidgetKpiTileBaseProps) {
   const [chartViewMode, setChartViewMode] = useState<L2KpiChartViewMode>('line');
   const definitionTrimmed = definition.trim();
-  const expandBody = Boolean(kpiExpandToggleEnabled && onKpiExpandToggle);
-  const expandPointer = useKpiExpandPointerHandlers(
-    onKpiExpandToggle,
-    expandBody,
-    (t) => Boolean((t as HTMLElement | null)?.closest?.('[data-kpi-title-toggle],[data-kpi-expand-skip-interaction]')),
+  const expandChrome = Boolean(kpiExpandToggleEnabled && onKpiExpandToggle);
+  const l3Body = Boolean(kpiL3DetailOpenEnabled && onOpenKpiL3Detail);
+  const expandBodyLegacy = Boolean(!l3Body && expandChrome);
+
+  const l3Pointer = useKpiExpandPointerHandlers(
+    onOpenKpiL3Detail,
+    l3Body,
+    (t) => Boolean((t as HTMLElement | null)?.closest?.('[data-kpi-title-toggle]')),
   );
+  const expandPointer = useKpiExpandPointerHandlers(onKpiExpandToggle, expandBodyLegacy);
+
   const titleToggle = (
     <ToggleGroup<L2KpiChartViewMode>
       aria-label="KPI chart view"
@@ -72,29 +82,39 @@ export function CanvasWidgetKpiTileL2({
     periodContextLabel,
     kpiTimelineValue,
     titleRailChartVariant: chartViewMode,
+    titleTrendMaxPoints: L2_TITLE_TREND_MAX_POINTS,
   };
+
+  const bodyPointerDown = l3Body ? l3Pointer.onPointerDown : expandPointer.onPointerDown;
+  const bodyPointerUp = l3Body ? l3Pointer.onPointerUp : expandPointer.onPointerUp;
+  const bodyPointerCancel = l3Body ? l3Pointer.onPointerCancel : expandPointer.onPointerCancel;
+
+  const interactiveBody = l3Body || expandBodyLegacy;
 
   return (
     <div className="relative isolate flex h-full min-h-0 w-full min-w-0 flex-col">
       <div
         className={
-          expandBody
+          interactiveBody
             ? 'relative z-0 flex min-h-0 min-w-0 flex-1 cursor-pointer flex-row overflow-hidden'
             : 'relative z-0 flex min-h-0 min-w-0 flex-1 flex-row overflow-hidden'
         }
-        role={expandBody ? 'button' : undefined}
-        tabIndex={expandBody ? 0 : undefined}
-        aria-expanded={expandBody ? Boolean(kpiExpandedByUser) : undefined}
-        aria-label={expandBody ? 'Expand or collapse KPI detail' : undefined}
-        onPointerDown={expandPointer.onPointerDown}
-        onPointerUp={expandPointer.onPointerUp}
-        onPointerCancel={expandPointer.onPointerCancel}
+        role={interactiveBody ? 'button' : undefined}
+        tabIndex={interactiveBody ? 0 : undefined}
+        aria-expanded={expandBodyLegacy ? Boolean(kpiExpandedByUser) : undefined}
+        aria-label={
+          l3Body ? 'View KPI details' : expandBodyLegacy ? 'Expand or collapse KPI detail' : undefined
+        }
+        onPointerDown={bodyPointerDown}
+        onPointerUp={bodyPointerUp}
+        onPointerCancel={bodyPointerCancel}
         onKeyDown={
-          expandBody
+          interactiveBody
             ? (e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
-                  onKpiExpandToggle?.();
+                  if (l3Body) onOpenKpiL3Detail?.();
+                  else onKpiExpandToggle?.();
                 }
               }
             : undefined
@@ -140,6 +160,15 @@ export function CanvasWidgetKpiTileL2({
         listeners={listeners}
         onChangeClick={onChangeClick}
         onRemoveClick={onRemoveClick}
+        kpiRowExpand={
+          expandChrome
+            ? {
+                visible: true,
+                expanded: Boolean(kpiExpandedByUser),
+                onClick: () => onKpiExpandToggle?.(),
+              }
+            : undefined
+        }
       />
     </div>
   );

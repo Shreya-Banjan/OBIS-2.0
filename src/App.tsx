@@ -19,6 +19,8 @@ import { ViewportSizePresetBar } from './components/ViewportSizePresetBar';
 import { DashboardNavDrawer } from './components/DashboardNavDrawer';
 import { PublishDashboardModal, type PublishFormValues } from './components/PublishDashboardModal';
 import { ShareDashboardModal } from './components/ShareDashboardModal';
+import { KpiL3DetailModal } from './components/KpiL3DetailModal';
+import { formatKpiCanvasPeriodLabel } from './components/TimelinePickerField';
 import type { BannerSectionUpdates } from './components/EditorDashboardBanner';
 import { WidgetPickerPanel } from './components/WidgetPickerPanel';
 import {
@@ -30,7 +32,15 @@ import {
 } from './layoutUtils';
 import { mergeInitialDashboards } from './data/initialDashboards';
 import { loadDashboardsFromStorage, saveDashboardsToStorage } from './persistence/dashboardStorage';
-import { WIDGET_CATEGORIES } from './data/widgets';
+import {
+  WIDGET_CATEGORIES,
+  getWidgetDisplayLabel,
+  widgetCatalogEyebrow,
+  widgetKpiDefinitionForCanvas,
+  widgetKpiDemoMetric,
+  widgetKpiLabelCompact,
+  widgetUsesKpiCanvasPresentation,
+} from './data/widgets';
 import type { WidgetTemplate } from './data/widgets';
 import { WidgetLibraryOpenProvider } from './context/WidgetLibraryContext';
 import type {
@@ -930,6 +940,35 @@ export default function App() {
     );
   }, []);
 
+  const [kpiL3DetailTarget, setKpiL3DetailTarget] = useState<{ sectionId: string; instanceId: string } | null>(
+    null,
+  );
+
+  const handleOpenKpiL3Detail = useCallback((sectionId: string, instanceId: string) => {
+    setKpiL3DetailTarget({ sectionId, instanceId });
+  }, []);
+
+  const handleCloseKpiL3Detail = useCallback(() => {
+    setKpiL3DetailTarget(null);
+  }, []);
+
+  const kpiL3DetailPayload = useMemo(() => {
+    if (!kpiL3DetailTarget) return null;
+    const sec = sections.find((s) => s.id === kpiL3DetailTarget.sectionId);
+    const w = sec?.widgets.find((x) => x.instanceId === kpiL3DetailTarget.instanceId);
+    if (!w || w.placeholder || !widgetUsesKpiCanvasPresentation(w.templateId)) return null;
+    const kpiDemo = widgetKpiDemoMetric(w.templateId);
+    return {
+      displayLabel: getWidgetDisplayLabel(w.templateId, w.label),
+      displayLabelCompact: widgetKpiLabelCompact(w.templateId),
+      catalogEyebrow: widgetCatalogEyebrow(w.templateId),
+      definition: widgetKpiDefinitionForCanvas(w.templateId, 'l2'),
+      valueDemo: kpiDemo.value,
+      valueUnit: kpiDemo.unit,
+      metricDeltaChip: kpiDemo.metricDeltaChip,
+    };
+  }, [kpiL3DetailTarget, sections]);
+
   const handleRemoveTemplateFromPicker = useCallback((template: WidgetTemplate) => {
     setSections((prev) => {
       const beforeSlots = collectWidgetSlotsForTemplate(prev, template.id);
@@ -1215,6 +1254,7 @@ export default function App() {
                             onMoveSection={handleMoveSection}
                             onBannerSectionChange={handleBannerSectionChange}
                             onKpiExpandToggle={handleKpiExpandToggle}
+                            onOpenKpiL3Detail={handleOpenKpiL3Detail}
                             activePlaceholderInstanceId={
                               panelOpen ? widgetPickReplaceInstanceId : null
                             }
@@ -1262,6 +1302,23 @@ export default function App() {
             dashboard={shareDashboard}
             onClose={() => setShareDashboardId(null)}
             onShareEmailsChange={(emails) => handleShareEmailsUpdate(shareDashboard.id, emails)}
+          />
+        ) : null}
+
+        {kpiL3DetailPayload && kpiL3DetailTarget ? (
+          <KpiL3DetailModal
+            key={`${kpiL3DetailTarget.sectionId}-${kpiL3DetailTarget.instanceId}`}
+            open
+            onClose={handleCloseKpiL3Detail}
+            displayLabel={kpiL3DetailPayload.displayLabel}
+            displayLabelCompact={kpiL3DetailPayload.displayLabelCompact}
+            catalogEyebrow={kpiL3DetailPayload.catalogEyebrow}
+            definition={kpiL3DetailPayload.definition}
+            valueDemo={kpiL3DetailPayload.valueDemo}
+            valueUnit={kpiL3DetailPayload.valueUnit}
+            metricDeltaChip={kpiL3DetailPayload.metricDeltaChip}
+            periodContextLabel={formatKpiCanvasPeriodLabel(editorTimeline)}
+            kpiTimelineValue={editorTimeline}
           />
         ) : null}
 

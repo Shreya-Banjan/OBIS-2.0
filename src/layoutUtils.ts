@@ -43,12 +43,12 @@ export function normalizeDashboardBannerSections(sections: DashboardSection[]): 
   return [banner, ...list.filter((_, i) => i !== bi)];
 }
 
-/** Drop `kpiExpandedInstanceId` when it does not match a non-placeholder widget in that section. */
+/** Drop `kpiExpandedInstanceId` when it does not match a non-placeholder widget, or on banner/header rows (no KPI slots). */
 export function normalizeKpiExpandedInstanceIds(sections: DashboardSection[]): DashboardSection[] {
   return sections.map((s) => {
     const id = s.kpiExpandedInstanceId;
     if (id == null || id === '') return s;
-    if (s.layout !== 'three-column-middle') {
+    if (s.layout === 'banner-top' || s.layout === 'section-header') {
       const { kpiExpandedInstanceId, ...rest } = s;
       void kpiExpandedInstanceId;
       return rest as DashboardSection;

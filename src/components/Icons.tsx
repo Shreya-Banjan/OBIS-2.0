@@ -137,6 +137,44 @@ export function IconChevronLeft({ className }: IconProps) {
   );
 }
 
+export function IconChevronRight({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/** Download — Material Symbols Light style (OBIS2.0 L3 table toolbar, Figma 397:5337). */
+export function IconDownload({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M12 4v11m0 0l-4-4m4 4 4-4M5 19h14"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/** Widen KPI in row — used on L2 chrome (body opens L3 detail modal). */
+export function IconExpandRow({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M9 8V5H5v4M15 8V5h4v4M9 16v3H5v-4M15 16v3h4v-4"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 /** Fluent-style arrow (line + head) — section row Move up; distinct from menu chevrons. */
 export function IconArrowUp({ className }: IconProps) {
   return (

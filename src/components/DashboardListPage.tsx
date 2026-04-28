@@ -13,7 +13,7 @@ const DashboardListBody = lazy(() =>
   import('./DashboardListBody').then((m) => ({ default: m.DashboardListBody }))
 );
 
-type ReportFilterTab = 'all' | 'mine' | 'shared' | 'drafts';
+type ReportFilterTab = 'published' | 'shared' | 'drafts';
 
 function publishedDashboards(dashboards: SavedDashboard[]) {
   return dashboards.filter((d) => d.status === 'published');
@@ -21,14 +21,12 @@ function publishedDashboards(dashboards: SavedDashboard[]) {
 
 function reportFilterCounts(dashboards: SavedDashboard[]) {
   const published = publishedDashboards(dashboards);
-  let mine = 0;
   let shared = 0;
   for (const d of published) {
     if (d.sharedBy) shared += 1;
-    else mine += 1;
   }
   const drafts = dashboards.filter((d) => d.status === 'draft').length;
-  return { all: published.length, mine, shared, drafts };
+  return { published: published.length, shared, drafts };
 }
 
 function ReportFilterToggle({
@@ -38,12 +36,11 @@ function ReportFilterToggle({
 }: {
   value: ReportFilterTab;
   onChange: (next: ReportFilterTab) => void;
-  counts: { all: number; mine: number; shared: number; drafts: number };
+  counts: { published: number; shared: number; drafts: number };
 }) {
   const segments: { id: ReportFilterTab; label: string; count: number }[] = [
-    { id: 'all', label: 'All', count: counts.all },
-    { id: 'mine', label: 'My Reports', count: counts.mine },
-    { id: 'shared', label: 'Shared With Me', count: counts.shared },
+    { id: 'published', label: 'Published Reports', count: counts.published },
+    { id: 'shared', label: 'Shared with Me', count: counts.shared },
     { id: 'drafts', label: 'Drafts', count: counts.drafts },
   ];
 
@@ -110,14 +107,13 @@ export function DashboardListPage({
   onPreviewViewportWidthChange,
   reportsContentMaxWidth,
 }: DashboardListPageProps) {
-  const [reportFilter, setReportFilter] = useState<ReportFilterTab>('all');
+  const [reportFilter, setReportFilter] = useState<ReportFilterTab>('published');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
   const filterCounts = useMemo(() => reportFilterCounts(dashboards), [dashboards]);
   const tabFilteredDashboards = useMemo(() => {
     const published = publishedDashboards(dashboards);
-    if (reportFilter === 'all') return published;
-    if (reportFilter === 'mine') return published.filter((d) => !d.sharedBy);
+    if (reportFilter === 'published') return published;
     if (reportFilter === 'shared') return published.filter((d) => !!d.sharedBy);
     return dashboards.filter((d) => d.status === 'draft');
   }, [dashboards, reportFilter]);

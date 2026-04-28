@@ -8,24 +8,33 @@ type KpiTitleTrendChartProps = {
   className?: string;
   /** Overrides `series.yAxisTitle`; default depends on `valueIsPercent`. */
   yAxisTitle?: string;
+  /** When true, skip the lowest horizontal grid line (avoids a hard rule above a stacked L3 detail table). */
+  omitBottomGridLine?: boolean;
+  /**
+   * `l3` — OBIS2.0 L3 modal chart ([Figma 394:2183](https://www.figma.com/design/2Z3gqwUnoKnsm6U5aQ1Xp2/OBIS2.0?node-id=394-2183)): dashed grid,
+   * green goal band (days), dark series stroke, muted axis typography.
+   */
+  presentation?: 'canvas' | 'l3';
 };
 
 /** Wide coordinate width; height is synced to the flex slot via ResizeObserver so `meet` fills the frame vertically. */
 const VB_W = 560;
 const VB_H_FALLBACK = 132;
-const INSET = { t: 10, b: 30 };
+const INSET = { t: 12, b: 36 };
 /** Small pad at the viewBox right so strokes are not clipped; plot / grid / series share this edge. */
-const PLOT_INSET_R = 8;
+const PLOT_INSET_R = 10;
 /** Left padding before the Y-axis title band. */
 const Y_LABEL_X = 4;
 /** Horizontal space for the vertical Y-axis title (viewBox units); tick values start to its right. */
-const Y_AXIS_TITLE_BAND = 22;
+const Y_AXIS_TITLE_BAND = 18;
 /** X position of Y tick value text (`start` anchor). */
 const Y_TICK_TEXT_X = Y_LABEL_X + Y_AXIS_TITLE_BAND;
 /** Extra viewBox units between the widest Y label and the plot / horizontal grid lines. */
-const Y_LABEL_TO_GRID_GAP = 12;
-const FS_Y_AXIS = 11;
-const FS_X_AXIS = 11;
+const Y_LABEL_TO_GRID_GAP = 5;
+/** Minimum viewBox units from chart left edge to Y tick column start (`Y_TICK_TEXT_X`); keeps labels off the grid. */
+const Y_TICK_TO_PLOT_MIN_PAD = 20;
+/** Target on-screen size (CSS px) for axis tick labels and Y-axis title after `meet` scaling. */
+const CHART_LABEL_TARGET_CSS_PX = 11;
 /** Bar thickness on screen (px); converted to viewBox width using measured SVG scale. */
 const BAR_WIDTH_CSS_PX = 24;
 /** Bar corner radius on screen (px); converted with the same horizontal scale as bar width. */
@@ -64,7 +73,14 @@ function approxXAxisLabelBandPad(labels: readonly string[], n: number, fontSize:
 
 type ChartHoverState = { i: number; px: number; py: number };
 
-export function KpiTitleTrendChart({ series, variant = 'line', className, yAxisTitle: yAxisTitleProp }: KpiTitleTrendChartProps) {
+export function KpiTitleTrendChart({
+  series,
+  variant = 'line',
+  className,
+  yAxisTitle: yAxisTitleProp,
+  omitBottomGridLine = false,
+  presentation = 'canvas',
+}: KpiTitleTrendChartProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const [vbH, setVbH] = useState(VB_H_FALLBACK);
@@ -94,8 +110,12 @@ export function KpiTitleTrendChart({ series, variant = 'line', className, yAxisT
   }, []);
 
   const { xLabels, rates, valueIsPercent, yAxisTitle: yAxisTitleFromSeries } = series;
+  const isL3 = presentation === 'l3';
   const yAxisTitleLabel =
     yAxisTitleProp ?? yAxisTitleFromSeries ?? (valueIsPercent ? 'Rate (%)' : 'Value');
+  const labelTargetCssPx = isL3 ? 9 : CHART_LABEL_TARGET_CSS_PX;
+  /** SVG `fontSize` in viewBox units so labels render at ~target px on screen (`meet` scales by `pxPerVbX`). */
+  const fsVb = Math.min(26, Math.max(5.5, labelTargetCssPx / Math.max(pxPerVbX, 1e-6)));
   const yTitleMidX = Y_LABEL_X + Y_AXIS_TITLE_BAND / 2;
   const n = Math.max(1, rates.length);
   const minR = Math.min(...rates);
@@ -112,8 +132,11 @@ export function KpiTitleTrendChart({ series, variant = 'line', className, yAxisT
   /** Reserve width after Y-axis title band + tick labels plus gap before the plot / grid. */
   const maxLabelLen = Math.max(...yTickStrs.map((s) => s.length));
   const plotLeft = Math.min(
-    62 + Y_TICK_TEXT_X,
-    Math.max(36 + Y_TICK_TEXT_X, Y_TICK_TEXT_X + Math.ceil(maxLabelLen * 6 + 1 + Y_LABEL_TO_GRID_GAP)),
+    56 + Y_TICK_TEXT_X,
+    Math.max(
+      Y_TICK_TEXT_X + Y_TICK_TO_PLOT_MIN_PAD,
+      Y_TICK_TEXT_X + Math.ceil(maxLabelLen * fsVb * 0.52 + Y_LABEL_TO_GRID_GAP),
+    ),
   );
   const plotRight = VB_W - PLOT_INSET_R;
   const plotW = plotRight - plotLeft;
@@ -122,7 +145,7 @@ export function KpiTitleTrendChart({ series, variant = 'line', className, yAxisT
   /** ViewBox width of hover band (same scale as bars / pxPerVbX). */
   const hoverBandW = HOVER_BAND_CSS_PX / Math.max(pxPerVbX, 1e-6);
   const hoverHalfVb = hoverBandW / 2;
-  const xLabelPadText = approxXAxisLabelBandPad(xLabels, n, FS_X_AXIS);
+  const xLabelPadText = approxXAxisLabelBandPad(xLabels, n, fsVb);
   /** Inset from plot edges: label half-width + half hover + small slack, capped so the band stays usable. */
   const xLabelPadNeed =
     xLabelPadText +
@@ -145,6 +168,20 @@ export function KpiTitleTrendChart({ series, variant = 'line', className, yAxisT
 
   /** Bottom of value scale — same y as the lowest horizontal grid line (max y in viewBox). */
   const yPlotBottom = Math.max(...yTicks.map((yt) => yAt(yt)));
+  /** L3 “goal” band in **value** space (days); only when not percent. */
+  const l3GoalBand =
+    isL3 && !valueIsPercent
+      ? (() => {
+          const lowV = Math.max(y0, Math.min(2.5, 3.5));
+          const highV = Math.min(y1, Math.max(2.5, 3.5));
+          if (highV <= lowV + 1e-6) return null;
+          const yA = yAt(lowV);
+          const yB = yAt(highV);
+          const top = Math.min(yA, yB);
+          const hBand = Math.max(1, Math.abs(yB - yA));
+          return { top, h: hBand };
+        })()
+      : null;
   /** Bars: same x as x-axis month labels (`xLabelAt`); uniform width; centers match label positions (equidistant in i). */
   const plotBand = plotRight - plotLeft;
   const barWTargetUser = BAR_WIDTH_CSS_PX / Math.max(pxPerVbX, 1e-6);
@@ -239,17 +276,29 @@ export function KpiTitleTrendChart({ series, variant = 'line', className, yAxisT
         <text
           x={yTitleMidX}
           y={INSET.t + plotH / 2}
-          fill="#707070"
-          fontSize={FS_Y_AXIS}
+          fill={isL3 ? '#999999' : '#707070'}
+          fontSize={fsVb}
           fontFamily="Inter, system-ui, sans-serif"
+          fontWeight={isL3 ? 500 : 400}
           textAnchor="middle"
           dominantBaseline="middle"
           transform={`rotate(-90 ${yTitleMidX} ${INSET.t + plotH / 2})`}
         >
           {yAxisTitleLabel}
         </text>
+        {l3GoalBand ? (
+          <rect
+            x={plotLeft}
+            y={l3GoalBand.top}
+            width={Math.max(0, plotRight - plotLeft)}
+            height={l3GoalBand.h}
+            fill="#ecfcf4"
+            pointerEvents="none"
+          />
+        ) : null}
         {yTicks.map((yt, idx) => {
           const yy = yAt(yt);
+          if (omitBottomGridLine && Math.abs(yy - yPlotBottom) < 0.75) return null;
           return (
             <g key={idx}>
               <line
@@ -259,6 +308,7 @@ export function KpiTitleTrendChart({ series, variant = 'line', className, yAxisT
                 y2={yy}
                 stroke="#e8e8e8"
                 strokeWidth={1}
+                strokeDasharray={isL3 ? '4 4' : undefined}
                 vectorEffect="non-scaling-stroke"
               />
               <text
@@ -266,9 +316,10 @@ export function KpiTitleTrendChart({ series, variant = 'line', className, yAxisT
                 y={yy}
                 dominantBaseline="middle"
                 textAnchor="start"
-                fill="#707070"
-                fontSize={FS_Y_AXIS}
+                fill={isL3 ? '#999999' : '#707070'}
+                fontSize={fsVb}
                 fontFamily="Inter, system-ui, sans-serif"
+                fontWeight={isL3 ? 500 : 400}
               >
                 {formatY(yt, valueIsPercent)}
               </text>
@@ -303,8 +354,8 @@ export function KpiTitleTrendChart({ series, variant = 'line', className, yAxisT
                   height={h}
                   rx={rxy}
                   ry={rxy}
-                  fill="#f96c50"
-                  opacity={0.85}
+                  fill={isL3 ? '#333333' : '#f96c50'}
+                  opacity={isL3 ? 0.88 : 0.85}
                 />
               );
             })
@@ -313,8 +364,8 @@ export function KpiTitleTrendChart({ series, variant = 'line', className, yAxisT
           <polyline
             fill="none"
             points={linePoints}
-            stroke="#f96c50"
-            strokeWidth={2.25}
+            stroke={isL3 ? '#333333' : '#f96c50'}
+            strokeWidth={isL3 ? 2 : 2.25}
             strokeLinecap="round"
             strokeLinejoin="round"
             vectorEffect="non-scaling-stroke"
@@ -327,9 +378,9 @@ export function KpiTitleTrendChart({ series, variant = 'line', className, yAxisT
                 cx={xLabelAt(i)}
                 cy={yAt(r)}
                 r={Math.max(1, markerRVb)}
-                fill="#fff"
-                stroke="#f96c50"
-                strokeWidth={LINE_MARKER_STROKE_CSS_PX}
+                fill={isL3 ? '#ffffff' : '#fff'}
+                stroke={isL3 ? '#333333' : '#f96c50'}
+                strokeWidth={isL3 ? 2 : LINE_MARKER_STROKE_CSS_PX}
                 vectorEffect="non-scaling-stroke"
               />
             ))
@@ -344,11 +395,12 @@ export function KpiTitleTrendChart({ series, variant = 'line', className, yAxisT
             <text
               key={i}
               x={x}
-              y={vbH - 6}
+              y={vbH - 9}
               textAnchor="middle"
-              fill="#707070"
-              fontSize={FS_X_AXIS}
+              fill={isL3 && i === n - 1 ? '#333333' : isL3 ? '#999999' : '#707070'}
+              fontSize={fsVb}
               fontFamily="Inter, system-ui, sans-serif"
+              fontWeight={isL3 ? 500 : 400}
             >
               {lab}
             </text>
@@ -369,17 +421,17 @@ export function KpiTitleTrendChart({ series, variant = 'line', className, yAxisT
       </svg>
       {hover != null && xLabels[hover.i] != null ? (
         <div
-          className="pointer-events-none absolute z-20 min-w-[5.5rem] rounded-lg border border-solid border-[#e6e6e6] bg-white px-3 py-2 shadow-[var(--shadow-subtle)]"
+          className="pointer-events-none absolute z-20 min-w-[5rem] rounded-lg border border-solid border-[#e6e6e6] bg-white px-2.5 py-1.5 shadow-[var(--shadow-subtle)]"
           style={{
             left: tooltipLeft,
             top: hover.py,
-            transform: hover.py < 56 ? 'translate(-50%, 10px)' : 'translate(-50%, calc(-100% - 10px))',
+            transform: hover.py < 56 ? 'translate(-50%, 8px)' : 'translate(-50%, calc(-100% - 8px))',
           }}
         >
-          <p className="font-['Inter',sans-serif] text-[11px] font-normal leading-tight text-[#707070]">
+          <p className="font-['Inter',sans-serif] text-[11px] font-normal leading-snug text-[#707070]">
             {xLabels[hover.i]}
           </p>
-          <p className="mt-0.5 font-['Inter',sans-serif] text-[14px] font-semibold leading-tight tabular-nums text-[var(--color-grey-darkest)]">
+          <p className="mt-1 font-['Inter',sans-serif] text-[11px] font-semibold leading-snug tabular-nums text-[var(--color-grey-darkest)]">
             {formatY(rates[hover.i] ?? 0, valueIsPercent)}
           </p>
         </div>

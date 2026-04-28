@@ -5,7 +5,7 @@ import { CSS } from '@dnd-kit/utilities';
 import type { WidgetCategory, WidgetTemplate } from '../data/widgets';
 import { QUALITY_NSQIP_SPECIALTY_IDS } from '../data/widgets';
 import { NsqipSpecialtyFilterMenu } from './NsqipSpecialtyFilterMenu';
-import { IconAdd, IconCheck, IconChevronDown, IconClose, IconDrag, IconFilter, IconSearch, IconTrash } from './Icons';
+import { IconAdd, IconCheck, IconChevronDown, IconClose, IconDrag, IconFilter, IconSearch } from './Icons';
 
 export type WidgetPickerSectionOption = { id: string; label: string };
 
@@ -122,7 +122,7 @@ function PaletteRow({
                   className="flex size-8 shrink-0 items-center justify-center rounded-lg text-[#1e1e1f] outline-none transition-colors hover:bg-[var(--color-grey-darkest)]/10 focus-visible:ring-2 focus-visible:ring-[#b6bec8]"
                   aria-label={`Remove ${widget.label} from canvas`}
                 >
-                  <IconTrash className="size-[18px]" />
+                  <IconClose className="size-[18px]" aria-hidden />
                 </button>
               ) : null}
             </span>

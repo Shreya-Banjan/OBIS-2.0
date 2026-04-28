@@ -1,6 +1,43 @@
 /** Keep in sync with `TimelinePickerField` custom-range parsing (OBIS date chip format). */
 const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
 
+const MONTH_LONG = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+] as const;
+
+/**
+ * Maps chart x-axis labels (`monthKeyAxis` like `Jan'24`, or short custom `Apr 12`) to full month + calendar year
+ * for L3 tabular display.
+ */
+export function monthYearFromTrendXLabel(label: string): { monthOfYear: string; year: string } {
+  const t = label.trim();
+  const prime = /^([A-Za-z]{3})'(\d{2})$/.exec(t);
+  if (prime) {
+    const si = MONTH_SHORT.findIndex((x) => x.toLowerCase() === prime[1]!.toLowerCase());
+    if (si >= 0) return { monthOfYear: MONTH_LONG[si]!, year: String(2000 + Number(prime[2])) };
+  }
+  const dayChunk = /^([A-Za-z]{3})\s+(\d{1,2})$/.exec(t);
+  if (dayChunk) {
+    const si = MONTH_SHORT.findIndex((x) => x.toLowerCase() === dayChunk[1]!.toLowerCase());
+    if (si >= 0) {
+      const y = new Date().getFullYear();
+      return { monthOfYear: `${MONTH_LONG[si]!} ${dayChunk[2]}`, year: String(y) };
+    }
+  }
+  return { monthOfYear: t, year: '—' };
+}
+
 function parseObisDate(s: string): Date | null {
   const m = /^([A-Za-z]{3}) (\d{1,2})' (\d{2})$/.exec(s.trim());
   if (!m) return null;
@@ -49,6 +86,17 @@ export type KpiTrendSeries = {
   yAxisTitle?: string;
 };
 
+/** Trims a series to the last `maxPoints` buckets (e.g. L2 title chart = 6 months). */
+export function sliceKpiTrendSeriesEnd(series: KpiTrendSeries, maxPoints: number): KpiTrendSeries {
+  if (maxPoints <= 0 || series.xLabels.length <= maxPoints) return series;
+  const start = series.xLabels.length - maxPoints;
+  return {
+    ...series,
+    xLabels: series.xLabels.slice(start),
+    rates: series.rates.slice(start),
+  };
+}
+
 function monthKeyAxis(d: Date): string {
   return `${MONTH_SHORT[d.getMonth()]}'${String(d.getFullYear()).slice(-2)}`;
 }
@@ -65,8 +113,8 @@ function buildDemoRates(len: number, anchor: number, salt: number): number[] {
 
 /**
  * X axis follows the editor timeline: **custom range** (dense ticks for short spans, else by month),
- * **YTD** (Jan → current month), **YoY** (12 trailing months), or default **MoM** (six months ending
- * current month when nothing / MoM is selected). Y values are demo rates anchored near `anchorRate`.
+ * **YTD** (Jan → current month), **YoY** (12 trailing months), or default **MoM** (12 trailing months
+ * ending current month when nothing / MoM is selected). Y values are demo rates anchored near `anchorRate`.
  */
 export function getKpiTrendSeriesFromTimeline(
   timelineValue: string,
@@ -82,17 +130,17 @@ export function getKpiTrendSeriesFromTimeline(
     valueIsPercent,
   });
 
-  const momSix = (): KpiTrendSeries => {
+  const momTwelve = (): KpiTrendSeries => {
     const xLabels: string[] = [];
-    for (let k = 5; k >= 0; k -= 1) {
+    for (let k = 11; k >= 0; k -= 1) {
       const d = new Date(now.getFullYear(), now.getMonth() - k, 1);
       xLabels.push(monthKeyAxis(d));
     }
-    return pack(xLabels, buildDemoRates(6, anchorRate, now.getTime()));
+    return pack(xLabels, buildDemoRates(12, anchorRate, now.getTime()));
   };
 
   if (!parsed || parsed.kind === 'preset') {
-    if (!parsed || parsed.preset === 'mom') return momSix();
+    if (!parsed || parsed.preset === 'mom') return momTwelve();
     if (parsed.preset === 'ytd') {
       const y = now.getFullYear();
       const m0 = now.getMonth();
@@ -144,5 +192,5 @@ export function getKpiTrendSeriesFromTimeline(
     return pack(xLabels, buildDemoRates(xLabels.length, anchorRate, lo.getTime()));
   }
 
-  return momSix();
+  return momTwelve();
 }
