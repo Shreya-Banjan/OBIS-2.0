@@ -115,14 +115,16 @@ function buildDemoRates(len: number, anchor: number, salt: number): number[] {
  * X axis follows the editor timeline: **custom range** (dense ticks for short spans, else by month),
  * **YTD** (Jan → current month), **YoY** (12 trailing months), or default **MoM** (12 trailing months
  * ending current month when nothing / MoM is selected). Y values are demo rates anchored near `anchorRate`.
+ * Optional `demoSalt` replaces the default time-based salt so callers (e.g. L3 modal partner scope) can shift the demo curve.
  */
 export function getKpiTrendSeriesFromTimeline(
   timelineValue: string,
-  opts: { anchorRate: number; valueIsPercent: boolean }
+  opts: { anchorRate: number; valueIsPercent: boolean; demoSalt?: number }
 ): KpiTrendSeries {
   const parsed = parseTimelineValue(timelineValue.trim());
   const now = new Date();
-  const { anchorRate, valueIsPercent } = opts;
+  const { anchorRate, valueIsPercent, demoSalt } = opts;
+  const salt = (fallback: number) => (demoSalt !== undefined ? demoSalt : fallback);
 
   const pack = (xLabels: string[], rates: number[]): KpiTrendSeries => ({
     xLabels,
@@ -136,7 +138,7 @@ export function getKpiTrendSeriesFromTimeline(
       const d = new Date(now.getFullYear(), now.getMonth() - k, 1);
       xLabels.push(monthKeyAxis(d));
     }
-    return pack(xLabels, buildDemoRates(12, anchorRate, now.getTime()));
+    return pack(xLabels, buildDemoRates(12, anchorRate, salt(now.getTime())));
   };
 
   if (!parsed || parsed.kind === 'preset') {
@@ -146,7 +148,7 @@ export function getKpiTrendSeriesFromTimeline(
       const m0 = now.getMonth();
       const xLabels: string[] = [];
       for (let m = 0; m <= m0; m += 1) xLabels.push(monthKeyAxis(new Date(y, m, 1)));
-      return pack(xLabels, buildDemoRates(xLabels.length, anchorRate, y));
+      return pack(xLabels, buildDemoRates(xLabels.length, anchorRate, salt(y)));
     }
     if (parsed.preset === 'yoy') {
       const xLabels: string[] = [];
@@ -154,7 +156,7 @@ export function getKpiTrendSeriesFromTimeline(
         const d = new Date(now.getFullYear(), now.getMonth() - k, 1);
         xLabels.push(monthKeyAxis(d));
       }
-      return pack(xLabels, buildDemoRates(12, anchorRate, now.getFullYear() * 13));
+      return pack(xLabels, buildDemoRates(12, anchorRate, salt(now.getFullYear() * 13)));
     }
   }
 
@@ -172,7 +174,7 @@ export function getKpiTrendSeriesFromTimeline(
         const d = new Date(t);
         xLabels.push(`${MONTH_SHORT[d.getMonth()]} ${d.getDate()}`);
       }
-      return pack(xLabels, buildDemoRates(n, anchorRate, lo.getTime()));
+      return pack(xLabels, buildDemoRates(n, anchorRate, salt(lo.getTime())));
     }
 
     const xLabels: string[] = [];
@@ -189,7 +191,7 @@ export function getKpiTrendSeriesFromTimeline(
       }
     }
     if (xLabels.length === 0) xLabels.push(monthKeyAxis(lo));
-    return pack(xLabels, buildDemoRates(xLabels.length, anchorRate, lo.getTime()));
+    return pack(xLabels, buildDemoRates(xLabels.length, anchorRate, salt(lo.getTime())));
   }
 
   return momTwelve();

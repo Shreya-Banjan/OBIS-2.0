@@ -23,15 +23,17 @@ const VB_H_FALLBACK = 132;
 const INSET = { t: 12, b: 36 };
 /** Small pad at the viewBox right so strokes are not clipped; plot / grid / series share this edge. */
 const PLOT_INSET_R = 10;
+/** L3: extra bottom space in viewBox so x-axis labels + descenders stay inside `meet` slot (avoids parent clip). */
+const L3_INSET_B = 46;
+/** L3: a bit more right slack for hover band / last tick. */
+const L3_PLOT_INSET_R = 14;
 /** Left padding before the Y-axis title band. */
 const Y_LABEL_X = 4;
-/** Horizontal space for the vertical Y-axis title (viewBox units); tick values start to its right. */
+/** Horizontal space for the vertical Y-axis title (viewBox units); tick values start to its right (canvas default). */
 const Y_AXIS_TITLE_BAND = 18;
-/** X position of Y tick value text (`start` anchor). */
-const Y_TICK_TEXT_X = Y_LABEL_X + Y_AXIS_TITLE_BAND;
 /** Extra viewBox units between the widest Y label and the plot / horizontal grid lines. */
 const Y_LABEL_TO_GRID_GAP = 5;
-/** Minimum viewBox units from chart left edge to Y tick column start (`Y_TICK_TEXT_X`); keeps labels off the grid. */
+/** Minimum viewBox units from Y tick column start to the plot / horizontal grid lines. */
 const Y_TICK_TO_PLOT_MIN_PAD = 20;
 /** Target on-screen size (CSS px) for axis tick labels and Y-axis title after `meet` scaling. */
 const CHART_LABEL_TARGET_CSS_PX = 11;
@@ -91,6 +93,7 @@ export function KpiTitleTrendChart({
   useLayoutEffect(() => {
     const el = hostRef.current;
     if (el == null) return;
+    const insetB = presentation === 'l3' ? L3_INSET_B : INSET.b;
 
     const apply = () => {
       const w = el.clientWidth;
@@ -98,7 +101,7 @@ export function KpiTitleTrendChart({
       if (w < 1 || h < 1) return;
       /** Match viewBox aspect to the slot so uniform `meet` scale uses full width and height (Y uses the frame). */
       const minPlot = 32;
-      const next = Math.max(INSET.t + INSET.b + minPlot, (VB_W * h) / w);
+      const next = Math.max(INSET.t + insetB + minPlot, (VB_W * h) / w);
       setVbH(next);
       setPxPerVbX(w / VB_W);
     };
@@ -107,16 +110,22 @@ export function KpiTitleTrendChart({
     const ro = new ResizeObserver(() => apply());
     ro.observe(el);
     return () => ro.disconnect();
-  }, []);
+  }, [presentation]);
 
   const { xLabels, rates, valueIsPercent, yAxisTitle: yAxisTitleFromSeries } = series;
   const isL3 = presentation === 'l3';
+  /** L3: narrower left band so plot / x-axis line up with modal legend + filter row. */
+  const yAxisTitleBand = isL3 ? 11 : Y_AXIS_TITLE_BAND;
+  const yTickTextX = Y_LABEL_X + yAxisTitleBand;
+  const yTickToPlotMinPad = isL3 ? 3 : Y_TICK_TO_PLOT_MIN_PAD;
+  const yLabelToGridGap = isL3 ? 2 : Y_LABEL_TO_GRID_GAP;
+  const plotLeftOuterCap = isL3 ? 30 : 56;
   const yAxisTitleLabel =
     yAxisTitleProp ?? yAxisTitleFromSeries ?? (valueIsPercent ? 'Rate (%)' : 'Value');
   const labelTargetCssPx = isL3 ? 9 : CHART_LABEL_TARGET_CSS_PX;
   /** SVG `fontSize` in viewBox units so labels render at ~target px on screen (`meet` scales by `pxPerVbX`). */
   const fsVb = Math.min(26, Math.max(5.5, labelTargetCssPx / Math.max(pxPerVbX, 1e-6)));
-  const yTitleMidX = Y_LABEL_X + Y_AXIS_TITLE_BAND / 2;
+  const yTitleMidX = Y_LABEL_X + yAxisTitleBand / 2;
   const n = Math.max(1, rates.length);
   const minR = Math.min(...rates);
   const maxR = Math.max(...rates);
@@ -132,15 +141,17 @@ export function KpiTitleTrendChart({
   /** Reserve width after Y-axis title band + tick labels plus gap before the plot / grid. */
   const maxLabelLen = Math.max(...yTickStrs.map((s) => s.length));
   const plotLeft = Math.min(
-    56 + Y_TICK_TEXT_X,
+    plotLeftOuterCap + yTickTextX,
     Math.max(
-      Y_TICK_TEXT_X + Y_TICK_TO_PLOT_MIN_PAD,
-      Y_TICK_TEXT_X + Math.ceil(maxLabelLen * fsVb * 0.52 + Y_LABEL_TO_GRID_GAP),
+      yTickTextX + yTickToPlotMinPad,
+      yTickTextX + Math.ceil(maxLabelLen * fsVb * 0.52 + yLabelToGridGap),
     ),
   );
-  const plotRight = VB_W - PLOT_INSET_R;
+  const insetB = isL3 ? L3_INSET_B : INSET.b;
+  const plotInsetR = isL3 ? L3_PLOT_INSET_R : PLOT_INSET_R;
+  const plotRight = VB_W - plotInsetR;
   const plotW = plotRight - plotLeft;
-  const plotH = vbH - INSET.t - INSET.b;
+  const plotH = vbH - INSET.t - insetB;
 
   /** ViewBox width of hover band (same scale as bars / pxPerVbX). */
   const hoverBandW = HOVER_BAND_CSS_PX / Math.max(pxPerVbX, 1e-6);
@@ -267,7 +278,7 @@ export function KpiTitleTrendChart({
         ref={svgRef}
         className="block h-full min-h-0 w-full max-w-full flex-1 overflow-visible"
         viewBox={`0 0 ${VB_W} ${vbH}`}
-        preserveAspectRatio="xMidYMid meet"
+        preserveAspectRatio={isL3 ? 'xMinYMid meet' : 'xMidYMid meet'}
         overflow="visible"
         role="img"
         aria-label="KPI trend chart"
@@ -312,7 +323,7 @@ export function KpiTitleTrendChart({
                 vectorEffect="non-scaling-stroke"
               />
               <text
-                x={Y_TICK_TEXT_X}
+                x={yTickTextX}
                 y={yy}
                 dominantBaseline="middle"
                 textAnchor="start"
@@ -395,7 +406,7 @@ export function KpiTitleTrendChart({
             <text
               key={i}
               x={x}
-              y={vbH - 9}
+              y={vbH - (isL3 ? 14 : 9)}
               textAnchor="middle"
               fill={isL3 && i === n - 1 ? '#333333' : isL3 ? '#999999' : '#707070'}
               fontSize={fsVb}

@@ -19,7 +19,7 @@ import { ViewportSizePresetBar } from './components/ViewportSizePresetBar';
 import { DashboardNavDrawer } from './components/DashboardNavDrawer';
 import { PublishDashboardModal, type PublishFormValues } from './components/PublishDashboardModal';
 import { ShareDashboardModal } from './components/ShareDashboardModal';
-import { KpiL3DetailModal } from './components/KpiL3DetailModal';
+import { KpiL3DetailModal, type KpiL3DashboardKpiRailItem } from './components/KpiL3DetailModal';
 import { formatKpiCanvasPeriodLabel } from './components/TimelinePickerField';
 import type { BannerSectionUpdates } from './components/EditorDashboardBanner';
 import { WidgetPickerPanel } from './components/WidgetPickerPanel';
@@ -1033,6 +1033,25 @@ export default function App() {
     };
   }, [kpiL3DetailTarget, sections]);
 
+  const kpiL3DashboardKpiRail = useMemo((): KpiL3DashboardKpiRailItem[] => {
+    const out: KpiL3DashboardKpiRailItem[] = [];
+    for (const sec of sections) {
+      for (const w of sec.widgets) {
+        if (w.placeholder || !widgetUsesKpiCanvasPresentation(w.templateId)) continue;
+        const kpiDemo = widgetKpiDemoMetric(w.templateId);
+        out.push({
+          sectionId: sec.id,
+          instanceId: w.instanceId,
+          label: getWidgetDisplayLabel(w.templateId, w.label),
+          catalogEyebrow: widgetCatalogEyebrow(w.templateId),
+          valueDemo: kpiDemo.value,
+          valueUnit: kpiDemo.unit,
+        });
+      }
+    }
+    return out;
+  }, [sections]);
+
   const handleRemoveTemplateFromPicker = useCallback((template: WidgetTemplate) => {
     setSections((prev) => {
       const beforeSlots = collectWidgetSlotsForTemplate(prev, template.id);
@@ -1390,6 +1409,12 @@ export default function App() {
             periodContextLabel={formatKpiCanvasPeriodLabel(editorTimeline)}
             kpiTimelineValue={editorTimeline}
             dashboardScope={dashboardScopeMerged}
+            dashboardKpiRail={kpiL3DashboardKpiRail}
+            activeDashboardKpi={{
+              sectionId: kpiL3DetailTarget.sectionId,
+              instanceId: kpiL3DetailTarget.instanceId,
+            }}
+            onSelectDashboardKpi={handleOpenKpiL3Detail}
           />
         ) : null}
 

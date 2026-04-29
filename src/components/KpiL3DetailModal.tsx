@@ -6,19 +6,71 @@ import {
   IconChevronDown,
   IconChevronLeft,
   IconChevronRight,
+  IconClose,
   IconDownload,
+  IconLayoutGrid,
 } from './Icons';
 import { KpiL3TrendTable, type KpiL3TrendTableColumnKey, type KpiL3TrendTableRow } from './KpiL3TrendTable';
 import type { DashboardGlobalState } from '../types';
-import { getL3BreakdownDimensions, resolvePartnerLocations, type L3BreakdownDimension } from '../dashboardScope';
+import {
+  DASHBOARD_NSQIP_SPECIALTY_COUNT,
+  getL3BreakdownDimensions,
+  isAllPartnersSelected,
+  isMultiPartnerMode,
+  isSpecialtyNarrowed,
+  locationOptionsForPartners,
+  resolvePartnerLocations,
+  type L3BreakdownDimension,
+} from '../dashboardScope';
 import { PARTNER_SCOPE_OPTIONS } from '../data/headerSelectOptions';
 import { QUALITY_NSQIP_SPECIALTIES } from '../data/widgets';
 import { KpiTitleTrendChart } from './canvas/KpiTitleTrendChart';
 import { splitKpiValueAndUnit } from './canvas/canvasWidgetKpiParts';
+import { PartnerScopePickerField } from './PartnerScopePickerField';
+import { SpecialityPickerField } from './SpecialityPickerField';
 import { ToggleGroup } from './ToggleGroup';
 
-/** Demo total aligned to OBIS2.0 L3 Figma ([394:2214](https://www.figma.com/design/2Z3gqwUnoKnsm6U5aQ1Xp2/OBIS2.0?node-id=394-2214)). */
+/** L3 shell — [OBIS2.0 · 1899:5341](https://www.figma.com/design/2Z3gqwUnoKnsm6U5aQ1Xp2/OBIS2.0?node-id=1899-5341). */
 const DEMO_RECORD_TOTAL = 2518;
+
+/** Demo salt from modal partner + specialty scope (L3-only; does not write back to the editor). */
+function demoSaltFromModalScope(partners: readonly string[], specialtyIds: readonly string[]): number {
+  const s = `${[...partners].sort().join('\u0000')}\u0001${[...specialtyIds].sort().join('\u0000')}`;
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < s.length; i += 1) {
+    h ^= s.charCodeAt(i)!;
+    h = Math.imul(h, 16777619) >>> 0;
+  }
+  return h || 1;
+}
+
+function L3MiniSparkline({ values, className }: { values: readonly number[]; className?: string }) {
+  const w = 32;
+  const h = 16;
+  const pad = 1;
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
+  const n = values.length;
+  const points = values
+    .map((v, i) => {
+      const x = pad + (n <= 1 ? w / 2 : (i / (n - 1)) * (w - pad * 2));
+      const y = pad + (1 - (v - min) / range) * (h - pad * 2);
+      return `${x},${y}`;
+    })
+    .join(' ');
+  return (
+    <svg
+      viewBox={`0 0 ${w} ${h}`}
+      width={32}
+      height={16}
+      className={['shrink-0 text-[#f96c50]', className].filter(Boolean).join(' ')}
+      aria-hidden
+    >
+      <polyline fill="none" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round" points={points} />
+    </svg>
+  );
+}
 
 /** Demo surgical service lines — not KPI catalog / domain labels. */
 const DEMO_SURGICAL_SPECIALTIES = [
@@ -62,12 +114,54 @@ const DEMO_ATTENDING_SURGEONS = [
   'R. Nguyen, MD',
 ] as const;
 
-const L3_CHART_LEGEND = [
-  { label: 'Plastics', dot: 'bg-[#e85d9a]' },
-  { label: 'General', dot: 'bg-[#f96c50]' },
-  { label: 'Neurosurgery', dot: 'bg-[#e6332a]' },
-  { label: 'Orthopedics', dot: 'bg-[#9ca3af]' },
+/** Series chip colors — cycle when more than four labels. */
+const L3_LEGEND_DOT_CLASSES = [
+  'bg-[#e85d9a]',
+  'bg-[#e6332a]',
+  'bg-[#9ca3af]',
+  'bg-[#f96c50]',
+  'bg-[#6366f1]',
+  'bg-[#22c55e]',
 ] as const;
+
+function partnerLegendLabels(partners: readonly string[]): string[] {
+  if (partners.length === 0) return [...PARTNER_SCOPE_OPTIONS].slice(0, 4);
+  if (isAllPartnersSelected(partners)) return [...PARTNER_SCOPE_OPTIONS].slice(0, 4);
+  return [...partners].slice(0, 6);
+}
+
+function locationLegendLabels(scope: DashboardGlobalState, partners: readonly string[]): string[] {
+  if (scope.locationLabels.length > 0) return [...scope.locationLabels].slice(0, 6);
+  return locationOptionsForPartners(partners).slice(0, 6);
+}
+
+function specialtyLegendLabels(specialtyIds: readonly string[]): string[] {
+  if (specialtyIds.length === 0 || specialtyIds.length >= DASHBOARD_NSQIP_SPECIALTY_COUNT) {
+    return QUALITY_NSQIP_SPECIALTIES.slice(0, 4).map((s) => s.label);
+  }
+  return specialtyIds
+    .map((id) => QUALITY_NSQIP_SPECIALTIES.find((s) => s.id === id)?.label ?? id)
+    .slice(0, 6);
+}
+
+/** First drilldown dimension drives chart series labels (see `getL3BreakdownDimensions`). */
+function chartLegendForPrimaryDimension(
+  primary: L3BreakdownDimension | undefined,
+  scope: DashboardGlobalState,
+): { label: string; dot: string }[] {
+  let labels: string[] = [];
+  if (primary === 'Partner') labels = partnerLegendLabels(scope.partners);
+  else if (primary === 'Location') labels = locationLegendLabels(scope, scope.partners);
+  else if (primary === 'Specialty') labels = specialtyLegendLabels(scope.specialtyIds);
+  else if (primary === 'Surgeon') labels = [...DEMO_ATTENDING_SURGEONS].slice(0, 6);
+  if (labels.length === 0) {
+    labels = QUALITY_NSQIP_SPECIALTIES.slice(0, 3).map((s) => s.label);
+  }
+  return labels.map((label, i) => ({
+    label,
+    dot: L3_LEGEND_DOT_CLASSES[i % L3_LEGEND_DOT_CLASSES.length]!,
+  }));
+}
 
 function formatAvgLengthOfStayCell(n: number, valueIsPercent: boolean): string {
   if (valueIsPercent) return `${n.toFixed(1)}%`;
@@ -80,6 +174,17 @@ function losMetricFromRates(rate: number, prevRate: number, valueIsPercent: bool
   if (Math.abs(d) < 0.04) return { trend: 'neutral', text };
   return d > 0 ? { trend: 'up', text } : { trend: 'down', text };
 }
+
+/** One canvas KPI tile placed on the dashboard — drives L3 left-rail list. */
+export type KpiL3DashboardKpiRailItem = {
+  sectionId: string;
+  instanceId: string;
+  label: string;
+  /** Catalog line under the KPI title (e.g. "Quality · NSQIP"). */
+  catalogEyebrow: string;
+  valueDemo: string;
+  valueUnit?: string;
+};
 
 export type KpiL3DetailModalProps = {
   open: boolean;
@@ -95,6 +200,10 @@ export type KpiL3DetailModalProps = {
   kpiTimelineValue: string;
   /** Editor header filters — drives L3 breakdown column order (mock rows v1). */
   dashboardScope: DashboardGlobalState;
+  /** KPI canvas widgets on this dashboard (section order, then slot order). */
+  dashboardKpiRail: readonly KpiL3DashboardKpiRailItem[];
+  activeDashboardKpi: { sectionId: string; instanceId: string };
+  onSelectDashboardKpi: (sectionId: string, instanceId: string) => void;
 };
 
 function useModalFocusTrap(active: boolean, rootRef: RefObject<HTMLElement | null>) {
@@ -160,6 +269,13 @@ function KpiL3TableToolbar({
         <button
           type="button"
           className="inline-flex size-8 shrink-0 items-center justify-center rounded-xl border border-solid border-[#e8e8e8] bg-white text-[#333333] hover:bg-[#fafafa]"
+          aria-label="Column visibility"
+        >
+          <IconLayoutGrid className="size-[18px]" aria-hidden />
+        </button>
+        <button
+          type="button"
+          className="inline-flex size-8 shrink-0 items-center justify-center rounded-xl border border-solid border-[#e8e8e8] bg-white text-[#333333] hover:bg-[#fafafa]"
           aria-label="Download table"
         >
           <IconDownload className="size-[18px]" />
@@ -198,9 +314,9 @@ function KpiL3TableToolbar({
 }
 
 /**
- * Full-viewport KPI detail (L3) — OBIS2.0 layout from Figma
- * ([394:2183](https://www.figma.com/design/2Z3gqwUnoKnsm6U5aQ1Xp2/OBIS2.0?node-id=394-2183)):
- * header + filters + legend + chart, metric rail, then table toolbar + grid.
+ * Full-viewport KPI detail (L3) — OBIS2.0 layout
+ * ([1899:5341](https://www.figma.com/design/2Z3gqwUnoKnsm6U5aQ1Xp2/OBIS2.0?node-id=1899-5341)):
+ * sidebar specialty list; main column with chart header (title + scope filters + close), grouped chart+metric card, table.
  */
 export function KpiL3DetailModal({
   open,
@@ -215,17 +331,50 @@ export function KpiL3DetailModal({
   periodContextLabel,
   kpiTimelineValue,
   dashboardScope,
+  dashboardKpiRail,
+  activeDashboardKpi,
+  onSelectDashboardKpi,
 }: KpiL3DetailModalProps) {
   const headingId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
   const [chartVariant, setChartVariant] = useState<'line' | 'bar'>('line');
 
+  const partnersEditorKey = useMemo(() => dashboardScope.partners.join('\u0000'), [dashboardScope.partners]);
+  const [l3ModalPartners, setL3ModalPartners] = useState<string[]>(() => [...dashboardScope.partners]);
+
+  useEffect(() => {
+    setL3ModalPartners([...dashboardScope.partners]);
+  }, [partnersEditorKey, dashboardScope.partners]);
+
+  const specialtyIdsEditorKey = useMemo(
+    () => [...dashboardScope.specialtyIds].sort().join('\u0000'),
+    [dashboardScope.specialtyIds],
+  );
+  const [l3ModalSpecialtyIds, setL3ModalSpecialtyIds] = useState<string[]>(() => [...dashboardScope.specialtyIds]);
+
+  useEffect(() => {
+    setL3ModalSpecialtyIds([...dashboardScope.specialtyIds]);
+  }, [specialtyIdsEditorKey, dashboardScope.specialtyIds]);
+
+  const l3DashboardScope = useMemo(
+    (): DashboardGlobalState => ({
+      ...dashboardScope,
+      partners: l3ModalPartners,
+      specialtyIds: l3ModalSpecialtyIds,
+    }),
+    [dashboardScope, l3ModalPartners, l3ModalSpecialtyIds],
+  );
+
   const definitionTrimmed = definition.trim();
   const eyebrowShown = (catalogEyebrow || 'NSQIP').trim();
 
   const breakdownDimensions = useMemo(
-    () => getL3BreakdownDimensions(dashboardScope),
-    [dashboardScope],
+    () => getL3BreakdownDimensions(l3DashboardScope),
+    [l3DashboardScope],
+  );
+  const chartLegendChips = useMemo(
+    () => chartLegendForPrimaryDimension(breakdownDimensions[0], l3DashboardScope),
+    [breakdownDimensions, l3DashboardScope],
   );
   const trendColumns = useMemo(() => trendColumnsForBreakdown(breakdownDimensions), [breakdownDimensions]);
   const breakdownToolbarLead = useMemo(
@@ -233,27 +382,72 @@ export function KpiL3DetailModal({
     [breakdownDimensions],
   );
 
+  const scopePills = useMemo(() => {
+    const p = l3ModalPartners;
+    const partnerLabel =
+      p.length === 0 ? 'All' : isAllPartnersSelected(p) ? 'All' : p.length === 1 ? p[0]! : `${p.length} partners`;
+    const ids = l3ModalSpecialtyIds;
+    const specialtyLabel =
+      ids.length === 0 || ids.length >= DASHBOARD_NSQIP_SPECIALTY_COUNT
+        ? 'All'
+        : ids.length === 1
+          ? QUALITY_NSQIP_SPECIALTIES.find((s) => s.id === ids[0])?.label ?? '1'
+          : `${ids.length}+`;
+    const locLabel =
+      dashboardScope.locationLabels.length === 0
+        ? 'All'
+        : dashboardScope.locationLabels.join(', ');
+    const timeLabel =
+      kpiTimelineValue.trim().length > 0
+        ? periodContextLabel.replace(/^As of\s+/i, '') || periodContextLabel
+        : 'MoM';
+    return [
+      { id: 'partner' as const, label: 'Partner', value: partnerLabel },
+      { id: 'specialty' as const, label: 'Specialty', value: specialtyLabel },
+      { id: 'locations' as const, label: 'Locations', value: locLabel },
+      { id: 'surgeons' as const, label: 'Surgeons', value: 'All' },
+      { id: 'timeline' as const, label: 'Timeline', value: timeLabel },
+    ];
+  }, [l3ModalPartners, l3ModalSpecialtyIds, dashboardScope, kpiTimelineValue, periodContextLabel]);
+
   const resolvedPairs = useMemo(
-    () => resolvePartnerLocations(dashboardScope.partners, dashboardScope.locationLabels),
-    [dashboardScope.partners, dashboardScope.locationLabels],
+    () => resolvePartnerLocations(l3ModalPartners, dashboardScope.locationLabels),
+    [l3ModalPartners, dashboardScope.locationLabels],
   );
 
   const scopedSpecialtyLabel = useMemo(() => {
-    if (dashboardScope.specialtyIds.length !== 1) return undefined;
-    return QUALITY_NSQIP_SPECIALTIES.find((s) => s.id === dashboardScope.specialtyIds[0])?.label;
-  }, [dashboardScope.specialtyIds]);
+    if (l3ModalSpecialtyIds.length !== 1) return undefined;
+    return QUALITY_NSQIP_SPECIALTIES.find((s) => s.id === l3ModalSpecialtyIds[0])?.label;
+  }, [l3ModalSpecialtyIds]);
+
+  const tableToolbarLead = useMemo(() => {
+    if (!isSpecialtyNarrowed(l3ModalSpecialtyIds)) return 'All Specialities';
+    const n = l3ModalSpecialtyIds.length;
+    if (n === 1 && scopedSpecialtyLabel) return scopedSpecialtyLabel;
+    if (n > 1) return `${n} specialities`;
+    return breakdownToolbarLead.replace(/^Drilldown:\s*/, '') || 'Selected scope';
+  }, [l3ModalSpecialtyIds, scopedSpecialtyLabel, breakdownToolbarLead]);
 
   const { value: valueDisplay, unit: unitDisplay } = useMemo(
     () => splitKpiValueAndUnit(valueDemo, valueUnit),
     [valueDemo, valueUnit],
   );
 
+  const l3DemoSalt = useMemo(
+    () => demoSaltFromModalScope(l3ModalPartners, l3ModalSpecialtyIds),
+    [l3ModalPartners, l3ModalSpecialtyIds],
+  );
+
   const trendTableSeries = useMemo(() => {
     const anchorParsed = parseFloat(String(valueDisplay).replace(/,/g, ''));
     const anchorRate = Number.isFinite(anchorParsed) ? anchorParsed : 2.1;
     const valueIsPercent = unitDisplay === '%' || valueDemo.trim().endsWith('%');
-    return getKpiTrendSeriesFromTimeline(kpiTimelineValue, { anchorRate, valueIsPercent });
-  }, [valueDemo, valueUnit, kpiTimelineValue, valueDisplay]);
+    return getKpiTrendSeriesFromTimeline(kpiTimelineValue, {
+      anchorRate,
+      valueIsPercent,
+      demoSalt: l3DemoSalt,
+    });
+  }, [valueDemo, valueUnit, kpiTimelineValue, valueDisplay, l3DemoSalt]);
 
   const trendTableRows = useMemo((): KpiL3TrendTableRow[] => {
     const fallbackPartners =
@@ -331,138 +525,254 @@ export function KpiL3DetailModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={headingId}
-        className="relative z-10 flex min-h-[min(480px,78dvh)] max-h-[min(96dvh,1040px)] w-full max-w-7xl flex-col overflow-hidden rounded-[24px] bg-white shadow-[var(--shadow-panel)]"
+        className="relative z-10 flex w-full max-w-[min(1392px,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-[24px] bg-white shadow-[var(--shadow-panel)] max-lg:max-h-[min(96dvh,1040px)] max-lg:min-h-[min(520px,88dvh)] lg:h-[min(814px,calc(100dvh-3rem))] lg:max-h-[min(814px,calc(100dvh-3rem))] lg:min-h-[min(640px,calc(100dvh-3rem))] lg:flex-row"
       >
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          <div className="flex min-h-0 w-full min-w-0 shrink-0 flex-col border-b border-solid border-[#ebebeb] sm:min-h-[min(480px,54dvh)] sm:flex-row">
-            <div className="flex min-h-[min(260px,42dvh)] min-w-0 flex-1 flex-col gap-3.5 overflow-hidden p-6 sm:min-h-0 sm:p-[30px]">
-              <header className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div className="min-w-0 flex-1">
-                  <h2
-                    id={headingId}
-                    className="font-['Poppins',sans-serif] text-2xl font-semibold leading-normal text-[#333333]"
-                  >
-                    {titleShown}
-                  </h2>
-                  <div className="mt-1 inline-flex items-center rounded-md bg-white px-1 py-0.5">
-                    <span className="font-['Inter',sans-serif] text-[10px] font-medium leading-3 text-[#707070]">
-                      {eyebrowShown}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex shrink-0 flex-row flex-wrap items-center gap-2.5" data-kpi-title-toggle>
-                  <button
-                    type="button"
-                    className="inline-flex items-center gap-2.5 rounded-xl border border-solid border-[#e8e8e8] bg-white px-3 py-2 font-['Inter',sans-serif] text-xs text-[#333333] hover:bg-[#fafafa]"
-                    aria-haspopup="listbox"
-                    aria-label="Filter by Speciality"
-                  >
-                    <span className="whitespace-nowrap">
-                      <span className="font-normal">Speciality: </span>
-                      <span className="font-medium">All</span>
-                    </span>
-                    <IconChevronDown className="size-4 shrink-0 opacity-80" />
-                  </button>
-                  <button
-                    type="button"
-                    className="inline-flex items-center gap-2.5 rounded-xl border border-solid border-[#e8e8e8] bg-white px-3 py-2 font-['Inter',sans-serif] text-xs text-[#333333] hover:bg-[#fafafa]"
-                    aria-haspopup="listbox"
-                    aria-label="Filter by surgeons"
-                  >
-                    <span className="whitespace-nowrap">
-                      <span className="font-normal">Surgeons: </span>
-                      <span className="font-medium">All</span>
-                    </span>
-                    <IconChevronDown className="size-4 shrink-0 opacity-80" />
-                  </button>
-                  <ToggleGroup
-                    aria-label="KPI chart view"
-                    variant="kpiTitle"
-                    value={chartVariant}
-                    onValueChange={setChartVariant}
-                    segments={[
-                      { value: 'line' as const, label: 'Line chart', icon: <IconChartLine className="shrink-0" aria-hidden /> },
-                      { value: 'bar' as const, label: 'Bar chart', icon: <IconChartBar className="shrink-0" aria-hidden /> },
-                    ]}
-                  />
-                </div>
-              </header>
-
-              <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
-                <div className="flex shrink-0 flex-row flex-wrap items-center justify-end gap-2 font-['Inter',sans-serif] text-[11px] font-normal leading-3 tracking-tight text-[#777777]">
-                  {L3_CHART_LEGEND.map((item) => (
-                    <span key={item.label} className="inline-flex items-center gap-1.5 whitespace-nowrap">
-                      <span className={`size-2 shrink-0 rounded-full ${item.dot}`} aria-hidden />
-                      {item.label}
-                    </span>
-                  ))}
-                </div>
-                <div className="min-h-[min(200px,32dvh)] min-w-0 flex-1 sm:min-h-0" data-kpi-expand-skip-interaction>
-                  <KpiTitleTrendChart
-                    series={trendTableSeries}
-                    variant={chartVariant}
-                    presentation="l3"
-                    className="min-h-0 w-full min-w-0 flex-1"
-                    yAxisTitle={trendTableSeries.valueIsPercent ? `${displayLabel} (%)` : 'Days'}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <aside className="box-border flex w-full min-w-0 shrink-0 flex-col border-t border-solid border-[#ebebeb] p-3.5 sm:w-[300px] sm:border-l sm:border-t-0 sm:border-[#ebebeb]">
-              <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl bg-[#f5f5f5] sm:rounded-2xl">
-                <div className="flex min-h-0 flex-1 flex-col justify-between gap-6 px-6 py-6 sm:px-[30px] sm:py-6">
-                  <div className="shrink-0">
-                    <div className="flex flex-wrap items-end justify-between gap-2">
-                      <div className="flex min-w-0 flex-wrap items-end gap-1.5">
-                        <span className="font-['Poppins',sans-serif] text-[2rem] font-semibold leading-none tracking-tight text-[#333333] tabular-nums sm:text-[32px]">
-                          {valueDisplay}
-                        </span>
-                        {unitDisplay ? (
-                          <span className="font-['Poppins',sans-serif] pb-0.5 text-base font-normal leading-none text-[#333333]/70">
-                            {unitDisplay}
+        {/* Left rail — Figma `sidebar` 316px, inset content x=8 */}
+        <aside className="hidden shrink-0 border-b border-solid border-[#ebebeb] bg-white lg:flex lg:w-[316px] lg:flex-col lg:border-b-0 lg:border-r">
+          <div className="pb-6 pl-6 pr-6 pt-6">
+            <p className="font-['Poppins',sans-serif] text-[18px] font-semibold leading-snug tracking-tight text-[#333333]">
+              Report name
+            </p>
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6">
+            <ul className="flex list-none flex-col gap-2 p-0">
+              {dashboardKpiRail.length === 0 ? (
+                <li className="rounded-xl px-2 py-3 font-['Inter',sans-serif] text-[13px] leading-5 text-[#707070]">
+                  No KPI metrics on this dashboard yet.
+                </li>
+              ) : (
+                dashboardKpiRail.map((item, i) => {
+                  const selected =
+                    item.sectionId === activeDashboardKpi.sectionId &&
+                    item.instanceId === activeDashboardKpi.instanceId;
+                  const { value: rowValue, unit: rowUnit } = splitKpiValueAndUnit(item.valueDemo, item.valueUnit);
+                  const rowParsed = parseFloat(String(rowValue).replace(/,/g, ''));
+                  const rowMetricShown = Number.isFinite(rowParsed) ? rowParsed.toFixed(1) : rowValue;
+                  const sparkVals = Array.from({ length: 6 }, (_, j) => {
+                    const idx = (j + i * 2) % Math.max(1, trendTableSeries.rates.length);
+                    return trendTableSeries.rates[idx] ?? 2 + i * 0.08;
+                  });
+                  return (
+                    <li key={`${item.sectionId}-${item.instanceId}`}>
+                      <button
+                        type="button"
+                        onClick={() => onSelectDashboardKpi(item.sectionId, item.instanceId)}
+                        className={[
+                          'flex min-h-[52px] w-full items-center gap-3 rounded-xl px-4 py-2 text-left transition-colors',
+                          selected ? 'bg-[#f5f5f5]' : 'bg-white hover:bg-[#fafafa]',
+                        ].join(' ')}
+                      >
+                        <div className="min-w-0 flex-1">
+                          <span
+                            className={[
+                              "block min-w-0 truncate font-['Inter',sans-serif] text-[13px] leading-5 text-[#333333]",
+                              selected ? 'font-medium' : 'font-normal',
+                            ].join(' ')}
+                          >
+                            {item.label}
                           </span>
-                        ) : null}
-                      </div>
-                      {metricDeltaChip ? (
-                        <div className="inline-flex h-6 shrink-0 items-center justify-center rounded-lg bg-[#ffe0e0] px-2">
-                          <span className="font-['Inter',sans-serif] text-[10px] font-semibold leading-none text-[#db4949]">
-                            {metricDeltaChip}
+                          <span className="mt-0.5 block min-w-0 truncate font-['Inter',sans-serif] text-[10px] font-normal leading-[15px] text-[#707070]">
+                            {(item.catalogEyebrow || '').trim() || eyebrowShown}
                           </span>
                         </div>
+                        <div className="flex shrink-0 items-baseline gap-0.5 tabular-nums">
+                          <span
+                            className={[
+                              "font-['Inter',sans-serif] text-[13px] leading-5 text-[#333333]",
+                              selected ? 'font-medium' : 'font-normal',
+                            ].join(' ')}
+                          >
+                            {rowMetricShown}
+                          </span>
+                          {rowUnit ? (
+                            <span
+                              className={[
+                                "font-['Inter',sans-serif] text-[13px] leading-5 text-[#333333]",
+                                selected ? 'font-medium' : 'font-normal',
+                              ].join(' ')}
+                            >
+                              {rowUnit}
+                            </span>
+                          ) : null}
+                        </div>
+                        <L3MiniSparkline values={sparkVals} />
+                      </button>
+                    </li>
+                  );
+                })
+              )}
+            </ul>
+          </div>
+        </aside>
+
+        {/* Main column — Figma `content area` (~1064px) */}
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-visible bg-white">
+          {/* Title row spans full main column; chart + metric sit in one grouped panel below */}
+          <header className="flex shrink-0 flex-col gap-3 border-b border-solid border-[#ebebeb] px-[24px] pb-4 pt-6 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+            <div className="shrink-0">
+              <h2
+                id={headingId}
+                className="whitespace-nowrap font-['Poppins',sans-serif] text-[24px] font-semibold leading-[28px] tracking-tight text-[#333333]"
+              >
+                {titleShown}
+              </h2>
+              <p className="mt-1 font-['Inter',sans-serif] text-xs font-normal leading-3 text-[#707070]">{eyebrowShown}</p>
+            </div>
+            <div className="flex min-w-0 flex-1 flex-wrap items-center justify-start gap-2 sm:justify-end">
+              {/* Same control as TopBar; scope is read from editor — Apply here does not persist (no-op handler). */}
+              <PartnerScopePickerField
+                layout="toolbar"
+                label="Report scope"
+                selectedPartners={l3ModalPartners}
+                onPartnersChange={setL3ModalPartners}
+                scopeChipTrigger
+                chipLead={scopePills.find((pill) => pill.id === 'partner')?.label}
+                chipValue={scopePills.find((pill) => pill.id === 'partner')?.value}
+              />
+              <SpecialityPickerField
+                layout="toolbar"
+                label="Speciality"
+                selectedSpecialties={l3ModalSpecialtyIds}
+                onSpecialitiesChange={setL3ModalSpecialtyIds}
+                selectionMode={isMultiPartnerMode(l3ModalPartners) ? 'single' : 'multi'}
+                scopeChipTrigger
+                chipLead={scopePills.find((pill) => pill.id === 'specialty')?.label}
+                chipValue={scopePills.find((pill) => pill.id === 'specialty')?.value}
+              />
+              {scopePills
+                .filter((pill) => pill.id !== 'partner' && pill.id !== 'specialty')
+                .map((pill) => (
+                  <button
+                    key={pill.id}
+                    type="button"
+                    className="inline-flex h-8 max-w-[min(100%,11rem)] shrink-0 items-center gap-1 rounded-[12px] border border-solid border-[#e8e8e8] bg-white px-3 text-left transition-colors hover:bg-[#fafafa]"
+                  >
+                    <span className="min-w-0 truncate font-['Inter',sans-serif] text-[10px] leading-[15px] text-[#707070]">
+                      <span className="text-[#707070]">{pill.label}:</span>{' '}
+                      <span className="font-medium text-[#333333]">{pill.value}</span>
+                    </span>
+                    <IconChevronDown className="size-4 shrink-0 text-[#333333]/55" aria-hidden />
+                  </button>
+                ))}
+              <button
+                type="button"
+                onClick={onClose}
+                className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg bg-transparent text-[#333333] transition-colors hover:bg-[#f5f5f5]"
+                aria-label="Close detail"
+              >
+                <IconClose className="size-[18px]" aria-hidden />
+              </button>
+            </div>
+          </header>
+
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-visible px-6 pb-5 pt-4">
+            {/* White chart band + grey metric rail — avoid overflow-hidden so SVG strokes / axis labels are not clipped */}
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-visible rounded-xl lg:flex-row lg:items-stretch lg:gap-6">
+              <div className="flex min-h-[min(280px,42dvh)] min-w-0 flex-1 flex-col gap-3 overflow-visible bg-white lg:min-h-0 lg:h-full">
+                {/* Figma `chart legend container` 32px + chart; px-0 — outer chart wrapper supplies horizontal gutter */}
+                <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col gap-3 px-0 pb-2 pt-1" data-kpi-title-toggle>
+                  <div className="flex min-h-8 shrink-0 flex-wrap items-start justify-between gap-2">
+                    <div
+                      className="flex min-w-0 flex-1 flex-wrap items-start gap-2"
+                      aria-label={`Chart series by ${breakdownDimensions[0] ?? 'scope'}`}
+                    >
+                      {chartLegendChips.map((item, chipIdx) => (
+                        <button
+                          key={`${item.label}-${chipIdx}`}
+                          type="button"
+                          className="inline-flex h-6 max-w-full shrink-0 items-center gap-1.5 rounded-full border border-solid border-[#e8e8e8] bg-white py-0 pl-2.5 pr-1 font-['Inter',sans-serif] text-[11px] font-medium leading-3 text-[#333333]"
+                        >
+                          <span className={`size-2 shrink-0 rounded-full ${item.dot}`} aria-hidden />
+                          <span className="max-w-[6.5rem] truncate">{item.label}</span>
+                          <span
+                            className="inline-flex size-4 shrink-0 items-center justify-center rounded-full text-[12px] leading-none text-[#707070] hover:bg-[#f0f0f0]"
+                            aria-hidden
+                          >
+                            ×
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                    <ToggleGroup
+                      aria-label="KPI chart view"
+                      variant="kpiTitle"
+                      value={chartVariant}
+                      onValueChange={setChartVariant}
+                      className="shrink-0"
+                      segments={[
+                        { value: 'line' as const, label: 'Line chart', icon: <IconChartLine className="shrink-0" aria-hidden /> },
+                        { value: 'bar' as const, label: 'Bar chart', icon: <IconChartBar className="shrink-0" aria-hidden /> },
+                      ]}
+                    />
+                  </div>
+                  <div
+                    className="flex min-h-0 min-w-0 flex-1 overflow-visible"
+                    data-kpi-expand-skip-interaction
+                  >
+                    <KpiTitleTrendChart
+                      series={trendTableSeries}
+                      variant={chartVariant}
+                      presentation="l3"
+                      className="h-full min-h-0 max-h-full w-full min-w-0 flex-1"
+                      yAxisTitle={
+                        trendTableSeries.valueIsPercent ? `${displayLabel} (%)` : `${displayLabel} (Days)`
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <aside className="box-border flex w-full shrink-0 flex-col overflow-hidden rounded-[16px] bg-[#f5f5f5] lg:h-full lg:w-[240px]">
+                <div className="flex min-h-0 flex-1 flex-col p-6">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="flex min-w-0 flex-wrap items-end gap-1">
+                      <span className="font-['Poppins',sans-serif] text-[1.75rem] font-semibold leading-none tracking-tight text-[#333333] tabular-nums sm:text-[30px]">
+                        {valueDisplay}
+                      </span>
+                      {unitDisplay ? (
+                        <span className="font-['Poppins',sans-serif] pb-0.5 text-sm font-normal leading-none text-[#333333]/70">
+                          {unitDisplay}
+                        </span>
                       ) : null}
                     </div>
-                    <p className="mt-2 font-['Inter',sans-serif] text-[10px] font-medium leading-3 text-[#707070]">
-                      {periodContextLabel}
-                    </p>
+                    {metricDeltaChip ? (
+                      <div className="inline-flex h-6 shrink-0 items-center justify-center rounded-md bg-[#ffe0e0] px-2">
+                        <span className="font-['Inter',sans-serif] text-[10px] font-semibold leading-none text-[#db4949]">
+                          {metricDeltaChip}
+                        </span>
+                      </div>
+                    ) : null}
                   </div>
-                  <div className="min-h-0 flex-1 overflow-y-auto">
-                    <p className="font-['Inter',sans-serif] text-base font-normal leading-[23px] tracking-tight text-[#333333] break-words">
+                  <p className="mt-2 font-['Inter',sans-serif] text-[10px] font-medium leading-3 text-[#707070]">
+                    {periodContextLabel}
+                  </p>
+                  <div className="mt-6 min-h-0 flex-1 overflow-y-auto">
+                    <p className="font-['Inter',sans-serif] text-[13px] font-normal leading-snug tracking-tight text-[#333333] break-words">
                       {definitionTrimmed ||
                         'This metric measures the average number of days patients stay in the hospital after surgery, reflecting recovery speed and efficiency. Lower values are preferred, typically ~2–4 days depending on procedure.'}
                     </p>
                   </div>
                 </div>
-              </div>
-            </aside>
+              </aside>
+            </div>
           </div>
 
           <div
-            className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 px-6 pb-6 pt-4 sm:px-8 sm:pb-8 sm:pt-3"
+            className="flex min-h-0 min-w-0 max-h-[min(360px,46dvh)] shrink-0 flex-col gap-3 overflow-hidden px-[24px] pb-6 pt-5"
             data-kpi-l3-trend-table
           >
             <KpiL3TableToolbar
               recordTotal={DEMO_RECORD_TOTAL}
               pageStart={1}
               pageEnd={pageEnd}
-              breakdownLead={breakdownToolbarLead}
+              breakdownLead={tableToolbarLead}
             />
             <KpiL3TrendTable
               caption={`${displayLabel} detail rows for the selected timeline`}
               rows={trendTableRows}
               columns={trendColumns}
               visualVariant="figma"
-              scrollAreaClassName="max-h-[min(240px,30dvh)]"
+              scrollAreaClassName="max-h-[min(240px,32dvh)]"
               className="min-h-0 flex-1"
             />
           </div>

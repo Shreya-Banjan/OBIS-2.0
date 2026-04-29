@@ -321,6 +321,12 @@ type SpecialityPickerFieldProps = {
   selectionMode?: SelectionMode;
   layout?: Layout;
   toolbarPair?: boolean;
+  /**
+   * Renders the trigger like the L3 header scope chips (h-8, 12px radius); the speciality menu is unchanged.
+   */
+  scopeChipTrigger?: boolean;
+  chipLead?: string;
+  chipValue?: string;
 };
 
 export function SpecialityPickerField({
@@ -330,6 +336,9 @@ export function SpecialityPickerField({
   selectionMode = 'multi',
   layout = 'default',
   toolbarPair = false,
+  scopeChipTrigger = false,
+  chipLead = 'Specialty',
+  chipValue: chipValueProp,
 }: SpecialityPickerFieldProps) {
   const labelId = useId();
   const anchorRef = useRef<HTMLDivElement>(null);
@@ -350,6 +359,10 @@ export function SpecialityPickerField({
   const [pairOverflowCompact, setPairOverflowCompact] = useState(false);
 
   useLayoutEffect(() => {
+    if (scopeChipTrigger) {
+      setPairOverflowCompact(false);
+      return;
+    }
     if (orderedSelection.length !== 2) {
       setPairOverflowCompact(false);
       return;
@@ -368,10 +381,11 @@ export function SpecialityPickerField({
       ro.disconnect();
       window.removeEventListener('resize', measure);
     };
-  }, [orderedSelection, showSelectedLook]);
+  }, [orderedSelection, showSelectedLook, scopeChipTrigger]);
 
-  const wrapClass =
-    layout === 'toolbar'
+  const wrapClass = scopeChipTrigger
+    ? 'relative w-auto min-w-0 max-w-[min(100%,11rem)] shrink-0'
+    : layout === 'toolbar'
       ? toolbarPair
         ? 'relative min-w-0 flex-1 basis-0'
         : 'relative w-auto min-w-0 max-w-[min(100%,16rem)] shrink-0 sm:min-w-[11rem]'
@@ -381,6 +395,9 @@ export function SpecialityPickerField({
   if (orderedSelection.length === 2 && pairOverflowCompact) {
     triggerSummary = `${orderedSelection[0]} +1`;
   }
+
+  const chipDisplayValue =
+    chipValueProp ?? (hasSelection ? triggerSummary : HEADER_SPECIALITY_PLACEHOLDER);
 
   return (
     <div ref={anchorRef} className={wrapClass}>
@@ -393,36 +410,57 @@ export function SpecialityPickerField({
         aria-expanded={open}
         aria-labelledby={labelId}
         onClick={() => setOpen((o) => !o)}
-        style={showSelectedLook ? { color: '#333333', fontWeight: 500 } : undefined}
-        className={[
-          "flex h-12 min-h-12 w-full min-w-0 cursor-pointer items-center justify-between gap-2 rounded-xl border border-[#e4e4e4] bg-[#FFF] px-4 py-0 text-left font-['Poppins',sans-serif] text-sm outline-none ring-[var(--color-brand-primary)] transition-[background-color,border-color,box-shadow,color] duration-150 hover:border-[var(--color-brand-primary)] hover:bg-[#FFF] hover:shadow-none hover:ring-2 hover:ring-[var(--ring-input-focus)] focus-visible:border-[var(--color-brand-primary)] focus-visible:ring-2 focus-visible:ring-[var(--ring-input-focus)] active:border-[var(--color-brand-primary)] active:ring-2 active:ring-[var(--ring-input-focus)] sm:min-w-[11rem]",
-          layout === 'toolbar' ? (toolbarPair ? 'w-full min-w-0' : 'w-full min-w-[11rem]') : 'w-full sm:w-auto',
-          showSelectedLook ? '' : 'font-normal text-[#999999]',
-        ].join(' ')}
+        style={scopeChipTrigger ? undefined : showSelectedLook ? { color: '#333333', fontWeight: 500 } : undefined}
+        className={
+          scopeChipTrigger
+            ? 'inline-flex h-8 w-full min-w-0 max-w-full cursor-pointer items-center justify-between gap-1 rounded-[12px] border border-solid border-[#e8e8e8] bg-white px-3 py-0 text-left outline-none transition-colors hover:bg-[#fafafa] focus-visible:ring-2 focus-visible:ring-[var(--ring-input-focus)]'
+            : [
+                "flex h-12 min-h-12 w-full min-w-0 cursor-pointer items-center justify-between gap-2 rounded-xl border border-[#e4e4e4] bg-[#FFF] px-4 py-0 text-left font-['Poppins',sans-serif] text-sm outline-none ring-[var(--color-brand-primary)] transition-[background-color,border-color,box-shadow,color] duration-150 hover:border-[var(--color-brand-primary)] hover:bg-[#FFF] hover:shadow-none hover:ring-2 hover:ring-[var(--ring-input-focus)] focus-visible:border-[var(--color-brand-primary)] focus-visible:ring-2 focus-visible:ring-[var(--ring-input-focus)] active:border-[var(--color-brand-primary)] active:ring-2 active:ring-[var(--ring-input-focus)] sm:min-w-[11rem]",
+                layout === 'toolbar' ? (toolbarPair ? 'w-full min-w-0' : 'w-full min-w-[11rem]') : 'w-full sm:w-auto',
+                showSelectedLook ? '' : 'font-normal text-[#999999]',
+              ].join(' ')
+        }
       >
-        <div ref={labelSlotRef} className="relative min-h-0 min-w-0 flex-1">
-          <span className="block min-w-0 truncate font-['Poppins',sans-serif] text-sm">
-            {hasSelection ? triggerSummary : HEADER_SPECIALITY_PLACEHOLDER}
-          </span>
-          {orderedSelection.length === 2 ? (
-            <span
-              ref={pairFullMeasureRef}
-              aria-hidden
-              className={[
-                'pointer-events-none invisible absolute left-0 top-0 whitespace-nowrap font-[\'Poppins\',sans-serif] text-sm',
-                showSelectedLook ? 'font-medium' : 'font-normal',
-              ].join(' ')}
-            >
-              {orderedSelection.join(', ')}
+        {scopeChipTrigger ? (
+          <>
+            <span className="min-w-0 truncate font-['Inter',sans-serif] text-[10px] leading-[15px] text-[#707070]">
+              <span className="text-[#707070]">{chipLead}:</span>{' '}
+              <span className="font-medium text-[#333333]">{chipDisplayValue}</span>
             </span>
-          ) : null}
-        </div>
-        <IconChevronDown
-          className={`pointer-events-none size-5 shrink-0 text-[var(--color-brand-primary)] transition-transform duration-150 ${
-            open ? 'rotate-180' : ''
-          }`}
-          aria-hidden
-        />
+            <IconChevronDown
+              className={`pointer-events-none size-4 shrink-0 text-[#333333]/55 transition-transform duration-150 ${
+                open ? 'rotate-180' : ''
+              }`}
+              aria-hidden
+            />
+          </>
+        ) : (
+          <>
+            <div ref={labelSlotRef} className="relative min-h-0 min-w-0 flex-1">
+              <span className="block min-w-0 truncate font-['Poppins',sans-serif] text-sm">
+                {hasSelection ? triggerSummary : HEADER_SPECIALITY_PLACEHOLDER}
+              </span>
+              {orderedSelection.length === 2 ? (
+                <span
+                  ref={pairFullMeasureRef}
+                  aria-hidden
+                  className={[
+                    'pointer-events-none invisible absolute left-0 top-0 whitespace-nowrap font-[\'Poppins\',sans-serif] text-sm',
+                    showSelectedLook ? 'font-medium' : 'font-normal',
+                  ].join(' ')}
+                >
+                  {orderedSelection.join(', ')}
+                </span>
+              ) : null}
+            </div>
+            <IconChevronDown
+              className={`pointer-events-none size-5 shrink-0 text-[var(--color-brand-primary)] transition-transform duration-150 ${
+                open ? 'rotate-180' : ''
+              }`}
+              aria-hidden
+            />
+          </>
+        )}
       </button>
       <SpecialityMenu
         open={open}
