@@ -4,6 +4,15 @@ export const HEADER_SCOPE_PLACEHOLDER = 'Select Partner(s)';
 /** Shown as the closed `<select>` label until the user picks a timeline (not listed in the menu). */
 export const HEADER_TIMELINE_PLACEHOLDER = 'Timeline';
 
+/** Shown on the closed Speciality control until the user picks an option (same pattern as partners). */
+export const HEADER_SPECIALITY_PLACEHOLDER = 'Select Speciality';
+
+/** First listbox row — include all NSQIP specialties. */
+export const HEADER_SPECIALITY_ALL_LABEL = 'All Specialities';
+
+/** Closed location control until the user picks (partner-scoped options). */
+export const HEADER_LOCATION_PLACEHOLDER = 'Select Location(s)';
+
 /** Partner organizations (header partner control + publish scope). */
 export const PARTNER_SCOPE_OPTIONS = [
   'Banner',

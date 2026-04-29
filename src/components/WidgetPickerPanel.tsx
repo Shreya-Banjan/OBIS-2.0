@@ -308,8 +308,8 @@ function WidgetPickerBody({
                             aria-expanded={qualityNsqipFilterOpen}
                             aria-label={
                               qualityNsqipFilterActive
-                                ? 'Filter NSQIP by speciality, filter active'
-                                : 'Filter NSQIP by speciality'
+                                ? 'Filter NSQIP by Speciality, filter active'
+                                : 'Filter NSQIP by Speciality'
                             }
                             onClick={() => setQualityNsqipFilterOpen((v) => !v)}
                             className={[

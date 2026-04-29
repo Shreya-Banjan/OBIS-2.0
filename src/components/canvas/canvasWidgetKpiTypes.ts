@@ -34,4 +34,6 @@ export type CanvasWidgetKpiTileBaseProps = {
   onOpenKpiL3Detail?: () => void;
   /** When true with `onOpenKpiL3Detail`, L2 body opens the L3 modal instead of toggling row expand. */
   kpiL3DetailOpenEnabled?: boolean;
+  /** Canvas template id — used with dashboard scope flags on the tile shell. */
+  templateId?: string;
 };

@@ -44,12 +44,19 @@ import {
 import type { WidgetTemplate } from './data/widgets';
 import { WidgetLibraryOpenProvider } from './context/WidgetLibraryContext';
 import type {
+  DashboardGlobalState,
   DashboardListLayoutMode,
   DashboardSection,
   PlacedWidget,
   SavedDashboard,
   SectionLayoutPreset,
 } from './types';
+import {
+  defaultDashboardGlobalState,
+  isMultiPartnerMode,
+  locationOptionsForPartners,
+} from './dashboardScope';
+import { DashboardScopeProvider } from './context/DashboardScopeContext';
 import { useEffectiveLayoutWidth } from './useEffectiveLayoutWidth';
 
 const ComponentsPage = lazy(() =>
@@ -443,6 +450,9 @@ export default function App() {
   const [reportTitle, setReportTitle] = useState('Enter Title');
   /** Toolbar timeline; synced to KPI period line on canvas. */
   const [editorTimeline, setEditorTimeline] = useState('');
+  const [selectedPartners, setSelectedPartners] = useState<string[]>([]);
+  const [selectedSpecialtyIds, setSelectedSpecialtyIds] = useState<string[]>([]);
+  const [selectedLocationLabels, setSelectedLocationLabels] = useState<string[]>([]);
   const [publishModalOpen, setPublishModalOpen] = useState(false);
   const [navDrawerOpen, setNavDrawerOpen] = useState(false);
   /** Shared between reports list and editor: simulated viewport width for layout preview. */
@@ -477,17 +487,53 @@ export default function App() {
     [dashboards, activeDashboardId]
   );
 
-  /** Keep the active report’s `sections` (including `layout` on each section) in `dashboards` so reopening the editor is not stuck with an empty snapshot. */
+  const dashboardScopeMerged = useMemo(
+    (): DashboardGlobalState => ({
+      partners: selectedPartners,
+      timeline: editorTimeline,
+      specialtyIds: selectedSpecialtyIds,
+      locationLabels: selectedLocationLabels,
+    }),
+    [selectedPartners, editorTimeline, selectedSpecialtyIds, selectedLocationLabels],
+  );
+
+  const specialtySelectionMode = isMultiPartnerMode(selectedPartners) ? 'single' : 'multi';
+
+  const handlePartnersChange = useCallback((next: string[]) => {
+    setSelectedPartners(next);
+    setSelectedLocationLabels([]);
+    setSelectedSpecialtyIds((prev) => {
+      if (isMultiPartnerMode(next) && prev.length > 1) return [prev[0]!];
+      return prev;
+    });
+  }, []);
+
+  useEffect(() => {
+    const allowed = new Set(locationOptionsForPartners(selectedPartners));
+    setSelectedLocationLabels((prev) => prev.filter((x) => allowed.has(x)));
+  }, [selectedPartners]);
+
+  useEffect(() => {
+    if (!isMultiPartnerMode(selectedPartners)) return;
+    setSelectedLocationLabels((prev) => (prev.length <= 1 ? prev : [prev[0]!]));
+  }, [selectedPartners]);
+
+  /** Keep the active report’s `sections` and header filters in `dashboards` so reopening the editor is not stuck with an empty snapshot. */
   useEffect(() => {
     if (view !== 'editor' || activeDashboardId == null) return;
     setDashboards((prev) =>
       prev.map((d) =>
         d.id === activeDashboardId
-          ? { ...d, sections: cloneSections(sections), updatedAt: Date.now() }
+          ? {
+              ...d,
+              sections: cloneSections(sections),
+              dashboardScope: dashboardScopeMerged,
+              updatedAt: Date.now(),
+            }
           : d
       )
     );
-  }, [view, activeDashboardId, sections]);
+  }, [view, activeDashboardId, sections, dashboardScopeMerged]);
 
   const [autoSaveStatus, setAutoSaveStatus] = useState<AutoSaveIndicator>('idle');
   const autoSaveDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -513,14 +559,25 @@ export default function App() {
         autoSaveDebounceRef.current = null;
       }
     };
-  }, [view, activeDashboardId, sections, reportTitle]);
+  }, [view, activeDashboardId, sections, reportTitle, dashboardScopeMerged]);
 
   const handleOpenDashboard = useCallback((id: string) => {
     const d = dashboards.find((x) => x.id === id);
     if (!d) return;
     setActiveDashboardId(id);
     setReportTitle(d.title);
-    setEditorTimeline('');
+    const scope = d.dashboardScope;
+    if (scope) {
+      setEditorTimeline(scope.timeline ?? '');
+      setSelectedPartners([...scope.partners]);
+      setSelectedSpecialtyIds([...scope.specialtyIds]);
+      setSelectedLocationLabels([...scope.locationLabels]);
+    } else {
+      setEditorTimeline('');
+      setSelectedPartners([]);
+      setSelectedSpecialtyIds([]);
+      setSelectedLocationLabels([]);
+    }
     const next = normalizeDashboardBannerSections(cloneSections(d.sections));
     setSections(next);
     setView('editor');
@@ -606,6 +663,7 @@ export default function App() {
                   ...d,
                   title: reportTitle.trim() || d.title,
                   sections: cloneSections(sections),
+                  dashboardScope: dashboardScopeMerged,
                   updatedAt: Date.now(),
                 }
               : d
@@ -629,7 +687,11 @@ export default function App() {
       setDashboards((prev) => [newDash, ...prev]);
       setActiveDashboardId(id);
       setReportTitle(title);
-      setEditorTimeline('');
+      const empty = defaultDashboardGlobalState('');
+      setEditorTimeline(empty.timeline);
+      setSelectedPartners([...empty.partners]);
+      setSelectedSpecialtyIds([...empty.specialtyIds]);
+      setSelectedLocationLabels([...empty.locationLabels]);
       setSections([]);
       setNewReportModalOpen(false);
       setView('editor');
@@ -638,7 +700,7 @@ export default function App() {
       setWidgetPickReplaceInstanceId(null);
       setAddSectionLayoutOpen(false);
     },
-    [activeDashboardId, reportTitle, sections]
+    [activeDashboardId, reportTitle, sections, dashboardScopeMerged]
   );
 
   const openNewReportModal = useCallback(() => {
@@ -770,6 +832,7 @@ export default function App() {
                   ...d,
                   title: values.title,
                   sections: cloneSections(sections),
+                  dashboardScope: dashboardScopeMerged,
                   updatedAt: Date.now(),
                   status: 'published' as const,
                   scope: values.scope,
@@ -798,7 +861,7 @@ export default function App() {
       setPublishModalOpen(false);
       alert('Layout and publish details copied to clipboard as JSON (demo publish).');
     },
-    [sections, activeDashboardId]
+    [sections, activeDashboardId, dashboardScopeMerged]
   );
 
   /** Flush title + sections to the active dashboard, then return to the list. */
@@ -815,6 +878,7 @@ export default function App() {
                 ...d,
                 title: reportTitle.trim() || d.title,
                 sections: cloneSections(sections),
+                dashboardScope: dashboardScopeMerged,
                 updatedAt: Date.now(),
               }
             : d
@@ -824,7 +888,7 @@ export default function App() {
     setActiveDashboardId(null);
     setDashboardListLayout('tile');
     setView('list');
-  }, [activeDashboardId, reportTitle, sections]);
+  }, [activeDashboardId, reportTitle, sections, dashboardScopeMerged]);
 
   const handleSignOut = useCallback(() => {
     alert('Signed out (demo).');
@@ -1166,6 +1230,7 @@ export default function App() {
       onDragCancel={onDragCancel}
     >
       <WidgetLibraryOpenProvider open={openWidgetPicker}>
+        <DashboardScopeProvider value={dashboardScopeMerged}>
         <AddSectionLayoutModal
           key={addSectionLayoutKey}
           open={addSectionLayoutOpen}
@@ -1213,6 +1278,11 @@ export default function App() {
                       effectiveLayoutWidth={effectiveLayoutWidth}
                       timeline={editorTimeline}
                       onTimelineChange={setEditorTimeline}
+                      selectedPartners={selectedPartners}
+                      onPartnersChange={handlePartnersChange}
+                      selectedSpecialtyIds={selectedSpecialtyIds}
+                      onSpecialtyIdsChange={setSelectedSpecialtyIds}
+                      specialtySelectionMode={specialtySelectionMode}
                       onShare={
                         activeDashboardId && activeReportStatus === 'published'
                           ? () => setShareDashboardId(activeDashboardId)
@@ -1319,9 +1389,11 @@ export default function App() {
             metricDeltaChip={kpiL3DetailPayload.metricDeltaChip}
             periodContextLabel={formatKpiCanvasPeriodLabel(editorTimeline)}
             kpiTimelineValue={editorTimeline}
+            dashboardScope={dashboardScopeMerged}
           />
         ) : null}
 
+        </DashboardScopeProvider>
         <DragOverlay dropAnimation={null}>
           {activePalette ? (
             <div className="flex w-[min(100vw-2rem,16rem)] max-w-full items-center justify-between rounded-xl border border-[#d7d7d7] bg-white px-2 py-3 shadow-[var(--shadow-elevated)] sm:w-64">

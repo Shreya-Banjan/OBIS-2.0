@@ -7,6 +7,7 @@ import { NAV_BURGER_MIN_LAYOUT_WIDTH_PX } from '../layoutUtils';
 import type { SavedDashboard } from '../types';
 import { DashboardStatusBadge } from './DashboardStatusBadge';
 import { PartnerScopePickerField } from './PartnerScopePickerField';
+import { SpecialityPickerField } from './SpecialityPickerField';
 import { TimelinePickerField } from './TimelinePickerField';
 
 type AutoSaveIndicator = 'idle' | 'saving' | 'saved';
@@ -34,6 +35,12 @@ type TopBarProps = {
   /** Timeline control (drives KPI period label on canvas when set to a custom range). */
   timeline: string;
   onTimelineChange: (value: string) => void;
+  selectedPartners: readonly string[];
+  onPartnersChange: (next: string[]) => void;
+  selectedSpecialtyIds: readonly string[];
+  onSpecialtyIdsChange: (next: string[]) => void;
+  /** Multi-partner: single specialty on apply. */
+  specialtySelectionMode: 'single' | 'multi';
 };
 
 export function TopBar({
@@ -50,11 +57,15 @@ export function TopBar({
   effectiveLayoutWidth,
   timeline,
   onTimelineChange,
+  selectedPartners,
+  onPartnersChange,
+  selectedSpecialtyIds,
+  onSpecialtyIdsChange,
+  specialtySelectionMode,
 }: TopBarProps) {
   const [editing, setEditing] = useState(false);
   const [overflowOpen, setOverflowOpen] = useState(false);
   const overflowRootRef = useRef<HTMLDivElement>(null);
-  const [selectedPartners, setSelectedPartners] = useState<string[]>([]);
 
   const isPublished = reportStatus === 'published';
 
@@ -95,8 +106,16 @@ export function TopBar({
         layout="toolbar"
         toolbarPair={narrowLayout}
         label="Report scope"
-        selectedPartners={selectedPartners}
-        onPartnersChange={setSelectedPartners}
+        selectedPartners={[...selectedPartners]}
+        onPartnersChange={onPartnersChange}
+      />
+      <SpecialityPickerField
+        layout="toolbar"
+        toolbarPair={narrowLayout}
+        label="Speciality"
+        selectedSpecialties={[...selectedSpecialtyIds]}
+        onSpecialitiesChange={onSpecialtyIdsChange}
+        selectionMode={specialtySelectionMode}
       />
       <TimelinePickerField
         layout="toolbar"

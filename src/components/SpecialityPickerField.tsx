@@ -1,17 +1,19 @@
 import type { RefObject } from 'react';
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { HEADER_SCOPE_PLACEHOLDER, PARTNER_SCOPE_OPTIONS } from '../data/headerSelectOptions';
+import { HEADER_SPECIALITY_ALL_LABEL, HEADER_SPECIALITY_PLACEHOLDER } from '../data/headerSelectOptions';
+import { QUALITY_NSQIP_SPECIALTIES } from '../data/widgets';
 import { IconCheck, IconChevronDown, IconSearch } from './Icons';
 
-const ALL_PARTNERS = [...PARTNER_SCOPE_OPTIONS];
-const ALL_COUNT = ALL_PARTNERS.length;
-/** Partner menu is slightly wider than the trigger so long names fit; centered under the control. */
-const PARTNER_MENU_MIN_WIDTH_PX = 280;
-const PARTNER_MENU_VIEWPORT_MARGIN_PX = 16;
+const ALL_SPECIALTY_IDS = QUALITY_NSQIP_SPECIALTIES.map((s) => s.id);
+const ALL_COUNT = ALL_SPECIALTY_IDS.length;
 
-function sortPartnersInCatalogOrder(ids: ReadonlySet<string>): string[] {
-  return PARTNER_SCOPE_OPTIONS.filter((p) => ids.has(p));
+/** Match `PartnerScopeMenu` width and stacking. */
+const SPECIALITY_MENU_MIN_WIDTH_PX = 280;
+const SPECIALITY_MENU_VIEWPORT_MARGIN_PX = 16;
+
+function sortSpecialtyIdsInCatalogOrder(ids: ReadonlySet<string>): string[] {
+  return QUALITY_NSQIP_SPECIALTIES.filter((s) => ids.has(s.id)).map((s) => s.id);
 }
 
 function boxStyle(checked: boolean, indeterminate: boolean) {
@@ -22,27 +24,37 @@ function boxStyle(checked: boolean, indeterminate: boolean) {
 }
 
 function summarizeSelection(ids: readonly string[]): string {
-  const ordered = sortPartnersInCatalogOrder(new Set(ids));
-  if (ordered.length === 0) return '';
-  if (ordered.length === ALL_COUNT) return 'All partners';
-  if (ordered.length === 1) return ordered[0]!;
-  if (ordered.length === 2) return ordered.join(', ');
-  const first = ordered[0]!;
-  const extra = ordered.length - 1;
+  const orderedLabels = QUALITY_NSQIP_SPECIALTIES.filter((s) => ids.includes(s.id)).map((s) => s.label);
+  if (orderedLabels.length === 0) return '';
+  if (orderedLabels.length === ALL_COUNT) return HEADER_SPECIALITY_ALL_LABEL;
+  if (orderedLabels.length === 1) return orderedLabels[0]!;
+  if (orderedLabels.length === 2) return orderedLabels.join(', ');
+  const first = orderedLabels[0]!;
+  const extra = orderedLabels.length - 1;
   return `${first} +${extra}`;
 }
 
 type Layout = 'default' | 'toolbar';
 
-type PartnerScopeMenuProps = {
+type SelectionMode = 'single' | 'multi';
+
+type SpecialityMenuProps = {
   open: boolean;
   anchorRef: RefObject<HTMLElement | null>;
   onClose: () => void;
   appliedIds: ReadonlySet<string>;
   onApply: (next: Set<string>) => void;
+  selectionMode: SelectionMode;
 };
 
-function PartnerScopeMenu({ open, anchorRef, onClose, appliedIds, onApply }: PartnerScopeMenuProps) {
+function SpecialityMenu({
+  open,
+  anchorRef,
+  onClose,
+  appliedIds,
+  onApply,
+  selectionMode,
+}: SpecialityMenuProps) {
   const titleId = useId();
   const menuRef = useRef<HTMLDivElement>(null);
   const [draft, setDraft] = useState<Set<string>>(() => new Set(appliedIds));
@@ -56,11 +68,11 @@ function PartnerScopeMenu({ open, anchorRef, onClose, appliedIds, onApply }: Par
     if (!anchor) return;
     const r = anchor.getBoundingClientRect();
     const vw = typeof window !== 'undefined' ? window.innerWidth : r.width;
-    const maxW = Math.max(0, vw - PARTNER_MENU_VIEWPORT_MARGIN_PX * 2);
-    const menuWidth = Math.min(maxW, Math.max(r.width, PARTNER_MENU_MIN_WIDTH_PX));
+    const maxW = Math.max(0, vw - SPECIALITY_MENU_VIEWPORT_MARGIN_PX * 2);
+    const menuWidth = Math.min(maxW, Math.max(r.width, SPECIALITY_MENU_MIN_WIDTH_PX));
     const anchorCenterX = r.left + r.width / 2;
-    const minLeft = PARTNER_MENU_VIEWPORT_MARGIN_PX;
-    const maxLeft = vw - PARTNER_MENU_VIEWPORT_MARGIN_PX - menuWidth;
+    const minLeft = SPECIALITY_MENU_VIEWPORT_MARGIN_PX;
+    const maxLeft = vw - SPECIALITY_MENU_VIEWPORT_MARGIN_PX - menuWidth;
     const left = Math.max(minLeft, Math.min(maxLeft, anchorCenterX - menuWidth / 2));
     setFixedRect({ top: r.bottom + 6, left, width: menuWidth });
   };
@@ -118,37 +130,44 @@ function PartnerScopeMenu({ open, anchorRef, onClose, appliedIds, onApply }: Par
     };
   }, [open, onClose, anchorRef]);
 
-  const filtered = useMemo(() => {
+  const filteredSpecialties = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return ALL_PARTNERS;
-    return ALL_PARTNERS.filter((p) => p.toLowerCase().includes(q));
+    if (!q) return [...QUALITY_NSQIP_SPECIALTIES];
+    return QUALITY_NSQIP_SPECIALTIES.filter((s) => s.label.toLowerCase().includes(q));
   }, [query]);
 
-  const draftAllSelected = draft.size === ALL_COUNT;
+  const showAllRow = selectionMode === 'multi';
+  const draftAllSelected = showAllRow && draft.size === ALL_COUNT;
   const draftNoneSelected = draft.size === 0;
-  const allRowIndeterminate = !draftAllSelected && !draftNoneSelected;
+  const allRowIndeterminate = showAllRow && !draftAllSelected && !draftNoneSelected;
   const allRowChecked = draftAllSelected;
+  const applyBlockedSingle = selectionMode === 'single' && draft.size !== 1;
 
-  const togglePartner = (name: string) => {
+  const toggleSpecialty = (id: string) => {
     setDraft((prev) => {
+      if (selectionMode === 'single') {
+        return new Set(prev.has(id) ? [] : [id]);
+      }
       const next = new Set(prev);
-      if (next.has(name)) next.delete(name);
-      else next.add(name);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   };
 
   const toggleAllRow = () => {
+    if (!showAllRow) return;
     if (draftAllSelected) setDraft(new Set());
-    else setDraft(new Set(ALL_PARTNERS));
+    else setDraft(new Set(ALL_SPECIALTY_IDS));
   };
 
   const onResetClick = () => {
-    setDraft(new Set(ALL_PARTNERS));
+    if (showAllRow) setDraft(new Set(ALL_SPECIALTY_IDS));
+    else setDraft(new Set());
   };
 
   const onApplyClick = () => {
-    if (draftNoneSelected) return;
+    if (draftNoneSelected || applyBlockedSingle) return;
     onApply(new Set(draft));
     onClose();
   };
@@ -175,7 +194,7 @@ function PartnerScopeMenu({ open, anchorRef, onClose, appliedIds, onApply }: Par
           id={titleId}
           className="truncate font-['Poppins',sans-serif] text-sm font-medium leading-5 text-[#333333]"
         >
-          {HEADER_SCOPE_PLACEHOLDER}
+          {HEADER_SPECIALITY_PLACEHOLDER}
         </p>
       </div>
 
@@ -192,52 +211,56 @@ function PartnerScopeMenu({ open, anchorRef, onClose, appliedIds, onApply }: Par
               placeholder="Search"
               autoComplete="off"
               className="min-w-0 flex-1 bg-transparent font-['Inter',sans-serif] text-[13px] font-normal text-[#333333] outline-none placeholder:text-[#999999]"
-              aria-label="Search partners"
+              aria-label="Search specialties"
             />
           </div>
         </div>
 
-        <div
-          className="mt-0 flex cursor-pointer items-center gap-2 border-b border-[#e8e8e8] px-4 pb-2.5 pt-4"
-          role="button"
-          tabIndex={0}
-          onClick={toggleAllRow}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              toggleAllRow();
-            }
-          }}
-        >
-          <span
-            className={[
-              'flex size-4 shrink-0 items-center justify-center rounded-[3px] border border-solid transition-colors',
-              boxStyle(allRowChecked, allRowIndeterminate),
-            ].join(' ')}
-            aria-hidden
+        {showAllRow ? (
+          <div
+            className="mt-0 flex cursor-pointer items-center gap-2 border-b border-[#e8e8e8] px-4 pb-2.5 pt-4"
+            role="button"
+            tabIndex={0}
+            onClick={toggleAllRow}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                toggleAllRow();
+              }
+            }}
           >
-            {allRowIndeterminate ? (
-              <span className="block h-px w-2 rounded-full bg-white" />
-            ) : allRowChecked ? (
-              <IconCheck className="size-2.5 text-white" />
-            ) : null}
-          </span>
-          <span className="min-w-0 flex-1 truncate font-['Inter',sans-serif] text-[13px] font-normal leading-5 text-[#333333]">
-            All partners
-          </span>
-        </div>
+            <span
+              className={[
+                'flex size-4 shrink-0 items-center justify-center rounded-[3px] border border-solid transition-colors',
+                boxStyle(allRowChecked, allRowIndeterminate),
+              ].join(' ')}
+              aria-hidden
+            >
+              {allRowIndeterminate ? (
+                <span className="block h-px w-2 rounded-full bg-white" />
+              ) : allRowChecked ? (
+                <IconCheck className="size-2.5 text-white" />
+              ) : null}
+            </span>
+            <span className="min-w-0 flex-1 truncate font-['Inter',sans-serif] text-[13px] font-normal leading-5 text-[#333333]">
+              {HEADER_SPECIALITY_ALL_LABEL}
+            </span>
+          </div>
+        ) : null}
 
         <div className="max-h-[220px] min-h-0 overflow-y-auto overflow-x-hidden">
-          {filtered.length === 0 ? (
-            <p className="px-4 py-2 font-['Inter',sans-serif] text-[13px] text-[#707070]">No partners match your search.</p>
+          {filteredSpecialties.length === 0 ? (
+            <p className="px-4 py-2 font-['Inter',sans-serif] text-[13px] text-[#707070]">
+              No specialties match your search.
+            </p>
           ) : (
-            filtered.map((p) => {
-              const checked = draft.has(p);
+            filteredSpecialties.map((s) => {
+              const checked = draft.has(s.id);
               return (
                 <button
-                  key={p}
+                  key={s.id}
                   type="button"
-                  onClick={() => togglePartner(p)}
+                  onClick={() => toggleSpecialty(s.id)}
                   className="flex w-full cursor-pointer items-center gap-2 rounded-xl px-4 py-2.5 text-left transition-colors hover:bg-[#f5f5f5]"
                 >
                   <span
@@ -250,7 +273,7 @@ function PartnerScopeMenu({ open, anchorRef, onClose, appliedIds, onApply }: Par
                     {checked ? <IconCheck className="size-2.5 text-white" /> : null}
                   </span>
                   <span className="min-w-0 flex-1 truncate font-['Inter',sans-serif] text-[13px] font-normal leading-5 text-[#333333]">
-                    {p}
+                    {s.label}
                   </span>
                 </button>
               );
@@ -275,7 +298,7 @@ function PartnerScopeMenu({ open, anchorRef, onClose, appliedIds, onApply }: Par
           </button>
           <button
             type="button"
-            disabled={draftNoneSelected}
+            disabled={draftNoneSelected || applyBlockedSingle}
             onClick={onApplyClick}
             className="flex h-8 w-20 shrink-0 items-center justify-center rounded-xl bg-[#333333] font-['Poppins',sans-serif] text-xs font-medium text-white outline-none transition-colors hover:bg-[#1a1a1a] focus-visible:ring-2 focus-visible:ring-[#b6bec8] disabled:cursor-not-allowed disabled:opacity-40"
           >
@@ -289,31 +312,37 @@ function PartnerScopeMenu({ open, anchorRef, onClose, appliedIds, onApply }: Par
   return createPortal(menu, document.body);
 }
 
-type PartnerScopePickerFieldProps = {
+type SpecialityPickerFieldProps = {
   label: string;
-  /** Selected partner names (catalog order preserved in UI summaries). */
-  selectedPartners: readonly string[];
-  onPartnersChange: (next: string[]) => void;
+  /** Selected `QUALITY_NSQIP_SPECIALTIES` ids (catalog order preserved in summaries / on apply). */
+  selectedSpecialties: readonly string[];
+  onSpecialitiesChange: (nextIds: string[]) => void;
+  /** Multi-partner: exactly one specialty on apply. */
+  selectionMode?: SelectionMode;
   layout?: Layout;
   toolbarPair?: boolean;
 };
 
-export function PartnerScopePickerField({
+export function SpecialityPickerField({
   label,
-  selectedPartners,
-  onPartnersChange,
+  selectedSpecialties,
+  onSpecialitiesChange,
+  selectionMode = 'multi',
   layout = 'default',
   toolbarPair = false,
-}: PartnerScopePickerFieldProps) {
+}: SpecialityPickerFieldProps) {
   const labelId = useId();
   const anchorRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
-  const appliedSet = useMemo(() => new Set(selectedPartners), [selectedPartners]);
-  const hasSelection = selectedPartners.length > 0;
+  const appliedSet = useMemo(() => new Set(selectedSpecialties), [selectedSpecialties]);
+  const hasSelection = selectedSpecialties.length > 0;
   const showSelectedLook = hasSelection;
   const orderedSelection = useMemo(
-    () => sortPartnersInCatalogOrder(new Set(selectedPartners)),
-    [selectedPartners],
+    () => sortSpecialtyIdsInCatalogOrder(new Set(selectedSpecialties)).map((id) => {
+      const row = QUALITY_NSQIP_SPECIALTIES.find((s) => s.id === id);
+      return row?.label ?? id;
+    }),
+    [selectedSpecialties],
   );
 
   const labelSlotRef = useRef<HTMLDivElement>(null);
@@ -348,7 +377,7 @@ export function PartnerScopePickerField({
         : 'relative w-auto min-w-0 max-w-[min(100%,16rem)] shrink-0 sm:min-w-[11rem]'
       : 'relative w-full min-w-0 shrink-0 sm:w-auto';
 
-  let triggerSummary = summarizeSelection(selectedPartners);
+  let triggerSummary = summarizeSelection(selectedSpecialties);
   if (orderedSelection.length === 2 && pairOverflowCompact) {
     triggerSummary = `${orderedSelection[0]} +1`;
   }
@@ -373,7 +402,7 @@ export function PartnerScopePickerField({
       >
         <div ref={labelSlotRef} className="relative min-h-0 min-w-0 flex-1">
           <span className="block min-w-0 truncate font-['Poppins',sans-serif] text-sm">
-            {hasSelection ? triggerSummary : HEADER_SCOPE_PLACEHOLDER}
+            {hasSelection ? triggerSummary : HEADER_SPECIALITY_PLACEHOLDER}
           </span>
           {orderedSelection.length === 2 ? (
             <span
@@ -395,13 +424,14 @@ export function PartnerScopePickerField({
           aria-hidden
         />
       </button>
-      <PartnerScopeMenu
+      <SpecialityMenu
         open={open}
         anchorRef={anchorRef}
         onClose={() => setOpen(false)}
         appliedIds={appliedSet}
+        selectionMode={selectionMode}
         onApply={(next) => {
-          onPartnersChange(sortPartnersInCatalogOrder(next));
+          onSpecialitiesChange(sortSpecialtyIdsInCatalogOrder(next));
         }}
       />
     </div>

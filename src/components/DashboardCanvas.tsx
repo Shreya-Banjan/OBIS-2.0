@@ -184,6 +184,7 @@ function SortablePlacedWidget({
       >
         <CanvasWidgetKpiTile
           tier={kpiWidgetTier}
+          templateId={widget.templateId}
           displayLabel={displayLabel}
           displayLabelCompact={widgetKpiLabelCompact(widget.templateId)}
           catalogEyebrow={widgetCatalogEyebrow(widget.templateId)}

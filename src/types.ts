@@ -2,6 +2,14 @@ import type { ReportDomain } from './data/reportDomains';
 
 export type { ReportDomain };
 
+/** Editor-global filters: partners, timeline string, NSQIP specialty ids, location labels. */
+export type DashboardGlobalState = {
+  partners: readonly string[];
+  timeline: string;
+  specialtyIds: readonly string[];
+  locationLabels: readonly string[];
+};
+
 export type PlacedWidget = {
   instanceId: string;
   templateId: string;
@@ -74,4 +82,6 @@ export type SavedDashboard = {
   publishComment?: string;
   /** Optional cover image (data URL) from new-report upload */
   coverImageDataUrl?: string | null;
+  /** Persisted editor header filters (partners, timeline, specialties, locations). */
+  dashboardScope?: DashboardGlobalState;
 };

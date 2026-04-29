@@ -8,7 +8,11 @@ import {
   IconChevronRight,
   IconDownload,
 } from './Icons';
-import { KpiL3TrendTable, type KpiL3TrendTableRow } from './KpiL3TrendTable';
+import { KpiL3TrendTable, type KpiL3TrendTableColumnKey, type KpiL3TrendTableRow } from './KpiL3TrendTable';
+import type { DashboardGlobalState } from '../types';
+import { getL3BreakdownDimensions, resolvePartnerLocations, type L3BreakdownDimension } from '../dashboardScope';
+import { PARTNER_SCOPE_OPTIONS } from '../data/headerSelectOptions';
+import { QUALITY_NSQIP_SPECIALTIES } from '../data/widgets';
 import { KpiTitleTrendChart } from './canvas/KpiTitleTrendChart';
 import { splitKpiValueAndUnit } from './canvas/canvasWidgetKpiParts';
 import { ToggleGroup } from './ToggleGroup';
@@ -29,6 +33,25 @@ const DEMO_SURGICAL_SPECIALTIES = [
   'Plastic Surgery',
   'Otolaryngology',
 ] as const;
+
+function trendColumnsForBreakdown(
+  breakdown: L3BreakdownDimension[],
+): { key: KpiL3TrendTableColumnKey; label: string; align: 'left' | 'right' }[] {
+  const lead: { key: KpiL3TrendTableColumnKey; label: string; align: 'left' | 'right' }[] = [];
+  for (const d of breakdown) {
+    if (d === 'Partner') lead.push({ key: 'partnerScope', label: 'Partner', align: 'left' });
+    if (d === 'Location') lead.push({ key: 'facilityLocation', label: 'Location', align: 'left' });
+    if (d === 'Specialty') lead.push({ key: 'surgicalSpeciality', label: 'Specialty', align: 'left' });
+    if (d === 'Surgeon') lead.push({ key: 'attendingStaffSurgeon', label: 'Attending / Staff Surgeon', align: 'left' });
+  }
+  return [
+    ...lead,
+    { key: 'lmrn', label: 'Lmrn', align: 'left' },
+    { key: 'monthOfYear', label: 'Month of the Year', align: 'left' },
+    { key: 'year', label: 'Year', align: 'left' },
+    { key: 'avgLengthOfStay', label: 'Avg. Length of Stay', align: 'right' },
+  ];
+}
 
 const DEMO_ATTENDING_SURGEONS = [
   'A. Chen, MD',
@@ -70,6 +93,8 @@ export type KpiL3DetailModalProps = {
   metricDeltaChip?: string;
   periodContextLabel: string;
   kpiTimelineValue: string;
+  /** Editor header filters — drives L3 breakdown column order (mock rows v1). */
+  dashboardScope: DashboardGlobalState;
 };
 
 function useModalFocusTrap(active: boolean, rootRef: RefObject<HTMLElement | null>) {
@@ -116,15 +141,19 @@ function KpiL3TableToolbar({
   recordTotal,
   pageStart,
   pageEnd,
+  breakdownLead,
 }: {
   recordTotal: number;
   pageStart: number;
   pageEnd: number;
+  breakdownLead: string;
 }) {
   return (
     <div className="flex w-full min-w-0 flex-row flex-nowrap items-center justify-between gap-3">
       <p className="min-w-0 truncate font-['Poppins',sans-serif] text-base font-semibold leading-normal text-[#333333]">
-        <span>All Specialities — {recordTotal.toLocaleString()} </span>
+        <span>
+          {breakdownLead} — {recordTotal.toLocaleString()}{' '}
+        </span>
         <span className="font-['Poppins',sans-serif] font-normal text-[#707070]">Records</span>
       </p>
       <div className="flex shrink-0 flex-row flex-nowrap items-center gap-2">
@@ -185,6 +214,7 @@ export function KpiL3DetailModal({
   metricDeltaChip,
   periodContextLabel,
   kpiTimelineValue,
+  dashboardScope,
 }: KpiL3DetailModalProps) {
   const headingId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
@@ -192,6 +222,26 @@ export function KpiL3DetailModal({
 
   const definitionTrimmed = definition.trim();
   const eyebrowShown = (catalogEyebrow || 'NSQIP').trim();
+
+  const breakdownDimensions = useMemo(
+    () => getL3BreakdownDimensions(dashboardScope),
+    [dashboardScope],
+  );
+  const trendColumns = useMemo(() => trendColumnsForBreakdown(breakdownDimensions), [breakdownDimensions]);
+  const breakdownToolbarLead = useMemo(
+    () => `Drilldown: ${breakdownDimensions.join(' → ')}`,
+    [breakdownDimensions],
+  );
+
+  const resolvedPairs = useMemo(
+    () => resolvePartnerLocations(dashboardScope.partners, dashboardScope.locationLabels),
+    [dashboardScope.partners, dashboardScope.locationLabels],
+  );
+
+  const scopedSpecialtyLabel = useMemo(() => {
+    if (dashboardScope.specialtyIds.length !== 1) return undefined;
+    return QUALITY_NSQIP_SPECIALTIES.find((s) => s.id === dashboardScope.specialtyIds[0])?.label;
+  }, [dashboardScope.specialtyIds]);
 
   const { value: valueDisplay, unit: unitDisplay } = useMemo(
     () => splitKpiValueAndUnit(valueDemo, valueUnit),
@@ -206,15 +256,27 @@ export function KpiL3DetailModal({
   }, [valueDemo, valueUnit, kpiTimelineValue, valueDisplay]);
 
   const trendTableRows = useMemo((): KpiL3TrendTableRow[] => {
+    const fallbackPartners =
+      PARTNER_SCOPE_OPTIONS.length > 0 ? PARTNER_SCOPE_OPTIONS : (['Demo Partner'] as const);
     return trendTableSeries.xLabels.map((label, i) => {
       const { monthOfYear, year } = monthYearFromTrendXLabel(label);
       const rate = trendTableSeries.rates[i] ?? 0;
       const prevRate = i > 0 ? (trendTableSeries.rates[i - 1] ?? rate) : rate;
       const seed = Math.round(rate * 1000) + i * 7919;
       const lmrn = `LMRN-${String(1000000 + (seed % 8999999)).padStart(7, '0')}`;
+      const pair =
+        resolvedPairs.length > 0
+          ? resolvedPairs[i % resolvedPairs.length]!
+          : {
+              partner: fallbackPartners[i % fallbackPartners.length]!,
+              location: 'Main Campus',
+            };
       return {
         lmrn,
-        surgicalSpeciality: DEMO_SURGICAL_SPECIALTIES[i % DEMO_SURGICAL_SPECIALTIES.length]!,
+        partnerScope: pair.partner,
+        facilityLocation: pair.location,
+        surgicalSpeciality:
+          scopedSpecialtyLabel ?? DEMO_SURGICAL_SPECIALTIES[i % DEMO_SURGICAL_SPECIALTIES.length]!,
         attendingStaffSurgeon: DEMO_ATTENDING_SURGEONS[i % DEMO_ATTENDING_SURGEONS.length]!,
         monthOfYear,
         year,
@@ -222,7 +284,7 @@ export function KpiL3DetailModal({
         losMetric: losMetricFromRates(rate, prevRate, trendTableSeries.valueIsPercent),
       };
     });
-  }, [trendTableSeries]);
+  }, [trendTableSeries, resolvedPairs, scopedSpecialtyLabel]);
 
   const pageEnd = Math.min(20, trendTableRows.length);
 
@@ -293,7 +355,7 @@ export function KpiL3DetailModal({
                     type="button"
                     className="inline-flex items-center gap-2.5 rounded-xl border border-solid border-[#e8e8e8] bg-white px-3 py-2 font-['Inter',sans-serif] text-xs text-[#333333] hover:bg-[#fafafa]"
                     aria-haspopup="listbox"
-                    aria-label="Filter by speciality"
+                    aria-label="Filter by Speciality"
                   >
                     <span className="whitespace-nowrap">
                       <span className="font-normal">Speciality: </span>
@@ -389,10 +451,16 @@ export function KpiL3DetailModal({
             className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 px-6 pb-6 pt-4 sm:px-8 sm:pb-8 sm:pt-3"
             data-kpi-l3-trend-table
           >
-            <KpiL3TableToolbar recordTotal={DEMO_RECORD_TOTAL} pageStart={1} pageEnd={pageEnd} />
+            <KpiL3TableToolbar
+              recordTotal={DEMO_RECORD_TOTAL}
+              pageStart={1}
+              pageEnd={pageEnd}
+              breakdownLead={breakdownToolbarLead}
+            />
             <KpiL3TrendTable
               caption={`${displayLabel} detail rows for the selected timeline`}
               rows={trendTableRows}
+              columns={trendColumns}
               visualVariant="figma"
               scrollAreaClassName="max-h-[min(240px,30dvh)]"
               className="min-h-0 flex-1"

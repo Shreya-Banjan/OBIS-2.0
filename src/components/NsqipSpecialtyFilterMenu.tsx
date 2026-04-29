@@ -124,9 +124,7 @@ export function NsqipSpecialtyFilterMenu({
   };
 
   const onResetClick = () => {
-    const next = new Set(ALL_IDS);
-    onApply(next);
-    onClose();
+    setDraft(new Set(ALL_IDS));
   };
 
   const onApplyClick = () => {
@@ -161,7 +159,7 @@ export function NsqipSpecialtyFilterMenu({
         </p>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-0">
+      <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col gap-0">
         <div className="shrink-0 px-1">
           <div className="flex h-[34px] w-full items-center gap-2 rounded-xl border border-[#e8e8e8] bg-white py-3 pl-2 pr-3">
             <span className="flex size-[19px] shrink-0 items-center justify-center text-[#707070]">
@@ -236,19 +234,26 @@ export function NsqipSpecialtyFilterMenu({
           })}
         </div>
 
-        <div className="flex shrink-0 items-center justify-end gap-3 pr-1 pt-1">
+        <div className="flex w-full min-w-0 shrink-0 items-center justify-end gap-2 px-1 pt-1 sm:gap-3">
           <button
             type="button"
             onClick={onResetClick}
-            className="flex h-8 w-20 items-center justify-center rounded-xl border border-[#d6d6d6] bg-gradient-to-b from-white to-white/60 font-['Poppins',sans-serif] text-xs font-medium text-[#333333] outline-none transition-colors hover:bg-[#fafafa] focus-visible:ring-2 focus-visible:ring-[#b6bec8]"
+            className="flex h-8 shrink-0 items-center justify-center rounded-xl px-3 font-['Poppins',sans-serif] text-xs font-medium text-[var(--color-brand-primary)] outline-none transition-colors hover:bg-[rgba(249,108,80,0.10)] focus-visible:ring-2 focus-visible:ring-[var(--color-brand-primary)]/30"
           >
             Reset
           </button>
           <button
             type="button"
+            onClick={onClose}
+            className="flex h-8 w-20 shrink-0 items-center justify-center rounded-xl border border-[#d6d6d6] bg-gradient-to-b from-white to-white/60 font-['Poppins',sans-serif] text-xs font-medium text-[#333333] outline-none transition-colors hover:bg-[#fafafa] focus-visible:ring-2 focus-visible:ring-[#b6bec8]"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
             disabled={draftNoneSelected}
             onClick={onApplyClick}
-            className="flex h-8 w-20 items-center justify-center rounded-xl bg-[#333333] font-['Poppins',sans-serif] text-xs font-medium text-white outline-none transition-colors hover:bg-[#1a1a1a] focus-visible:ring-2 focus-visible:ring-[#b6bec8] disabled:cursor-not-allowed disabled:opacity-40"
+            className="flex h-8 w-20 shrink-0 items-center justify-center rounded-xl bg-[#333333] font-['Poppins',sans-serif] text-xs font-medium text-white outline-none transition-colors hover:bg-[#1a1a1a] focus-visible:ring-2 focus-visible:ring-[#b6bec8] disabled:cursor-not-allowed disabled:opacity-40"
           >
             Apply
           </button>

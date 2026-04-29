@@ -16,6 +16,10 @@ export type KpiL3LosMetric = {
 
 export type KpiL3TrendTableRow = {
   lmrn: string;
+  /** Breakdown: partner column (mock / resolved). */
+  partnerScope?: string;
+  /** Breakdown: location column. */
+  facilityLocation?: string;
   surgicalSpeciality: string;
   attendingStaffSurgeon: string;
   monthOfYear: string;
@@ -25,7 +29,8 @@ export type KpiL3TrendTableRow = {
   losMetric?: KpiL3LosMetric;
 };
 
-type ColumnKey = Exclude<keyof KpiL3TrendTableRow, 'losMetric'>;
+export type KpiL3TrendTableColumnKey = Exclude<keyof KpiL3TrendTableRow, 'losMetric'>;
+type ColumnKey = KpiL3TrendTableColumnKey;
 
 const COLUMNS: readonly { key: ColumnKey; label: string; align: 'left' | 'right' }[] = [
   { key: 'lmrn', label: 'LMRN', align: 'left' },
@@ -53,6 +58,8 @@ export type KpiL3TrendTableProps = {
   className?: string;
   /** `figma` matches OBIS2.0 L3 data grid chrome (rounded header row, sort hints, LOS arrows). */
   visualVariant?: 'legacy' | 'figma';
+  /** When set, replaces default column order (e.g. L3 breakdown). Keys must exist on each row. */
+  columns?: readonly { key: KpiL3TrendTableColumnKey; label: string; align: 'left' | 'right' }[];
 };
 
 const thCellCore =
@@ -107,9 +114,10 @@ export function KpiL3TrendTable({
   scrollAreaClassName = 'max-h-[min(200px,26dvh)]',
   className,
   visualVariant = 'legacy',
+  columns: columnsOverride,
 }: KpiL3TrendTableProps) {
   const figma = visualVariant === 'figma';
-  const colSpec = figma ? FIGMA_COLUMNS : COLUMNS;
+  const colSpec = columnsOverride ?? (figma ? FIGMA_COLUMNS : COLUMNS);
   const nCols = colSpec.length;
   const scrollRef = useRef<HTMLDivElement>(null);
   const tableRef = useRef<HTMLTableElement>(null);
@@ -241,7 +249,7 @@ export function KpiL3TrendTable({
                     .join(' ')}
                 >
                   {colSpec.map((col, colIdx) => {
-                    const v = row[col.key];
+                    const v = row[col.key] ?? '';
                     const isFirst = colIdx === 0;
                     const isLastCol = colIdx === nCols - 1;
                     const roundedBl = !figma && last && isFirst ? 'rounded-bl-[var(--radius-canvas)]' : '';
@@ -295,7 +303,9 @@ export function KpiL3TrendTable({
                       .join(' ');
 
                     const inner =
-                      col.key === 'surgicalSpeciality' ? (
+                      col.key === 'surgicalSpeciality' ||
+                      col.key === 'partnerScope' ||
+                      col.key === 'facilityLocation' ? (
                         <span className="line-clamp-2 break-words" title={v}>
                           {v}
                         </span>

@@ -1,17 +1,14 @@
 import type { RefObject } from 'react';
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { HEADER_SCOPE_PLACEHOLDER, PARTNER_SCOPE_OPTIONS } from '../data/headerSelectOptions';
+import { HEADER_LOCATION_PLACEHOLDER } from '../data/headerSelectOptions';
 import { IconCheck, IconChevronDown, IconSearch } from './Icons';
 
-const ALL_PARTNERS = [...PARTNER_SCOPE_OPTIONS];
-const ALL_COUNT = ALL_PARTNERS.length;
-/** Partner menu is slightly wider than the trigger so long names fit; centered under the control. */
-const PARTNER_MENU_MIN_WIDTH_PX = 280;
-const PARTNER_MENU_VIEWPORT_MARGIN_PX = 16;
+const MENU_MIN_WIDTH_PX = 280;
+const MENU_VIEWPORT_MARGIN_PX = 16;
 
-function sortPartnersInCatalogOrder(ids: ReadonlySet<string>): string[] {
-  return PARTNER_SCOPE_OPTIONS.filter((p) => ids.has(p));
+function sortLocationsInCatalogOrder(ids: ReadonlySet<string>, catalog: readonly string[]): string[] {
+  return catalog.filter((loc) => ids.has(loc));
 }
 
 function boxStyle(checked: boolean, indeterminate: boolean) {
@@ -21,10 +18,11 @@ function boxStyle(checked: boolean, indeterminate: boolean) {
   return 'border-[#d6d6d6] bg-white text-transparent';
 }
 
-function summarizeSelection(ids: readonly string[]): string {
-  const ordered = sortPartnersInCatalogOrder(new Set(ids));
+function summarizeLocationSelection(ids: readonly string[], catalog: readonly string[]): string {
+  const ordered = sortLocationsInCatalogOrder(new Set(ids), catalog);
+  const allCount = catalog.length;
   if (ordered.length === 0) return '';
-  if (ordered.length === ALL_COUNT) return 'All partners';
+  if (allCount > 0 && ordered.length === allCount) return 'All locations';
   if (ordered.length === 1) return ordered[0]!;
   if (ordered.length === 2) return ordered.join(', ');
   const first = ordered[0]!;
@@ -34,15 +32,27 @@ function summarizeSelection(ids: readonly string[]): string {
 
 type Layout = 'default' | 'toolbar';
 
-type PartnerScopeMenuProps = {
+type LocationScopeMenuProps = {
   open: boolean;
   anchorRef: RefObject<HTMLElement | null>;
   onClose: () => void;
   appliedIds: ReadonlySet<string>;
   onApply: (next: Set<string>) => void;
+  /** Intersection of partner location lists; drives rows and “all”. */
+  availableLocations: readonly string[];
+  /** 1 = multi-partner (single location only); Infinity-style large = single-partner multi. */
+  maxSelections: number;
 };
 
-function PartnerScopeMenu({ open, anchorRef, onClose, appliedIds, onApply }: PartnerScopeMenuProps) {
+function LocationScopeMenu({
+  open,
+  anchorRef,
+  onClose,
+  appliedIds,
+  onApply,
+  availableLocations,
+  maxSelections,
+}: LocationScopeMenuProps) {
   const titleId = useId();
   const menuRef = useRef<HTMLDivElement>(null);
   const [draft, setDraft] = useState<Set<string>>(() => new Set(appliedIds));
@@ -50,17 +60,23 @@ function PartnerScopeMenu({ open, anchorRef, onClose, appliedIds, onApply }: Par
   const [fixedRect, setFixedRect] = useState({ top: 0, left: 0, width: 0 });
   const appliedRef = useRef(appliedIds);
   appliedRef.current = appliedIds;
+  const catalogRef = useRef(availableLocations);
+  catalogRef.current = availableLocations;
+
+  const allCatalog = useMemo(() => [...availableLocations], [availableLocations]);
+  const ALL_COUNT = allCatalog.length;
+  const showAllRow = maxSelections > 1 && ALL_COUNT > 0;
 
   const updateFixedPosition = () => {
     const anchor = anchorRef.current;
     if (!anchor) return;
     const r = anchor.getBoundingClientRect();
     const vw = typeof window !== 'undefined' ? window.innerWidth : r.width;
-    const maxW = Math.max(0, vw - PARTNER_MENU_VIEWPORT_MARGIN_PX * 2);
-    const menuWidth = Math.min(maxW, Math.max(r.width, PARTNER_MENU_MIN_WIDTH_PX));
+    const maxW = Math.max(0, vw - MENU_VIEWPORT_MARGIN_PX * 2);
+    const menuWidth = Math.min(maxW, Math.max(r.width, MENU_MIN_WIDTH_PX));
     const anchorCenterX = r.left + r.width / 2;
-    const minLeft = PARTNER_MENU_VIEWPORT_MARGIN_PX;
-    const maxLeft = vw - PARTNER_MENU_VIEWPORT_MARGIN_PX - menuWidth;
+    const minLeft = MENU_VIEWPORT_MARGIN_PX;
+    const maxLeft = vw - MENU_VIEWPORT_MARGIN_PX - menuWidth;
     const left = Math.max(minLeft, Math.min(maxLeft, anchorCenterX - menuWidth / 2));
     setFixedRect({ top: r.bottom + 6, left, width: menuWidth });
   };
@@ -120,35 +136,45 @@ function PartnerScopeMenu({ open, anchorRef, onClose, appliedIds, onApply }: Par
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return ALL_PARTNERS;
-    return ALL_PARTNERS.filter((p) => p.toLowerCase().includes(q));
-  }, [query]);
+    if (!q) return allCatalog;
+    return allCatalog.filter((p) => p.toLowerCase().includes(q));
+  }, [query, allCatalog]);
 
-  const draftAllSelected = draft.size === ALL_COUNT;
+  const draftAllSelected = showAllRow && draft.size === ALL_COUNT;
   const draftNoneSelected = draft.size === 0;
-  const allRowIndeterminate = !draftAllSelected && !draftNoneSelected;
+  const allRowIndeterminate = showAllRow && !draftAllSelected && !draftNoneSelected;
   const allRowChecked = draftAllSelected;
 
-  const togglePartner = (name: string) => {
+  const toggleLocation = (name: string) => {
     setDraft((prev) => {
+      if (maxSelections === 1) {
+        return new Set(prev.has(name) ? [] : [name]);
+      }
       const next = new Set(prev);
       if (next.has(name)) next.delete(name);
-      else next.add(name);
+      else {
+        if (next.size >= maxSelections) return next;
+        next.add(name);
+      }
       return next;
     });
   };
 
   const toggleAllRow = () => {
+    if (!showAllRow) return;
     if (draftAllSelected) setDraft(new Set());
-    else setDraft(new Set(ALL_PARTNERS));
+    else setDraft(new Set(allCatalog));
   };
 
   const onResetClick = () => {
-    setDraft(new Set(ALL_PARTNERS));
+    if (showAllRow) setDraft(new Set(allCatalog));
+    else if (maxSelections === 1) setDraft(new Set());
+    else setDraft(new Set(allCatalog));
   };
 
   const onApplyClick = () => {
     if (draftNoneSelected) return;
+    if (maxSelections === 1 && draft.size > 1) return;
     onApply(new Set(draft));
     onClose();
   };
@@ -175,7 +201,7 @@ function PartnerScopeMenu({ open, anchorRef, onClose, appliedIds, onApply }: Par
           id={titleId}
           className="truncate font-['Poppins',sans-serif] text-sm font-medium leading-5 text-[#333333]"
         >
-          {HEADER_SCOPE_PLACEHOLDER}
+          {HEADER_LOCATION_PLACEHOLDER}
         </p>
       </div>
 
@@ -192,44 +218,52 @@ function PartnerScopeMenu({ open, anchorRef, onClose, appliedIds, onApply }: Par
               placeholder="Search"
               autoComplete="off"
               className="min-w-0 flex-1 bg-transparent font-['Inter',sans-serif] text-[13px] font-normal text-[#333333] outline-none placeholder:text-[#999999]"
-              aria-label="Search partners"
+              aria-label="Search locations"
             />
           </div>
         </div>
 
-        <div
-          className="mt-0 flex cursor-pointer items-center gap-2 border-b border-[#e8e8e8] px-4 pb-2.5 pt-4"
-          role="button"
-          tabIndex={0}
-          onClick={toggleAllRow}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              toggleAllRow();
-            }
-          }}
-        >
-          <span
-            className={[
-              'flex size-4 shrink-0 items-center justify-center rounded-[3px] border border-solid transition-colors',
-              boxStyle(allRowChecked, allRowIndeterminate),
-            ].join(' ')}
-            aria-hidden
+        {showAllRow ? (
+          <div
+            className="mt-0 flex cursor-pointer items-center gap-2 border-b border-[#e8e8e8] px-4 pb-2.5 pt-4"
+            role="button"
+            tabIndex={0}
+            onClick={toggleAllRow}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                toggleAllRow();
+              }
+            }}
           >
-            {allRowIndeterminate ? (
-              <span className="block h-px w-2 rounded-full bg-white" />
-            ) : allRowChecked ? (
-              <IconCheck className="size-2.5 text-white" />
-            ) : null}
-          </span>
-          <span className="min-w-0 flex-1 truncate font-['Inter',sans-serif] text-[13px] font-normal leading-5 text-[#333333]">
-            All partners
-          </span>
-        </div>
+            <span
+              className={[
+                'flex size-4 shrink-0 items-center justify-center rounded-[3px] border border-solid transition-colors',
+                boxStyle(allRowChecked, allRowIndeterminate),
+              ].join(' ')}
+              aria-hidden
+            >
+              {allRowIndeterminate ? (
+                <span className="block h-px w-2 rounded-full bg-white" />
+              ) : allRowChecked ? (
+                <IconCheck className="size-2.5 text-white" />
+              ) : null}
+            </span>
+            <span className="min-w-0 flex-1 truncate font-['Inter',sans-serif] text-[13px] font-normal leading-5 text-[#333333]">
+              All locations
+            </span>
+          </div>
+        ) : null}
 
         <div className="max-h-[220px] min-h-0 overflow-y-auto overflow-x-hidden">
-          {filtered.length === 0 ? (
-            <p className="px-4 py-2 font-['Inter',sans-serif] text-[13px] text-[#707070]">No partners match your search.</p>
+          {ALL_COUNT === 0 ? (
+            <p className="px-4 py-2 font-['Inter',sans-serif] text-[13px] text-[#707070]">
+              Select partner(s) to see shared locations.
+            </p>
+          ) : filtered.length === 0 ? (
+            <p className="px-4 py-2 font-['Inter',sans-serif] text-[13px] text-[#707070]">
+              No locations match your search.
+            </p>
           ) : (
             filtered.map((p) => {
               const checked = draft.has(p);
@@ -237,7 +271,7 @@ function PartnerScopeMenu({ open, anchorRef, onClose, appliedIds, onApply }: Par
                 <button
                   key={p}
                   type="button"
-                  onClick={() => togglePartner(p)}
+                  onClick={() => toggleLocation(p)}
                   className="flex w-full cursor-pointer items-center gap-2 rounded-xl px-4 py-2.5 text-left transition-colors hover:bg-[#f5f5f5]"
                 >
                   <span
@@ -289,31 +323,36 @@ function PartnerScopeMenu({ open, anchorRef, onClose, appliedIds, onApply }: Par
   return createPortal(menu, document.body);
 }
 
-type PartnerScopePickerFieldProps = {
+type LocationPickerFieldProps = {
   label: string;
-  /** Selected partner names (catalog order preserved in UI summaries). */
-  selectedPartners: readonly string[];
-  onPartnersChange: (next: string[]) => void;
+  selectedLocations: readonly string[];
+  onLocationsChange: (next: string[]) => void;
+  /** Labels available for current partner selection (intersection). */
+  availableLocations: readonly string[];
+  maxSelections: number;
   layout?: Layout;
   toolbarPair?: boolean;
 };
 
-export function PartnerScopePickerField({
+export function LocationPickerField({
   label,
-  selectedPartners,
-  onPartnersChange,
+  selectedLocations,
+  onLocationsChange,
+  availableLocations,
+  maxSelections,
   layout = 'default',
   toolbarPair = false,
-}: PartnerScopePickerFieldProps) {
+}: LocationPickerFieldProps) {
   const labelId = useId();
   const anchorRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
-  const appliedSet = useMemo(() => new Set(selectedPartners), [selectedPartners]);
-  const hasSelection = selectedPartners.length > 0;
+  const appliedSet = useMemo(() => new Set(selectedLocations), [selectedLocations]);
+  const hasSelection = selectedLocations.length > 0;
   const showSelectedLook = hasSelection;
+  const catalog = useMemo(() => [...availableLocations], [availableLocations]);
   const orderedSelection = useMemo(
-    () => sortPartnersInCatalogOrder(new Set(selectedPartners)),
-    [selectedPartners],
+    () => sortLocationsInCatalogOrder(new Set(selectedLocations), catalog),
+    [selectedLocations, catalog],
   );
 
   const labelSlotRef = useRef<HTMLDivElement>(null);
@@ -348,10 +387,12 @@ export function PartnerScopePickerField({
         : 'relative w-auto min-w-0 max-w-[min(100%,16rem)] shrink-0 sm:min-w-[11rem]'
       : 'relative w-full min-w-0 shrink-0 sm:w-auto';
 
-  let triggerSummary = summarizeSelection(selectedPartners);
+  let triggerSummary = summarizeLocationSelection(selectedLocations, catalog);
   if (orderedSelection.length === 2 && pairOverflowCompact) {
     triggerSummary = `${orderedSelection[0]} +1`;
   }
+
+  const disabled = catalog.length === 0;
 
   return (
     <div ref={anchorRef} className={wrapClass}>
@@ -363,17 +404,19 @@ export function PartnerScopePickerField({
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-labelledby={labelId}
-        onClick={() => setOpen((o) => !o)}
+        disabled={disabled}
+        onClick={() => !disabled && setOpen((o) => !o)}
         style={showSelectedLook ? { color: '#333333', fontWeight: 500 } : undefined}
         className={[
           "flex h-12 min-h-12 w-full min-w-0 cursor-pointer items-center justify-between gap-2 rounded-xl border border-[#e4e4e4] bg-[#FFF] px-4 py-0 text-left font-['Poppins',sans-serif] text-sm outline-none ring-[var(--color-brand-primary)] transition-[background-color,border-color,box-shadow,color] duration-150 hover:border-[var(--color-brand-primary)] hover:bg-[#FFF] hover:shadow-none hover:ring-2 hover:ring-[var(--ring-input-focus)] focus-visible:border-[var(--color-brand-primary)] focus-visible:ring-2 focus-visible:ring-[var(--ring-input-focus)] active:border-[var(--color-brand-primary)] active:ring-2 active:ring-[var(--ring-input-focus)] sm:min-w-[11rem]",
           layout === 'toolbar' ? (toolbarPair ? 'w-full min-w-0' : 'w-full min-w-[11rem]') : 'w-full sm:w-auto',
           showSelectedLook ? '' : 'font-normal text-[#999999]',
+          disabled ? 'cursor-not-allowed opacity-50' : '',
         ].join(' ')}
       >
         <div ref={labelSlotRef} className="relative min-h-0 min-w-0 flex-1">
           <span className="block min-w-0 truncate font-['Poppins',sans-serif] text-sm">
-            {hasSelection ? triggerSummary : HEADER_SCOPE_PLACEHOLDER}
+            {hasSelection ? triggerSummary : HEADER_LOCATION_PLACEHOLDER}
           </span>
           {orderedSelection.length === 2 ? (
             <span
@@ -395,13 +438,15 @@ export function PartnerScopePickerField({
           aria-hidden
         />
       </button>
-      <PartnerScopeMenu
+      <LocationScopeMenu
         open={open}
         anchorRef={anchorRef}
         onClose={() => setOpen(false)}
         appliedIds={appliedSet}
+        availableLocations={catalog}
+        maxSelections={maxSelections}
         onApply={(next) => {
-          onPartnersChange(sortPartnersInCatalogOrder(next));
+          onLocationsChange(sortLocationsInCatalogOrder(next, catalog));
         }}
       />
     </div>

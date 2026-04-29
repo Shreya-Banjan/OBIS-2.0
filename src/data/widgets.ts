@@ -29,6 +29,13 @@ export type WidgetTemplate = {
   kpiDemoUnit?: string;
   /** Optional delta chip after the unit (Figma 716:4262). */
   kpiDemoDeltaChip?: string;
+  /** When set, canvas may apply matching `DashboardGlobalState` dimensions (ignore unsupported). */
+  supportsDashboardScope?: {
+    partner?: boolean;
+    location?: boolean;
+    specialty?: boolean;
+    timeline?: boolean;
+  };
 };
 
 /** Program / registry under a clinical section (e.g. NSQIP, CQM) — OBIS2.0 widget picker (Figma node 401:7723). */
@@ -56,6 +63,15 @@ export const QUALITY_NSQIP_SPECIALTIES = [
 
 export const QUALITY_NSQIP_SPECIALTY_IDS: readonly string[] = QUALITY_NSQIP_SPECIALTIES.map((s) => s.id);
 
+const NSQIP_KPI_DASHBOARD_SCOPE = {
+  supportsDashboardScope: {
+    partner: true,
+    location: true,
+    specialty: true,
+    timeline: true,
+  },
+} as const satisfies Pick<WidgetTemplate, 'supportsDashboardScope'>;
+
 const QUALITY_NSQIP: WidgetTemplate[] = [
   {
     id: 'quality-nsqip-length-of-stay',
@@ -69,6 +85,7 @@ const QUALITY_NSQIP: WidgetTemplate[] = [
       'Average NSQIP hospital days from admission through discharge, compared with expected length for matched severity. Highlights efficient, safe care using standard cohort rules.',
     kpiDefinitionL1:
       'Average days in hospital for NSQIP surgeries, admission to discharge.',
+    ...NSQIP_KPI_DASHBOARD_SCOPE,
   },
   {
     id: 'quality-nsqip-reoperations',
@@ -80,6 +97,7 @@ const QUALITY_NSQIP: WidgetTemplate[] = [
       'Return to the operating room for an unplanned related procedure during NSQIP follow-up after the index surgery. For peer comparison, trending, and quality improvement across sites and specialties.',
     kpiDefinitionL1:
       'Return to OR for related procedures during NSQIP post-operative follow-up.',
+    ...NSQIP_KPI_DASHBOARD_SCOPE,
   },
   {
     id: 'quality-nsqip-readmissions',
@@ -90,6 +108,7 @@ const QUALITY_NSQIP: WidgetTemplate[] = [
       'Unplanned readmission within 30 days of discharge for the same principal problem. Surfaces gaps in transitions of care, complications, and discharge planning across cohorts and facilities.',
     kpiDefinitionL1:
       'Unplanned readmit within 30 days for the same problem after discharge.',
+    ...NSQIP_KPI_DASHBOARD_SCOPE,
   },
   {
     id: 'quality-nsqip-mortality',
@@ -100,6 +119,7 @@ const QUALITY_NSQIP: WidgetTemplate[] = [
       'All-cause mortality during the index admission or NSQIP post-discharge follow-up. Risk-adjusted metrics compare observed deaths to expected levels for matched severity, procedures, and comorbidities.',
     kpiDefinitionL1:
       'Mortality in hospital or NSQIP follow-up, risk-adjusted vs matched peers.',
+    ...NSQIP_KPI_DASHBOARD_SCOPE,
   },
   {
     id: 'quality-nsqip-infections',
@@ -110,6 +130,7 @@ const QUALITY_NSQIP: WidgetTemplate[] = [
       'SSI and other NSQIP-tracked infections after the index procedure. Supports prevention bundles, stewardship review, and benchmarking against national expectations.',
     kpiDefinitionL1:
       'Tracked infections after the index surgery vs NSQIP national benchmarks.',
+    ...NSQIP_KPI_DASHBOARD_SCOPE,
   },
   {
     id: 'quality-nsqip-utilization',
@@ -120,6 +141,7 @@ const QUALITY_NSQIP: WidgetTemplate[] = [
       'Observed versus expected resource use among risk-matched peers, using length-of-stay as a key signal. Flags cases for documentation review or pathway refinement without implying causality.',
     kpiDefinitionL1:
       'Observed vs expected resource use among NSQIP risk-matched peer hospitals.',
+    ...NSQIP_KPI_DASHBOARD_SCOPE,
   },
   {
     id: 'quality-nsqip-risk-adjustment',
@@ -130,6 +152,7 @@ const QUALITY_NSQIP: WidgetTemplate[] = [
       'Expected outcomes adjusted for NSQIP-logged comorbidities, acuity, and procedure mix, enabling fair hospital and specialty comparisons with different case complexity.',
     kpiDefinitionL1:
       'Expected outcomes adjusted for NSQIP case mix to compare hospitals fairly.',
+    ...NSQIP_KPI_DASHBOARD_SCOPE,
   },
 ];
 
@@ -190,6 +213,12 @@ for (const cat of WIDGET_CATEGORIES) {
 /** Resolve catalog label for a template id (canvas rows should show catalog names, not stale stored labels). */
 export function getWidgetTemplateById(templateId: string): WidgetTemplate | undefined {
   return widgetById.get(templateId);
+}
+
+export function getWidgetSupportsDashboardScope(
+  templateId: string,
+): WidgetTemplate['supportsDashboardScope'] | undefined {
+  return getWidgetTemplateById(templateId)?.supportsDashboardScope;
 }
 
 export function getWidgetDisplayLabel(templateId: string, storedLabel: string): string {
