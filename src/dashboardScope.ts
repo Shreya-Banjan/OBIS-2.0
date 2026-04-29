@@ -86,6 +86,22 @@ export function getL3BreakdownDimensions(state: DashboardGlobalState): L3Breakdo
   return ['Partner', 'Location', 'Specialty', 'Surgeon'];
 }
 
+/**
+ * Primary dimension for L3 **chart** legend chips / multi-line trends.
+ *
+ * Table columns follow `getL3BreakdownDimensions` (spec §6) verbatim. When partner scope is **multi**
+ * (`isMultiPartnerMode`), the chart still compares **by partner** (one series per partner), even though
+ * Partner may be omitted from the table order (e.g. `hp && !hl && !ns` → Location is the first drill column).
+ */
+export function getL3ChartLegendPrimaryDimension(state: DashboardGlobalState): L3BreakdownDimension {
+  const dims = getL3BreakdownDimensions(state);
+  const first = dims[0] ?? 'Partner';
+  if (isMultiPartnerMode(state.partners)) {
+    return 'Partner';
+  }
+  return first;
+}
+
 export function defaultDashboardGlobalState(timeline: string): DashboardGlobalState {
   return {
     partners: [],

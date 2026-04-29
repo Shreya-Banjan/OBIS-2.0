@@ -20,7 +20,6 @@ import { DashboardNavDrawer } from './components/DashboardNavDrawer';
 import { PublishDashboardModal, type PublishFormValues } from './components/PublishDashboardModal';
 import { ShareDashboardModal } from './components/ShareDashboardModal';
 import { KpiL3DetailModal, type KpiL3DashboardKpiRailItem } from './components/KpiL3DetailModal';
-import { formatKpiCanvasPeriodLabel } from './components/TimelinePickerField';
 import type { BannerSectionUpdates } from './components/EditorDashboardBanner';
 import { WidgetPickerPanel } from './components/WidgetPickerPanel';
 import {
@@ -1407,7 +1406,6 @@ export default function App() {
             valueDemo={kpiL3DetailPayload.valueDemo}
             valueUnit={kpiL3DetailPayload.valueUnit}
             metricDeltaChip={kpiL3DetailPayload.metricDeltaChip}
-            periodContextLabel={formatKpiCanvasPeriodLabel(editorTimeline)}
             kpiTimelineValue={editorTimeline}
             dashboardScope={dashboardScopeMerged}
             dashboardKpiRail={kpiL3DashboardKpiRail}

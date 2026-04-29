@@ -426,13 +426,14 @@ export function KpiTitleTrendChart({
           if (!show) return null;
           if (i >= n) return null;
           const x = xLabelAt(i);
+          const xLabelHi = hover != null && hover.i === i;
           return (
             <text
               key={i}
               x={x}
               y={vbH - (isL3 ? 14 : 9)}
               textAnchor="middle"
-              fill={isL3 && i === n - 1 ? '#333333' : isL3 ? '#999999' : '#707070'}
+              fill={xLabelHi ? '#333333' : isL3 ? '#999999' : '#707070'}
               fontSize={fsVb}
               fontFamily="Inter, system-ui, sans-serif"
               fontWeight={isL3 ? 500 : 400}

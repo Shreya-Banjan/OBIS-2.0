@@ -721,6 +721,14 @@ type TimelinePickerFieldProps = {
   onChange: (next: string) => void;
   layout?: Layout;
   toolbarPair?: boolean;
+  /**
+   * Renders the trigger like the L3 header scope chips (h-8, 12px radius); the timeline menu is unchanged.
+   */
+  scopeChipTrigger?: boolean;
+  /** Lead text before the value when `scopeChipTrigger` (e.g. "Timeline"). */
+  chipLead?: string;
+  /** Bold value segment when `scopeChipTrigger`; falls back to value / placeholder if omitted. */
+  chipValue?: string;
 };
 
 export function TimelinePickerField({
@@ -729,21 +737,26 @@ export function TimelinePickerField({
   onChange,
   layout = 'default',
   toolbarPair = false,
+  scopeChipTrigger = false,
+  chipLead = 'Timeline',
+  chipValue: chipValueProp,
 }: TimelinePickerFieldProps) {
   const labelId = useId();
   const anchorRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const hasValue = value.trim() !== '';
-  const showSelectedLook = hasValue;
+  const showSelectedLook = scopeChipTrigger ? true : hasValue;
 
-  const wrapClass =
-    layout === 'toolbar'
+  const wrapClass = scopeChipTrigger
+    ? 'relative w-auto min-w-0 max-w-[min(100%,11rem)] shrink-0'
+    : layout === 'toolbar'
       ? toolbarPair
         ? 'relative min-w-0 flex-1 basis-0'
         : 'relative w-auto min-w-0 max-w-[min(100%,16rem)] shrink-0 sm:min-w-[11rem]'
       : 'relative w-full min-w-0 shrink-0 sm:w-auto';
 
   const display = hasValue ? value.trim() : HEADER_TIMELINE_PLACEHOLDER;
+  const chipDisplayValue = chipValueProp ?? display;
 
   return (
     <div ref={anchorRef} className={wrapClass}>
@@ -756,20 +769,41 @@ export function TimelinePickerField({
         aria-expanded={open}
         aria-labelledby={labelId}
         onClick={() => setOpen((o) => !o)}
-        style={showSelectedLook ? { color: '#333333', fontWeight: 500 } : undefined}
-        className={[
-          "flex h-12 min-h-12 w-full min-w-0 cursor-pointer items-center justify-between gap-2 rounded-xl border border-[#e4e4e4] bg-[#FFF] px-4 py-0 text-left font-['Poppins',sans-serif] text-sm outline-none ring-[var(--color-brand-primary)] transition-[background-color,border-color,box-shadow,color] duration-150 hover:border-[var(--color-brand-primary)] hover:bg-[#FFF] hover:shadow-none hover:ring-2 hover:ring-[var(--ring-input-focus)] focus-visible:border-[var(--color-brand-primary)] focus-visible:ring-2 focus-visible:ring-[var(--ring-input-focus)] active:border-[var(--color-brand-primary)] active:ring-2 active:ring-[var(--ring-input-focus)] sm:min-w-[11rem]",
-          layout === 'toolbar' ? (toolbarPair ? 'w-full min-w-0' : 'w-full min-w-[11rem]') : 'w-full sm:w-auto',
-          showSelectedLook ? '' : 'font-normal text-[#999999]',
-        ].join(' ')}
+        style={scopeChipTrigger ? undefined : showSelectedLook ? { color: '#333333', fontWeight: 500 } : undefined}
+        className={
+          scopeChipTrigger
+            ? 'inline-flex h-8 w-full min-w-0 max-w-full cursor-pointer items-center justify-between gap-1 rounded-[12px] border border-solid border-[#e8e8e8] bg-white px-3 py-0 text-left outline-none transition-colors hover:bg-[#fafafa] focus-visible:ring-2 focus-visible:ring-[var(--ring-input-focus)]'
+            : [
+                "flex h-12 min-h-12 w-full min-w-0 cursor-pointer items-center justify-between gap-2 rounded-xl border border-[#e4e4e4] bg-[#FFF] px-4 py-0 text-left font-['Poppins',sans-serif] text-sm outline-none ring-[var(--color-brand-primary)] transition-[background-color,border-color,box-shadow,color] duration-150 hover:border-[var(--color-brand-primary)] hover:bg-[#FFF] hover:shadow-none hover:ring-2 hover:ring-[var(--ring-input-focus)] focus-visible:border-[var(--color-brand-primary)] focus-visible:ring-2 focus-visible:ring-[var(--ring-input-focus)] active:border-[var(--color-brand-primary)] active:ring-2 active:ring-[var(--ring-input-focus)] sm:min-w-[11rem]",
+                layout === 'toolbar' ? (toolbarPair ? 'w-full min-w-0' : 'w-full min-w-[11rem]') : 'w-full sm:w-auto',
+                showSelectedLook ? '' : 'font-normal text-[#999999]',
+              ].join(' ')
+        }
       >
-        <span className="min-w-0 flex-1 truncate">{display}</span>
-        <IconChevronDown
-          className={`pointer-events-none size-5 shrink-0 text-[var(--color-brand-primary)] transition-transform duration-150 ${
-            open ? 'rotate-180' : ''
-          }`}
-          aria-hidden
-        />
+        {scopeChipTrigger ? (
+          <>
+            <span className="min-w-0 truncate font-['Inter',sans-serif] text-[10px] leading-[15px] text-[#707070]">
+              <span className="text-[#707070]">{chipLead}:</span>{' '}
+              <span className="font-medium text-[#333333]">{chipDisplayValue}</span>
+            </span>
+            <IconChevronDown
+              className={`pointer-events-none size-4 shrink-0 text-[#333333]/55 transition-transform duration-150 ${
+                open ? 'rotate-180' : ''
+              }`}
+              aria-hidden
+            />
+          </>
+        ) : (
+          <>
+            <span className="min-w-0 flex-1 truncate">{display}</span>
+            <IconChevronDown
+              className={`pointer-events-none size-5 shrink-0 text-[var(--color-brand-primary)] transition-transform duration-150 ${
+                open ? 'rotate-180' : ''
+              }`}
+              aria-hidden
+            />
+          </>
+        )}
       </button>
       <TimelineMenu
         open={open}

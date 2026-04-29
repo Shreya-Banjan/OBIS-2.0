@@ -19,19 +19,22 @@ import type { DashboardGlobalState } from '../types';
 import {
   DASHBOARD_NSQIP_SPECIALTY_COUNT,
   getL3BreakdownDimensions,
+  getL3ChartLegendPrimaryDimension,
   isAllPartnersSelected,
   isMultiPartnerMode,
+  isSinglePartnerMode,
   isSpecialtyNarrowed,
   locationOptionsForPartners,
   resolvePartnerLocations,
   type L3BreakdownDimension,
 } from '../dashboardScope';
 import { PARTNER_SCOPE_OPTIONS } from '../data/headerSelectOptions';
-import { QUALITY_NSQIP_SPECIALTIES } from '../data/widgets';
+import { QUALITY_NSQIP_SPECIALTIES, QUALITY_NSQIP_SPECIALTY_IDS } from '../data/widgets';
 import { KpiTitleTrendChart } from './canvas/KpiTitleTrendChart';
 import { splitKpiValueAndUnit } from './canvas/canvasWidgetKpiParts';
 import { PartnerScopePickerField } from './PartnerScopePickerField';
 import { SpecialityPickerField } from './SpecialityPickerField';
+import { TimelinePickerField, formatKpiCanvasPeriodLabel } from './TimelinePickerField';
 import { ToggleGroup } from './ToggleGroup';
 
 /** L3 shell — [OBIS2.0 · 1899:5341](https://www.figma.com/design/2Z3gqwUnoKnsm6U5aQ1Xp2/OBIS2.0?node-id=1899-5341). */
@@ -125,7 +128,7 @@ const DEMO_ATTENDING_SURGEONS = [
   'R. Nguyen, MD',
 ] as const;
 
-/** Series chip colors — cycle when more than four labels. */
+/** Series chip colors — palette cycles for any number of legend rows. */
 const L3_LEGEND_DOT_CLASSES = [
   'bg-[#e85d9a]',
   'bg-[#e6332a]',
@@ -139,9 +142,9 @@ const L3_LEGEND_DOT_CLASSES = [
 const L3_LEGEND_STROKES = ['#e85d9a', '#e6332a', '#9ca3af', '#f96c50', '#6366f1', '#22c55e'] as const;
 
 function partnerLegendLabels(partners: readonly string[]): string[] {
-  if (partners.length === 0) return [...PARTNER_SCOPE_OPTIONS].slice(0, 4);
-  if (isAllPartnersSelected(partners)) return [...PARTNER_SCOPE_OPTIONS].slice(0, 4);
-  return [...partners].slice(0, 6);
+  if (partners.length === 0) return [...PARTNER_SCOPE_OPTIONS];
+  if (isAllPartnersSelected(partners)) return [...PARTNER_SCOPE_OPTIONS];
+  return [...partners];
 }
 
 function locationLegendLabels(scope: DashboardGlobalState, partners: readonly string[]): string[] {
@@ -156,25 +159,6 @@ function specialtyLegendLabels(specialtyIds: readonly string[]): string[] {
   return specialtyIds
     .map((id) => QUALITY_NSQIP_SPECIALTIES.find((s) => s.id === id)?.label ?? id)
     .slice(0, 6);
-}
-
-/**
- * Dimension used for L3 chart legend chips. Follows `getL3BreakdownDimensions` order except:
- * exactly one partner (not “all partners”) and 2+ specific specialties (not full catalog) → show **Specialty**
- * series instead of **Location**, so multi-specialty under one partner is visible in the legend.
- */
-function chartLegendPrimaryDimension(scope: DashboardGlobalState): L3BreakdownDimension | undefined {
-  const dims = getL3BreakdownDimensions(scope);
-  const primary = dims[0];
-  const singleConcretePartner =
-    scope.partners.length === 1 && !isAllPartnersSelected(scope.partners);
-  const multiSpecialtyPick =
-    scope.specialtyIds.length >= 2 && scope.specialtyIds.length < DASHBOARD_NSQIP_SPECIALTY_COUNT;
-
-  if (singleConcretePartner && multiSpecialtyPick) {
-    return 'Specialty';
-  }
-  return primary;
 }
 
 /** Chart series labels (and matching stroke) for the chosen primary dimension. */
@@ -232,7 +216,6 @@ export type KpiL3DetailModalProps = {
   valueDemo: string;
   valueUnit?: string;
   metricDeltaChip?: string;
-  periodContextLabel: string;
   kpiTimelineValue: string;
   /** Editor header filters — drives L3 breakdown column order (mock rows v1). */
   dashboardScope: DashboardGlobalState;
@@ -364,7 +347,6 @@ export function KpiL3DetailModal({
   valueDemo,
   valueUnit,
   metricDeltaChip,
-  periodContextLabel,
   kpiTimelineValue,
   dashboardScope,
   dashboardKpiRail,
@@ -392,13 +374,51 @@ export function KpiL3DetailModal({
     setL3ModalSpecialtyIds([...dashboardScope.specialtyIds]);
   }, [specialtyIdsEditorKey, dashboardScope.specialtyIds]);
 
+  const locationLabelsEditorKey = useMemo(
+    () => [...dashboardScope.locationLabels].sort().join('\u0000'),
+    [dashboardScope.locationLabels],
+  );
+  const [l3ModalLocationLabels, setL3ModalLocationLabels] = useState<string[]>(() => [
+    ...dashboardScope.locationLabels,
+  ]);
+
+  useEffect(() => {
+    setL3ModalLocationLabels([...dashboardScope.locationLabels]);
+  }, [locationLabelsEditorKey, dashboardScope.locationLabels]);
+
+  const [l3ModalTimeline, setL3ModalTimeline] = useState(() => kpiTimelineValue);
+
+  useEffect(() => {
+    setL3ModalTimeline(kpiTimelineValue);
+  }, [kpiTimelineValue]);
+
+  const l3PeriodContextLabel = useMemo(
+    () => formatKpiCanvasPeriodLabel(l3ModalTimeline),
+    [l3ModalTimeline],
+  );
+
+  const l3TimelineChipValue = useMemo(() => {
+    const v = l3ModalTimeline.trim();
+    if (!v) return 'MoM';
+    const full = l3PeriodContextLabel;
+    return full.replace(/^As of\s+/i, '') || full;
+  }, [l3ModalTimeline, l3PeriodContextLabel]);
+
+  /** Surgeon legend chips are demo-only; exclusions are L3-local (no header picker yet). */
+  const [l3ExcludedSurgeonLegendLabels, setL3ExcludedSurgeonLegendLabels] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!open) setL3ExcludedSurgeonLegendLabels([]);
+  }, [open]);
+
   const l3DashboardScope = useMemo(
     (): DashboardGlobalState => ({
       ...dashboardScope,
       partners: l3ModalPartners,
       specialtyIds: l3ModalSpecialtyIds,
+      locationLabels: l3ModalLocationLabels,
     }),
-    [dashboardScope, l3ModalPartners, l3ModalSpecialtyIds],
+    [dashboardScope, l3ModalPartners, l3ModalSpecialtyIds, l3ModalLocationLabels],
   );
 
   const definitionTrimmed = definition.trim();
@@ -408,13 +428,70 @@ export function KpiL3DetailModal({
     () => getL3BreakdownDimensions(l3DashboardScope),
     [l3DashboardScope],
   );
+  /** Chart chips: spec §6 order via `getL3ChartLegendPrimaryDimension` (partner split when multi-partner). */
   const chartLegendPrimary = useMemo(
-    () => chartLegendPrimaryDimension(l3DashboardScope),
+    () => getL3ChartLegendPrimaryDimension(l3DashboardScope),
     [l3DashboardScope],
   );
-  const chartLegendChips = useMemo(
+
+  useEffect(() => {
+    if (chartLegendPrimary !== 'Surgeon') setL3ExcludedSurgeonLegendLabels([]);
+  }, [chartLegendPrimary]);
+
+  const chartLegendChipsBase = useMemo(
     () => chartLegendForPrimaryDimension(chartLegendPrimary, l3DashboardScope),
     [chartLegendPrimary, l3DashboardScope],
+  );
+  const excludedSurgeonLegendSet = useMemo(
+    () => new Set(l3ExcludedSurgeonLegendLabels),
+    [l3ExcludedSurgeonLegendLabels],
+  );
+  const chartLegendChips = useMemo(() => {
+    if (chartLegendPrimary !== 'Surgeon') return chartLegendChipsBase;
+    return chartLegendChipsBase.filter((c) => !excludedSurgeonLegendSet.has(c.label));
+  }, [chartLegendChipsBase, chartLegendPrimary, excludedSurgeonLegendSet]);
+
+  const removeChartLegendForLabel = useCallback(
+    (label: string) => {
+      const primary = chartLegendPrimary;
+      if (!primary) return;
+
+      if (primary === 'Partner') {
+        setL3ModalPartners((prev) => {
+          if (prev.length === 0 || isAllPartnersSelected(prev)) {
+            return [...PARTNER_SCOPE_OPTIONS].filter((p) => p !== label);
+          }
+          return prev.filter((p) => p !== label);
+        });
+        return;
+      }
+
+      if (primary === 'Specialty') {
+        const match = QUALITY_NSQIP_SPECIALTIES.find((s) => s.label === label);
+        if (!match) return;
+        setL3ModalSpecialtyIds((prev) => {
+          if (prev.length === 0 || prev.length >= DASHBOARD_NSQIP_SPECIALTY_COUNT) {
+            return [...QUALITY_NSQIP_SPECIALTY_IDS].filter((id) => id !== match.id);
+          }
+          return prev.filter((id) => id !== match.id);
+        });
+        return;
+      }
+
+      if (primary === 'Location') {
+        setL3ModalLocationLabels((prev) => {
+          if (prev.length > 0) return prev.filter((l) => l !== label);
+          const opts = locationOptionsForPartners(l3ModalPartners);
+          return opts.filter((l) => l !== label);
+        });
+        return;
+      }
+
+      if (primary === 'Surgeon') {
+        setL3ExcludedSurgeonLegendLabels((prev) => (prev.includes(label) ? prev : [...prev, label]));
+      }
+    },
+    [chartLegendPrimary, l3ModalPartners],
   );
   const trendColumns = useMemo(() => trendColumnsForBreakdown(breakdownDimensions), [breakdownDimensions]);
   const breakdownToolbarLead = useMemo(
@@ -434,25 +511,18 @@ export function KpiL3DetailModal({
           ? QUALITY_NSQIP_SPECIALTIES.find((s) => s.id === ids[0])?.label ?? '1'
           : `${ids.length}+`;
     const locLabel =
-      dashboardScope.locationLabels.length === 0
-        ? 'All'
-        : dashboardScope.locationLabels.join(', ');
-    const timeLabel =
-      kpiTimelineValue.trim().length > 0
-        ? periodContextLabel.replace(/^As of\s+/i, '') || periodContextLabel
-        : 'MoM';
+      l3ModalLocationLabels.length === 0 ? 'All' : l3ModalLocationLabels.join(', ');
     return [
       { id: 'partner' as const, label: 'Partner', value: partnerLabel },
       { id: 'specialty' as const, label: 'Specialty', value: specialtyLabel },
       { id: 'locations' as const, label: 'Locations', value: locLabel },
       { id: 'surgeons' as const, label: 'Surgeons', value: 'All' },
-      { id: 'timeline' as const, label: 'Timeline', value: timeLabel },
     ];
-  }, [l3ModalPartners, l3ModalSpecialtyIds, dashboardScope, kpiTimelineValue, periodContextLabel]);
+  }, [l3ModalPartners, l3ModalSpecialtyIds, l3ModalLocationLabels]);
 
   const resolvedPairs = useMemo(
-    () => resolvePartnerLocations(l3ModalPartners, dashboardScope.locationLabels),
-    [l3ModalPartners, dashboardScope.locationLabels],
+    () => resolvePartnerLocations(l3ModalPartners, l3ModalLocationLabels),
+    [l3ModalPartners, l3ModalLocationLabels],
   );
 
   const scopedSpecialtyLabel = useMemo(() => {
@@ -478,16 +548,22 @@ export function KpiL3DetailModal({
     [l3ModalPartners, l3ModalSpecialtyIds],
   );
 
+  const singlePartnerScopeChipEnabled = isSinglePartnerMode(l3ModalPartners);
+  const locationsScopeChipTooltip =
+    'Location filtering is available when exactly one partner is selected in scope. Choose one partner above, then pick locations.';
+  const surgeonsScopeChipTooltip =
+    'Surgeon filtering is available when exactly one partner is selected in scope. Choose one partner above, then pick surgeons.';
+
   const trendTableSeries = useMemo(() => {
     const anchorParsed = parseFloat(String(valueDisplay).replace(/,/g, ''));
     const anchorRate = Number.isFinite(anchorParsed) ? anchorParsed : 2.1;
     const valueIsPercent = unitDisplay === '%' || valueDemo.trim().endsWith('%');
-    return getKpiTrendSeriesFromTimeline(kpiTimelineValue, {
+    return getKpiTrendSeriesFromTimeline(l3ModalTimeline, {
       anchorRate,
       valueIsPercent,
       demoSalt: l3DemoSalt,
     });
-  }, [valueDemo, valueUnit, kpiTimelineValue, valueDisplay, l3DemoSalt]);
+  }, [valueDemo, valueUnit, l3ModalTimeline, valueDisplay, l3DemoSalt]);
 
   const trendSeriesForL3Chart = useMemo(() => {
     const k = chartLegendChips.length;
@@ -697,19 +773,48 @@ export function KpiL3DetailModal({
               />
               {scopePills
                 .filter((pill) => pill.id !== 'partner' && pill.id !== 'specialty')
-                .map((pill) => (
-                  <button
-                    key={pill.id}
-                    type="button"
-                    className="inline-flex h-8 max-w-[min(100%,11rem)] shrink-0 items-center gap-1 rounded-[12px] border border-solid border-[#e8e8e8] bg-white px-3 text-left transition-colors hover:bg-[#fafafa]"
-                  >
-                    <span className="min-w-0 truncate font-['Inter',sans-serif] text-[10px] leading-[15px] text-[#707070]">
-                      <span className="text-[#707070]">{pill.label}:</span>{' '}
-                      <span className="font-medium text-[#333333]">{pill.value}</span>
+                .map((pill) => {
+                  const needsSinglePartnerForChip = pill.id === 'locations' || pill.id === 'surgeons';
+                  const chipEnabled = !needsSinglePartnerForChip || singlePartnerScopeChipEnabled;
+                  const chipHint =
+                    needsSinglePartnerForChip && !chipEnabled
+                      ? pill.id === 'locations'
+                        ? locationsScopeChipTooltip
+                        : surgeonsScopeChipTooltip
+                      : undefined;
+                  const chipValueShown = chipHint ? '-' : pill.value;
+                  const button = (
+                    <button
+                      type="button"
+                      disabled={!chipEnabled}
+                      aria-label={chipHint ? `${pill.label}. ${chipHint}` : undefined}
+                      className={[
+                        'inline-flex h-8 max-w-[min(100%,11rem)] shrink-0 items-center gap-1 rounded-[12px] border border-solid border-[#e8e8e8] bg-white px-3 text-left transition-colors',
+                        chipEnabled ? 'hover:bg-[#fafafa]' : 'cursor-not-allowed opacity-50',
+                      ].join(' ')}
+                    >
+                      <span className="min-w-0 truncate font-['Inter',sans-serif] text-[10px] leading-[15px] text-[#707070]">
+                        <span className="text-[#707070]">{pill.label}:</span>{' '}
+                        <span className="font-medium text-[#333333]">{chipValueShown}</span>
+                      </span>
+                      <IconChevronDown className="size-4 shrink-0 text-[#333333]/55" aria-hidden />
+                    </button>
+                  );
+                  return (
+                    <span key={pill.id} className="inline-flex shrink-0" title={chipHint}>
+                      {button}
                     </span>
-                    <IconChevronDown className="size-4 shrink-0 text-[#333333]/55" aria-hidden />
-                  </button>
-                ))}
+                  );
+                })}
+              <TimelinePickerField
+                label="Timeline"
+                value={l3ModalTimeline}
+                onChange={setL3ModalTimeline}
+                layout="toolbar"
+                scopeChipTrigger
+                chipLead="Timeline"
+                chipValue={l3TimelineChipValue}
+              />
               <button
                 type="button"
                 onClick={onClose}
@@ -723,8 +828,8 @@ export function KpiL3DetailModal({
 
           <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-visible px-6 pb-5 pt-4">
             {/* White chart band + grey metric rail — avoid overflow-hidden so SVG strokes / axis labels are not clipped */}
-            <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-visible rounded-xl lg:flex-row lg:items-stretch lg:gap-6">
-              <div className="flex min-h-[min(280px,42dvh)] min-w-0 flex-1 flex-col gap-3 overflow-visible bg-white lg:min-h-0 lg:h-full">
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-visible rounded-xl lg:min-h-[min(300px,38dvh)] lg:flex-row lg:items-stretch lg:gap-6">
+              <div className="flex min-h-[min(280px,42dvh)] min-w-0 flex-1 flex-col gap-3 overflow-visible bg-white lg:h-full lg:min-h-0">
                 {/* Figma `chart legend container` 32px + chart; px-0 — outer chart wrapper supplies horizontal gutter */}
                 <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col gap-3 px-0 pb-2 pt-1" data-kpi-title-toggle>
                   <div className="flex min-h-8 shrink-0 flex-wrap items-start justify-between gap-2">
@@ -733,20 +838,24 @@ export function KpiL3DetailModal({
                       aria-label={`Chart series by ${chartLegendPrimary ?? 'scope'}`}
                     >
                       {chartLegendChips.map((item, chipIdx) => (
-                        <button
+                        <div
                           key={`${item.label}-${chipIdx}`}
-                          type="button"
                           className="inline-flex h-6 max-w-full shrink-0 items-center gap-1.5 rounded-full border border-solid border-[#e8e8e8] bg-white py-0 pl-2.5 pr-1 font-['Inter',sans-serif] text-[11px] font-medium leading-3 text-[#333333]"
                         >
                           <span className={`size-2 shrink-0 rounded-full ${item.dot}`} aria-hidden />
                           <span className="max-w-[6.5rem] truncate">{item.label}</span>
-                          <span
-                            className="inline-flex size-4 shrink-0 items-center justify-center rounded-full text-[12px] leading-none text-[#707070] hover:bg-[#f0f0f0]"
-                            aria-hidden
+                          <button
+                            type="button"
+                            className="inline-flex size-4 shrink-0 items-center justify-center rounded-full text-[12px] leading-none text-[#707070] outline-none hover:bg-[#f0f0f0] focus-visible:ring-2 focus-visible:ring-[#b6bec8]"
+                            aria-label={`Remove ${item.label} from chart`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeChartLegendForLabel(item.label);
+                            }}
                           >
                             ×
-                          </span>
-                        </button>
+                          </button>
+                        </div>
                       ))}
                     </div>
                     <ToggleGroup
@@ -762,7 +871,7 @@ export function KpiL3DetailModal({
                     />
                   </div>
                   <div
-                    className="flex min-h-0 min-w-0 flex-1 overflow-visible"
+                    className="flex min-h-0 min-w-0 flex-1 overflow-visible lg:min-h-[min(248px,44dvh)]"
                     data-kpi-expand-skip-interaction
                   >
                     <KpiTitleTrendChart
@@ -800,7 +909,7 @@ export function KpiL3DetailModal({
                     ) : null}
                   </div>
                   <p className="mt-2 font-['Inter',sans-serif] text-[10px] font-medium leading-3 text-[#707070]">
-                    {periodContextLabel}
+                    {l3PeriodContextLabel}
                   </p>
                   <div className="mt-6 min-h-0 flex-1 overflow-y-auto">
                     <p className="font-['Inter',sans-serif] text-[13px] font-normal leading-snug tracking-tight text-[#333333] break-words">

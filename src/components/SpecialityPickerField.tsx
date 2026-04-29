@@ -256,23 +256,35 @@ function SpecialityMenu({
           ) : (
             filteredSpecialties.map((s) => {
               const checked = draft.has(s.id);
+              const multi = selectionMode === 'multi';
               return (
                 <button
                   key={s.id}
                   type="button"
                   onClick={() => toggleSpecialty(s.id)}
-                  className="flex w-full cursor-pointer items-center gap-2 rounded-xl px-4 py-2.5 text-left transition-colors hover:bg-[#f5f5f5]"
+                  className={[
+                    'flex w-full cursor-pointer items-center rounded-xl px-4 py-2.5 text-left transition-colors',
+                    multi ? 'gap-2 hover:bg-[#f5f5f5]' : 'gap-0',
+                    !multi && checked ? 'bg-[#f5f5f5]' : multi ? '' : 'hover:bg-[#f5f5f5]',
+                  ].join(' ')}
                 >
+                  {multi ? (
+                    <span
+                      className={[
+                        'flex size-4 shrink-0 items-center justify-center rounded-[3px] border border-solid transition-colors',
+                        boxStyle(checked, false),
+                      ].join(' ')}
+                      aria-hidden
+                    >
+                      {checked ? <IconCheck className="size-2.5 text-white" /> : null}
+                    </span>
+                  ) : null}
                   <span
                     className={[
-                      'flex size-4 shrink-0 items-center justify-center rounded-[3px] border border-solid transition-colors',
-                      boxStyle(checked, false),
+                      "min-w-0 flex-1 truncate font-['Inter',sans-serif] text-[13px] leading-5 text-[#333333]",
+                      checked ? 'font-medium' : 'font-normal',
                     ].join(' ')}
-                    aria-hidden
                   >
-                    {checked ? <IconCheck className="size-2.5 text-white" /> : null}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate font-['Inter',sans-serif] text-[13px] font-normal leading-5 text-[#333333]">
                     {s.label}
                   </span>
                 </button>
