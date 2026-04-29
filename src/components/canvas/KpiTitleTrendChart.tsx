@@ -112,7 +112,17 @@ export function KpiTitleTrendChart({
     return () => ro.disconnect();
   }, [presentation]);
 
-  const { xLabels, rates, valueIsPercent, yAxisTitle: yAxisTitleFromSeries } = series;
+  const {
+    xLabels,
+    rates,
+    valueIsPercent,
+    yAxisTitle: yAxisTitleFromSeries,
+    extraLineRates,
+    lineStrokes,
+    lineLabels,
+  } = series;
+  const extraRows = extraLineRates?.length ? [...extraLineRates] : [];
+  const allLineRows = [rates, ...extraRows];
   const isL3 = presentation === 'l3';
   /** L3: narrower left band so plot / x-axis line up with modal legend + filter row. */
   const yAxisTitleBand = isL3 ? 11 : Y_AXIS_TITLE_BAND;
@@ -127,8 +137,9 @@ export function KpiTitleTrendChart({
   const fsVb = Math.min(26, Math.max(5.5, labelTargetCssPx / Math.max(pxPerVbX, 1e-6)));
   const yTitleMidX = Y_LABEL_X + yAxisTitleBand / 2;
   const n = Math.max(1, rates.length);
-  const minR = Math.min(...rates);
-  const maxR = Math.max(...rates);
+  const flatRates = allLineRows.flat();
+  const minR = flatRates.length > 0 ? Math.min(...flatRates) : 0;
+  const maxR = flatRates.length > 0 ? Math.max(...flatRates) : 0;
   const span = Math.max(maxR - minR, 1e-6);
   const y0 = minR - span * 0.08;
   const y1 = maxR + span * 0.08;
@@ -174,8 +185,9 @@ export function KpiTitleTrendChart({
     xLabelLo + (n <= 1 ? xLabelSpan / 2 : (i / Math.max(n - 1, 1)) * xLabelSpan);
   const yAt = (r: number) => INSET.t + (1 - (r - y0) / ySpan) * plotH;
 
-  /** Line markers and polyline share x with axis month labels (`xLabelAt`). */
-  const linePoints = rates.map((r, i) => `${xLabelAt(i)},${yAt(r)}`).join(' ');
+  const lineStrokeAt = (si: number) => lineStrokes?.[si] ?? (isL3 ? '#333333' : '#f96c50');
+  /** Draw secondary lines under the primary (index 0) so the main series stays readable. */
+  const lineSeriesOrder = allLineRows.map((_, si) => si).sort((a, b) => (a === 0 ? 1 : 0) - (b === 0 ? 1 : 0));
 
   /** Bottom of value scale — same y as the lowest horizontal grid line (max y in viewBox). */
   const yPlotBottom = Math.max(...yTicks.map((yt) => yAt(yt)));
@@ -371,30 +383,42 @@ export function KpiTitleTrendChart({
               );
             })
           : null}
-        {variant === 'line' ? (
-          <polyline
-            fill="none"
-            points={linePoints}
-            stroke={isL3 ? '#333333' : '#f96c50'}
-            strokeWidth={isL3 ? 2 : 2.25}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            vectorEffect="non-scaling-stroke"
-          />
-        ) : null}
         {variant === 'line'
-          ? rates.map((r, i) => (
-              <circle
-                key={i}
-                cx={xLabelAt(i)}
-                cy={yAt(r)}
-                r={Math.max(1, markerRVb)}
-                fill={isL3 ? '#ffffff' : '#fff'}
-                stroke={isL3 ? '#333333' : '#f96c50'}
-                strokeWidth={isL3 ? 2 : LINE_MARKER_STROKE_CSS_PX}
-                vectorEffect="non-scaling-stroke"
-              />
-            ))
+          ? lineSeriesOrder.map((si) => {
+              const row = allLineRows[si]!;
+              const pts = row.map((r, i) => `${xLabelAt(i)},${yAt(r)}`).join(' ');
+              const stroke = lineStrokeAt(si);
+              return (
+                <polyline
+                  key={si}
+                  fill="none"
+                  points={pts}
+                  stroke={stroke}
+                  strokeWidth={si === 0 ? (isL3 ? 2 : 2.25) : isL3 ? 1.65 : 2}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  vectorEffect="non-scaling-stroke"
+                />
+              );
+            })
+          : null}
+        {variant === 'line'
+          ? lineSeriesOrder.flatMap((si) => {
+              const row = allLineRows[si]!;
+              const stroke = lineStrokeAt(si);
+              return row.map((r, i) => (
+                <circle
+                  key={`${si}-${i}`}
+                  cx={xLabelAt(i)}
+                  cy={yAt(r)}
+                  r={Math.max(1, markerRVb)}
+                  fill={isL3 ? '#ffffff' : '#fff'}
+                  stroke={stroke}
+                  strokeWidth={si === 0 ? (isL3 ? 2 : LINE_MARKER_STROKE_CSS_PX) : isL3 ? 1.5 : LINE_MARKER_STROKE_CSS_PX}
+                  vectorEffect="non-scaling-stroke"
+                />
+              ));
+            })
           : null}
         {xLabels.map((lab, i) => {
           /** Show every tick when short enough so spacing stays one month per step; thin only on dense axes. */
@@ -432,7 +456,7 @@ export function KpiTitleTrendChart({
       </svg>
       {hover != null && xLabels[hover.i] != null ? (
         <div
-          className="pointer-events-none absolute z-20 min-w-[5rem] rounded-lg border border-solid border-[#e6e6e6] bg-white px-2.5 py-1.5 shadow-[var(--shadow-subtle)]"
+          className="pointer-events-none absolute z-20 min-w-[5rem] max-w-[14rem] rounded-lg border border-solid border-[#e6e6e6] bg-white px-2.5 py-1.5 shadow-[var(--shadow-subtle)]"
           style={{
             left: tooltipLeft,
             top: hover.py,
@@ -442,9 +466,25 @@ export function KpiTitleTrendChart({
           <p className="font-['Inter',sans-serif] text-[11px] font-normal leading-snug text-[#707070]">
             {xLabels[hover.i]}
           </p>
-          <p className="mt-1 font-['Inter',sans-serif] text-[11px] font-semibold leading-snug tabular-nums text-[var(--color-grey-darkest)]">
-            {formatY(rates[hover.i] ?? 0, valueIsPercent)}
-          </p>
+          {lineLabels != null && lineLabels.length === allLineRows.length ? (
+            <ul className="mt-1 list-none space-y-0.5 p-0">
+              {allLineRows.map((row, si) => (
+                <li
+                  key={si}
+                  className="flex min-w-0 items-baseline justify-between gap-2 font-['Inter',sans-serif] text-[11px] font-semibold leading-snug tabular-nums text-[var(--color-grey-darkest)]"
+                >
+                  <span className="min-w-0 shrink truncate" style={{ color: lineStrokeAt(si) }}>
+                    {lineLabels[si]}
+                  </span>
+                  <span className="shrink-0">{formatY(row[hover.i] ?? 0, valueIsPercent)}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-1 font-['Inter',sans-serif] text-[11px] font-semibold leading-snug tabular-nums text-[var(--color-grey-darkest)]">
+              {formatY(rates[hover.i] ?? 0, valueIsPercent)}
+            </p>
+          )}
         </div>
       ) : null}
     </div>

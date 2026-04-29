@@ -1043,6 +1043,7 @@ export default function App() {
           sectionId: sec.id,
           instanceId: w.instanceId,
           label: getWidgetDisplayLabel(w.templateId, w.label),
+          labelCompact: widgetKpiLabelCompact(w.templateId),
           catalogEyebrow: widgetCatalogEyebrow(w.templateId),
           valueDemo: kpiDemo.value,
           valueUnit: kpiDemo.unit,

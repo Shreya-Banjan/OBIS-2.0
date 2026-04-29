@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react';
-import { getKpiTrendSeriesFromTimeline, monthYearFromTrendXLabel } from '../data/kpiTrendSeriesFromTimeline';
+import {
+  buildAlignedExtraLineRates,
+  getKpiTrendSeriesFromTimeline,
+  monthYearFromTrendXLabel,
+} from '../data/kpiTrendSeriesFromTimeline';
 import {
   IconChartBar,
   IconChartLine,
@@ -32,6 +36,13 @@ import { ToggleGroup } from './ToggleGroup';
 
 /** L3 shell — [OBIS2.0 · 1899:5341](https://www.figma.com/design/2Z3gqwUnoKnsm6U5aQ1Xp2/OBIS2.0?node-id=1899-5341). */
 const DEMO_RECORD_TOTAL = 2518;
+
+/** Left-rail metric suffix: shorten word units for space (full word kept for assistive tech). */
+function l3RailUnitDisplay(unit: string): string {
+  const t = unit.trim().toLowerCase();
+  if (t === 'days' || t === 'day') return 'd';
+  return unit;
+}
 
 /** Demo salt from modal partner + specialty scope (L3-only; does not write back to the editor). */
 function demoSaltFromModalScope(partners: readonly string[], specialtyIds: readonly string[]): number {
@@ -124,6 +135,9 @@ const L3_LEGEND_DOT_CLASSES = [
   'bg-[#22c55e]',
 ] as const;
 
+/** SVG / polyline strokes aligned with `L3_LEGEND_DOT_CLASSES`. */
+const L3_LEGEND_STROKES = ['#e85d9a', '#e6332a', '#9ca3af', '#f96c50', '#6366f1', '#22c55e'] as const;
+
 function partnerLegendLabels(partners: readonly string[]): string[] {
   if (partners.length === 0) return [...PARTNER_SCOPE_OPTIONS].slice(0, 4);
   if (isAllPartnersSelected(partners)) return [...PARTNER_SCOPE_OPTIONS].slice(0, 4);
@@ -144,11 +158,30 @@ function specialtyLegendLabels(specialtyIds: readonly string[]): string[] {
     .slice(0, 6);
 }
 
-/** First drilldown dimension drives chart series labels (see `getL3BreakdownDimensions`). */
+/**
+ * Dimension used for L3 chart legend chips. Follows `getL3BreakdownDimensions` order except:
+ * exactly one partner (not “all partners”) and 2+ specific specialties (not full catalog) → show **Specialty**
+ * series instead of **Location**, so multi-specialty under one partner is visible in the legend.
+ */
+function chartLegendPrimaryDimension(scope: DashboardGlobalState): L3BreakdownDimension | undefined {
+  const dims = getL3BreakdownDimensions(scope);
+  const primary = dims[0];
+  const singleConcretePartner =
+    scope.partners.length === 1 && !isAllPartnersSelected(scope.partners);
+  const multiSpecialtyPick =
+    scope.specialtyIds.length >= 2 && scope.specialtyIds.length < DASHBOARD_NSQIP_SPECIALTY_COUNT;
+
+  if (singleConcretePartner && multiSpecialtyPick) {
+    return 'Specialty';
+  }
+  return primary;
+}
+
+/** Chart series labels (and matching stroke) for the chosen primary dimension. */
 function chartLegendForPrimaryDimension(
   primary: L3BreakdownDimension | undefined,
   scope: DashboardGlobalState,
-): { label: string; dot: string }[] {
+): { label: string; dot: string; stroke: string }[] {
   let labels: string[] = [];
   if (primary === 'Partner') labels = partnerLegendLabels(scope.partners);
   else if (primary === 'Location') labels = locationLegendLabels(scope, scope.partners);
@@ -160,6 +193,7 @@ function chartLegendForPrimaryDimension(
   return labels.map((label, i) => ({
     label,
     dot: L3_LEGEND_DOT_CLASSES[i % L3_LEGEND_DOT_CLASSES.length]!,
+    stroke: L3_LEGEND_STROKES[i % L3_LEGEND_STROKES.length]!,
   }));
 }
 
@@ -180,6 +214,8 @@ export type KpiL3DashboardKpiRailItem = {
   sectionId: string;
   instanceId: string;
   label: string;
+  /** Left-rail primary line; when set (e.g. `30d …`), preferred over `label` in the sidebar. */
+  labelCompact?: string;
   /** Catalog line under the KPI title (e.g. "Quality · NSQIP"). */
   catalogEyebrow: string;
   valueDemo: string;
@@ -372,9 +408,13 @@ export function KpiL3DetailModal({
     () => getL3BreakdownDimensions(l3DashboardScope),
     [l3DashboardScope],
   );
+  const chartLegendPrimary = useMemo(
+    () => chartLegendPrimaryDimension(l3DashboardScope),
+    [l3DashboardScope],
+  );
   const chartLegendChips = useMemo(
-    () => chartLegendForPrimaryDimension(breakdownDimensions[0], l3DashboardScope),
-    [breakdownDimensions, l3DashboardScope],
+    () => chartLegendForPrimaryDimension(chartLegendPrimary, l3DashboardScope),
+    [chartLegendPrimary, l3DashboardScope],
   );
   const trendColumns = useMemo(() => trendColumnsForBreakdown(breakdownDimensions), [breakdownDimensions]);
   const breakdownToolbarLead = useMemo(
@@ -448,6 +488,21 @@ export function KpiL3DetailModal({
       demoSalt: l3DemoSalt,
     });
   }, [valueDemo, valueUnit, kpiTimelineValue, valueDisplay, l3DemoSalt]);
+
+  const trendSeriesForL3Chart = useMemo(() => {
+    const k = chartLegendChips.length;
+    if (k <= 1) return trendTableSeries;
+    const n = trendTableSeries.rates.length;
+    const anchorParsed = parseFloat(String(valueDisplay).replace(/,/g, ''));
+    const anchorRate = Number.isFinite(anchorParsed) ? anchorParsed : 2.1;
+    const extras = buildAlignedExtraLineRates(n, anchorRate, l3DemoSalt, k - 1);
+    return {
+      ...trendTableSeries,
+      extraLineRates: extras,
+      lineStrokes: chartLegendChips.map((c) => c.stroke),
+      lineLabels: chartLegendChips.map((c) => c.label),
+    };
+  }, [trendTableSeries, chartLegendChips, l3DemoSalt, valueDisplay]);
 
   const trendTableRows = useMemo((): KpiL3TrendTableRow[] => {
     const fallbackPartners =
@@ -569,7 +624,7 @@ export function KpiL3DetailModal({
                               selected ? 'font-medium' : 'font-normal',
                             ].join(' ')}
                           >
-                            {item.label}
+                            {item.labelCompact ?? item.label}
                           </span>
                           <span className="mt-0.5 block min-w-0 truncate font-['Inter',sans-serif] text-[10px] font-normal leading-[15px] text-[#707070]">
                             {(item.catalogEyebrow || '').trim() || eyebrowShown}
@@ -590,8 +645,9 @@ export function KpiL3DetailModal({
                                 "font-['Inter',sans-serif] text-[13px] leading-5 text-[#333333]",
                                 selected ? 'font-medium' : 'font-normal',
                               ].join(' ')}
+                              aria-label={rowUnit}
                             >
-                              {rowUnit}
+                              {l3RailUnitDisplay(rowUnit)}
                             </span>
                           ) : null}
                         </div>
@@ -674,7 +730,7 @@ export function KpiL3DetailModal({
                   <div className="flex min-h-8 shrink-0 flex-wrap items-start justify-between gap-2">
                     <div
                       className="flex min-w-0 flex-1 flex-wrap items-start gap-2"
-                      aria-label={`Chart series by ${breakdownDimensions[0] ?? 'scope'}`}
+                      aria-label={`Chart series by ${chartLegendPrimary ?? 'scope'}`}
                     >
                       {chartLegendChips.map((item, chipIdx) => (
                         <button
@@ -710,7 +766,7 @@ export function KpiL3DetailModal({
                     data-kpi-expand-skip-interaction
                   >
                     <KpiTitleTrendChart
-                      series={trendTableSeries}
+                      series={trendSeriesForL3Chart}
                       variant={chartVariant}
                       presentation="l3"
                       className="h-full min-h-0 max-h-full w-full min-w-0 flex-1"

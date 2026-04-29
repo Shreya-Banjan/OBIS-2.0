@@ -84,6 +84,12 @@ export type KpiTrendSeries = {
   valueIsPercent: boolean;
   /** Shown vertically to the left of Y tick labels (optional; chart has its own default). */
   yAxisTitle?: string;
+  /** Same length as `rates` each; additional trendlines (L3 multi-chip). Primary line remains `rates`. */
+  extraLineRates?: readonly (readonly number[])[];
+  /** Hex stroke per line: primary then extras; length must match `1 + (extraLineRates?.length ?? 0)` when extras set. */
+  lineStrokes?: readonly string[];
+  /** Names for tooltip rows, same length as total lines. */
+  lineLabels?: readonly string[];
 };
 
 /** Trims a series to the last `maxPoints` buckets (e.g. L2 title chart = 6 months). */
@@ -94,6 +100,9 @@ export function sliceKpiTrendSeriesEnd(series: KpiTrendSeries, maxPoints: number
     ...series,
     xLabels: series.xLabels.slice(start),
     rates: series.rates.slice(start),
+    extraLineRates: series.extraLineRates?.map((row) => row.slice(start)) ?? undefined,
+    lineStrokes: series.lineStrokes,
+    lineLabels: series.lineLabels,
   };
 }
 
@@ -109,6 +118,12 @@ function buildDemoRates(len: number, anchor: number, salt: number): number[] {
     const drift = (t - 0.5) * anchor * 0.06;
     return Math.max(0.02, anchor * 0.88 + wave + drift + (i / Math.max(len - 1, 1)) * anchor * 0.08);
   });
+}
+
+/** Demo curves aligned to `rates` length — one row per extra chip line (L3). */
+export function buildAlignedExtraLineRates(len: number, anchor: number, baseSalt: number, extraCount: number): number[][] {
+  if (extraCount <= 0 || len <= 0) return [];
+  return Array.from({ length: extraCount }, (_, c) => buildDemoRates(len, anchor, baseSalt + (c + 1) * 7919));
 }
 
 /**
